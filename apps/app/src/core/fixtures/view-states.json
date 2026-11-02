@@ -6074,7 +6074,7 @@
           },
           "placeholder": {
             "kind": "marker",
-            "search": false
+            "search": true
           },
           "proxy": {
             "host": null,
@@ -6231,7 +6231,7 @@
           },
           "placeholder": {
             "kind": "marker",
-            "search": false
+            "search": true
           },
           "proxy": {
             "host": null,

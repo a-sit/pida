@@ -493,6 +493,18 @@ export function confirmationSpec(): MockDocSpec {
   return spec([p], { sizeBytes: 74 * 1024, qr: { page: 0, rect: { x: W - MARGIN.right - 230, y, w: 230, h: 82 }, id: '1' } });
 }
 
+/** Demodokument der Apps („Demo starten“, `public/PIDA-Demo.pdf`): eine Seite mit QR-Platzhalter Nr. 1. */
+export function demoSpec(): MockDocSpec {
+  const b = page()
+    .title('PIDA – Demodokument')
+    .subtitle('Demo document')
+    .para('Dieses Dokument liegt PIDA bei, damit Sie das Signieren gefahrlos ausprobieren können. Unten ist ein QR-Platzhalter eingefügt: PIDA erkennt ihn beim Öffnen und setzt den Signaturblock genau an diese Stelle.')
+    .para('Sie können die Position im Arbeitsbereich ändern und das Dokument mit ID Austria tatsächlich signieren. Die Signatur ist echt, das Dokument selbst hat keinen rechtlich bedeutsamen Inhalt.');
+  const y = b.cursor + 24;
+  const p = b.build();
+  return spec([p], { sizeBytes: 2 * 1024, qr: { page: 0, rect: { x: MARGIN.left, y, w: 240, h: 48 }, id: '1' } });
+}
+
 /** Gehaltszettel, kennwortgeschützt. */
 export function lockedSpec(): MockDocSpec {
   const p = page()
@@ -507,7 +519,8 @@ export function lockedSpec(): MockDocSpec {
 export function specForName(name: string, placeholder: 'none' | 'fields' | 'qr' = 'none'): MockDocSpec {
   const n = name.toLowerCase();
   let s: MockDocSpec;
-  if (/gehaltszettel|kennwort|scan/.test(n)) s = lockedSpec();
+  if (/pida-demo/.test(n)) s = demoSpec();
+  else if (/gehaltszettel|kennwort|scan/.test(n)) s = lockedSpec();
   else if (/leer|blank/.test(n)) s = blankSpec();
   else if (/manysignfields|signaturfelder/.test(n)) s = manyFieldsSpec();
   else if (/antrag|foerder|förder/.test(n)) s = fieldSpec();

@@ -125,7 +125,7 @@
         "cms_profile": "pades_bb"
       },
       "placeholder": {
-        "search": false,
+        "search": true,
         "kind": "marker"
       },
       "backend": {

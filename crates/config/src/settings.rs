@@ -265,13 +265,21 @@ pub enum PlaceholderKind {
 }
 
 /// Platzhaltersuche.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct PlaceholderSettings {
-    /// `USE_PLACEHOLDER_SEARCH`
+    /// `USE_PLACEHOLDER_SEARCH`; Standard **an** (anders als PDF-Over): Dokumente mit QR-Platzhalter (PIDA, PDF-AS-WAI,
+    /// Demodokument) bekommen die Signatur ohne weiteren Schritt an die richtige Stelle. Gespeicherte Einstellungen und
+    /// die Übernahme aus PDF-Over behalten ihren Wert.
     pub search: bool,
     /// Art.
     pub kind: PlaceholderKind,
+}
+
+impl Default for PlaceholderSettings {
+    fn default() -> Self {
+        Self { search: true, kind: PlaceholderKind::default() }
+    }
 }
 
 /// Standard-Signiermittel (`BKU`: `MOBILE`/`LOCAL`/`KS`; `NONE` = keines).

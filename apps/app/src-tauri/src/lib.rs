@@ -198,6 +198,27 @@ async fn mobile_pick_files(app: AppHandle, kind: String, multiple: bool) -> Resu
     Ok(MobilePick { paths, skipped: imported.skipped })
 }
 
+/// Demodokument der Apps („Demo starten“, ⌘/Strg+D): eine Seite mit QR-Platzhalter Nr. 1
+/// (`tools/make-demo-pdf.py`), im Programm eingebettet wie die Lizenztexte.
+const DEMO_PDF: &[u8] = include_bytes!("../../public/PIDA-Demo.pdf");
+/// Ordner der Demo-Kopie im Cache-Ordner der App.
+const DEMO_DIR: &str = "demo";
+/// Dateiname der Demo-Kopie.
+const DEMO_FILE: &str = "PIDA-Demo.pdf";
+
+/// Legt das Demodokument frisch im Cache-Ordner ab und liefert den Pfad (die Oberfläche öffnet ihn wie eine gewählte
+/// Datei). Nicht aus dem Programmordner: der ist schreibgeschützt, und das Ergebnis landet standardmäßig neben der
+/// Quelle. Der Ordner wird jedes Mal geleert, damit eine frühere Demo-Signatur keine Überschreib-Rückfrage auslöst.
+#[tauri::command]
+async fn demo_document(app: AppHandle) -> Result<String, String> {
+    let dir = app.path().app_cache_dir().map_err(|_| "ng-ui-open-failed".to_owned())?.join(DEMO_DIR);
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).map_err(|_| "ng-ui-open-failed".to_owned())?;
+    let path = dir.join(DEMO_FILE);
+    std::fs::write(&path, DEMO_PDF).map_err(|_| "ng-ui-open-failed".to_owned())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
 /// Startet den Kern (bzw. erneut nach „Wiederholen“) und abonniert den ViewState.
 fn start_core(app: &AppHandle, shell: &Shell) {
     // Der Kern darf `tokio::spawn` im Kontext der Tauri-Laufzeit nutzen.
@@ -582,7 +603,8 @@ pub fn run() {
             open_log_dir,
             reveal_output,
             license_text,
-            mobile_pick_files
+            mobile_pick_files,
+            demo_document
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

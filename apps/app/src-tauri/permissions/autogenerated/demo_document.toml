@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-demo-document"
+description = "Enables the demo_document command without any pre-configured scope."
+commands.allow = ["demo_document"]
+
+[[permission]]
+identifier = "deny-demo-document"
+description = "Denies the demo_document command without any pre-configured scope."
+commands.deny = ["demo_document"]

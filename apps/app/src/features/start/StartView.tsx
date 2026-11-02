@@ -6,7 +6,7 @@
  * (`dragActive`). Die Oberfläche filtert nicht nach Endung – der Kern meldet Nicht-PDFs.
  *
  * Mobile: keine Ablagefläche und keine Tastenkürzel, Knopf „Dokument auswählen“ (Dokument-Picker bzw.
- * SAF) und der Hinweis auf „Teilen“/„Öffnen in“.
+ * SAF) und der Hinweis auf „Teilen“/„Öffnen in“; statt des Kürzels ⌘/Strg+D der Link „Mit Demodokument ausprobieren“.
  *
  * Unter dem Knopf steht je Plattform, wie die Dateiauswahl mehrere PDFs auf einmal übernimmt (ADR 0004 Nachtrag 17).
  *
@@ -34,7 +34,7 @@ import { UpdateHint } from './UpdateHint';
 import './start.css';
 
 export function StartView() {
-  const { t, view, dragActive, browse, setOverlay } = useApp();
+  const { t, view, dragActive, browse, startDemo, setOverlay } = useApp();
   const { mod } = useModKey();
   const mobile = isMobile(view);
   const showRecent = RECENT_AVAILABLE && view.recent !== null;
@@ -71,7 +71,15 @@ export function StartView() {
                 <IconLock size={14} />
                 {t.t('ng-ui-start-local')}
               </span>
-              {mobile ? null : (
+              {mobile ? (
+                view.actions.open_files ? (
+                  <span className="drop-foot-item">
+                    <Link className="link" onPress={() => void startDemo()}>
+                      {t.t('ng-ui-start-demo')}
+                    </Link>
+                  </span>
+                ) : null
+              ) : (
                 <span className="drop-foot-item">
                   <Keys keys={[mod, 'O']} label={`${mod}+O`} />
                   {t.t('ng-ui-start-shortcut')}

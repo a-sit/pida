@@ -12,6 +12,7 @@ fn main() {
         "reveal_output",
         "license_text",
         "mobile_pick_files",
+        "demo_document",
     ]));
     tauri_build::try_build(attributes).expect("tauri-build fehlgeschlagen");
 }

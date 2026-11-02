@@ -10,7 +10,8 @@
 import type { ComponentType } from 'react';
 import type { Translator } from '../i18n/catalog';
 import type { OpenFilesMode, UiEvent, ViewState } from '../core/types';
-import { IconFilePlus, IconFolder, IconGlobe, IconHome, IconKeyboard, IconLayers, IconMonitor, IconMoon, IconQr, IconSettings, IconSignature, IconSun } from '../ui/Icons';
+import { webProfile } from '../core/web-profile';
+import { IconFilePlus, IconFolder, IconGlobe, IconHome, IconKeyboard, IconLayers, IconMonitor, IconMoon, IconPlay, IconQr, IconSettings, IconSignature, IconSun } from '../ui/Icons';
 import type { SettingsSectionId, ShellOverlay } from './context';
 import type { Theme } from './theme';
 
@@ -22,6 +23,7 @@ export type CommandId =
   | 'settings'
   | 'signature'
   | 'qr'
+  | 'demo'
   | 'home'
   | 'theme-light'
   | 'theme-dark'
@@ -32,10 +34,20 @@ export type CommandId =
 
 export type CommandGroup = 'actions' | 'view' | 'help';
 
-/** Tastenkürzel eines Befehls: `mod` = ⌘ (macOS) bzw. Strg. */
+/** Tastenkürzel eines Befehls: `mod` = ⌘ (macOS) bzw. Strg; `alt`/`shift` = zusätzlich ⌥/Alt bzw. ⇧/Umschalt. */
 export interface KeyCombo {
   mod: boolean;
-  key: 'O' | 'B' | 'Enter' | ',' | 'K' | '?';
+  alt?: boolean;
+  shift?: boolean;
+  key: 'O' | 'B' | 'D' | 'Enter' | ',' | 'K' | '?';
+}
+
+/**
+ * „Demo starten“: ⌘/Strg+D in den Apps; im Browser ist das „Lesezeichen setzen“, dort deshalb ⌥⇧D bzw. Alt+Umschalt+D
+ * (erkannt über die physische Taste, weil ⌥⇧D unter macOS ein Sonderzeichen tippt).
+ */
+export function demoKeys(): KeyCombo {
+  return webProfile() !== null ? { mod: false, alt: true, shift: true, key: 'D' } : { mod: true, key: 'D' };
 }
 
 /** Statische Beschreibung eines Befehls. */
@@ -59,6 +71,8 @@ export const COMMANDS: readonly CommandSpec[] = [
   { id: 'signature', group: 'actions', label: 'ng-ui-shell-cmd-signature', icon: IconSignature },
   // Nachtrag 24: „QR-Platzhalter erstellen“
   { id: 'qr', group: 'actions', label: 'ng-ui-shell-cmd-qr', icon: IconQr },
+  // Demodokument mit QR-Platzhalter (`public/PIDA-Demo.pdf`); Kürzel je nach Variante (`demoKeys`)
+  { id: 'demo', group: 'actions', label: 'ng-ui-shell-cmd-demo', icon: IconPlay },
   { id: 'home', group: 'actions', label: 'ng-ui-shell-cmd-home', icon: IconHome },
   { id: 'theme-light', group: 'view', label: 'ng-ui-shell-cmd-theme-light', icon: IconSun },
   { id: 'theme-dark', group: 'view', label: 'ng-ui-shell-cmd-theme-dark', icon: IconMoon },
@@ -73,6 +87,7 @@ export function isCommandEnabled(id: CommandId, view: ViewState): boolean {
   const a = view.actions;
   switch (id) {
     case 'open':
+    case 'demo':
       return a.open_files;
     case 'add':
       return a.open_files && addAvailable(view);
@@ -129,6 +144,7 @@ export interface CommandDeps {
   isMac: boolean;
   dispatch: (event: UiEvent) => Promise<boolean>;
   browse: (mode?: OpenFilesMode) => Promise<void>;
+  startDemo: () => Promise<void>;
   requestSign: () => void;
   openSettings: (section?: SettingsSectionId) => void;
   setTheme: (theme: Theme) => void;
@@ -154,7 +170,12 @@ export function keyCaps(keys: KeyCombo, isMac: boolean, t: Translator): string[]
   const de = t.lang === 'de';
   const mod = isMac ? '⌘' : de ? 'Strg' : 'Ctrl';
   const key = keys.key === 'Enter' ? (isMac ? '↵' : de ? 'Eingabe' : 'Enter') : keys.key;
-  return keys.mod ? [mod, key] : [key];
+  return [
+    ...(keys.mod ? [mod] : []),
+    ...(keys.alt ? [isMac ? '⌥' : 'Alt'] : []),
+    ...(keys.shift ? [isMac ? '⇧' : de ? 'Umschalt' : 'Shift'] : []),
+    key,
+  ];
 }
 
 /** Befehle mit Freigaben und Aktionen. */
@@ -179,6 +200,8 @@ export function buildCommands(deps: CommandDeps): CommandEntry[] {
         return () => deps.openSettings('signature');
       case 'qr':
         return () => deps.setOverlay('qr');
+      case 'demo':
+        return () => void deps.startDemo();
       case 'home':
         return () => void goHome(deps.view, deps.dispatch);
       case 'theme-light':
@@ -202,7 +225,7 @@ export function buildCommands(deps: CommandDeps): CommandEntry[] {
     group: c.group,
     label: t.t(label(c)),
     keywords: t.attr(label(c), 'keywords') ?? '',
-    keys: c.keys ? keyCaps(c.keys, isMac, t) : [],
+    keys: c.id === 'demo' ? keyCaps(demoKeys(), isMac, t) : c.keys ? keyCaps(c.keys, isMac, t) : [],
     icon: c.icon,
     isDisabled: !isCommandEnabled(c.id, view),
     run: run(c.id),
@@ -222,11 +245,11 @@ export function buildShortcuts(t: Translator, isMac: boolean): ShortcutEntry[] {
   const mod = isMac ? '⌘' : de ? 'Strg' : 'Ctrl';
   const shift = isMac ? '⇧' : de ? 'Umschalt' : 'Shift';
   const alt = isMac ? '⌥' : 'Alt';
-  const general: ShortcutEntry[] = COMMANDS.filter((c) => c.keys).map((c) => ({
+  const general: ShortcutEntry[] = COMMANDS.filter((c) => c.keys || c.id === 'demo').map((c) => ({
     id: c.id,
     group: 'general',
     label: t.t(c.label),
-    keys: keyCaps(c.keys as KeyCombo, isMac, t),
+    keys: keyCaps(c.id === 'demo' ? demoKeys() : (c.keys as KeyCombo), isMac, t),
   }));
   general.push({ id: 'close', group: 'general', label: t.t('ng-ui-shell-key-close'), keys: ['Esc'] });
   general.push({ id: 'accesskeys', group: 'general', label: t.t('ng-ui-shell-key-accesskeys'), keys: isMac ? ['⌃', '⌥', 'A–Z'] : ['Alt', 'A–Z'] });

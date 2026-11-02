@@ -34,7 +34,7 @@ async function bridge(): Promise<Bridge> {
  * error-atrust` wie im Prototyp (ohne dessen Prüfmodus, ADR 0004 Nachtrag 15), `&platform=ios|android` (Mobile-Oberfläche), `&flow=app|sms|
  * qr|fido2|decline|timeout|none` (Antwort von ID Austria nach der Anmeldung; `none` = Identität ohne zweiten Faktor), `&resume=1` (Angebot „Signatur
  * fortsetzen“), `&lang=en`, `&examples=1` (Beispiele der späteren Etappen). Stapel (ADR 0004 §3.8):
- * `&batch=0` (ohne Stapelübersicht), `&search=0|1` (Platzhaltersuche; im Szenario `batch` an), `&kind=fields`
+ * `&batch=0` (ohne Stapelübersicht), `&search=0|1` (Platzhaltersuche; Standard an wie im Kern), `&kind=fields`
  * (Platzhaltersuche „Leere Signaturfelder“ statt QR, E3), `&pdfa=1` („PDF/A-kompatibel signieren“, E3),
  * `&policy=recent-off|recent-on|updates` (Richtlinie: „Zuletzt signiert“ bzw. Update-Prüfung festgelegt, E3),
  * `&policy=only-ida` (Richtlinie gibt nur ID Austria frei: keine Signiermittel-Auswahl am Desktop, Nachtrag 20),
@@ -56,7 +56,7 @@ function mockOptionsFromUrl(search: string, scenarios: readonly string[]): Setti
   const mobile = platform === 'ios' || platform === 'android';
   const fault = params.get('fault');
   const folder = params.get('folder');
-  const placeholderSearch = params.get('search') ?? (scenario === 'batch' ? '1' : '0');
+  const placeholderSearch = params.get('search') ?? '1';
   // Demo-Konto wie im Prototyp (frei erfunden): ID Austria als Standard mit gemerktem Benutzer, Keystore
   // auf dem Desktop; `?ask=1` = „Jedes Mal fragen“ (Konto-Chip ohne Vorauswahl)
   const base = defaultSettings();

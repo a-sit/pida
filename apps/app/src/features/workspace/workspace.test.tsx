@@ -724,13 +724,12 @@ describe('Erkennung beim Öffnen: PDF/A und Platzhalter (Einstellungen › Dokum
   it('Umschalten in den Einstellungen wirkt sofort; ohne Suche wird das Feld nur angeboten', async () => {
     const { user } = renderApp({ scenario: 'field' });
     await screen.findByRole('application', { name: 'Signaturblock' });
-    // Standard (Suche aus): das Signaturfeld wird nur angeboten
+    // Standard (Suche nach QR-Platzhaltern): das Signaturfeld wird nur angeboten
     expect(screen.getByText('Signaturfeld gefunden:')).toBeInTheDocument();
     expect(within(inspector()).getByText(/^Seite \d · /)).toBeInTheDocument();
     expect(within(inspector()).queryByTestId('detect-note')).not.toBeInTheDocument();
 
     let dialog = await documentSettings(user);
-    await user.click(within(dialog).getByRole('switch', { name: 'Signaturplatzhalter automatisch suchen' }));
     await user.click(within(dialog).getByRole('radio', { name: /Leere Signaturfelder/ }));
     await closeSettings(user);
     expect(await within(inspector()).findByText('Signaturfeld gefunden – Signatur im Feld platziert')).toBeInTheDocument();
@@ -755,7 +754,6 @@ describe('Erkennung beim Öffnen: PDF/A und Platzhalter (Einstellungen › Dokum
     await waitFor(() => expect(mock.dispatched.some((e) => e.type === 'nudge_block')).toBe(true));
     const before = (await mock.view()).document?.placement;
     const dialog = await documentSettings(user);
-    await user.click(within(dialog).getByRole('switch', { name: 'Signaturplatzhalter automatisch suchen' }));
     await user.click(within(dialog).getByRole('radio', { name: /Leere Signaturfelder/ }));
     await closeSettings(user);
     const after = (await mock.view()).document;

@@ -345,3 +345,18 @@ fn transparent_qr_placeholders_are_decoded_with_their_mask() {
         ]
     );
 }
+
+#[test]
+fn demo_document_of_the_apps_has_a_detectable_placeholder() {
+    // „Demo starten“ (apps/app/public/PIDA-Demo.pdf, tools/make-demo-pdf.py): Platzhalter Nr. 1 ohne Profil, 240 pt breit
+    let backend = require_pdfium!();
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../apps/app/public/PIDA-Demo.pdf");
+    let bytes = std::fs::read(&path).expect("Demodokument vorhanden");
+    let doc = common::load(&bytes);
+    let renderer = common::open(&backend, &bytes);
+    let found =
+        find_qr_placeholders(renderer.as_ref(), &common::pages(&doc), &common::all_invocations(&doc, false)).unwrap();
+    let got: Vec<_> = found.iter().map(summary).collect();
+    assert_eq!(got, vec![(0, "Im1".to_owned(), Some("1".to_owned()), "p:1;x:72;y:268;w:240".to_owned())]);
+    assert_eq!(found[0].payload.profile, None);
+}
