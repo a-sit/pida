@@ -73,6 +73,11 @@ export interface AppContextValue {
    * (`sign_recent`); bei geparkter Arbeit fragt die Shell vorher wie bei neuen PDFs (`ParkedJoinDialog`).
    */
   signRecent: (id: number) => void;
+  /**
+   * „Demo starten“ (⌘/Strg+D, im Web ⌥⇧D; Palette, Hilfe, Startseite auf Mobilgeräten): öffnet eine frische Kopie des
+   * Demodokuments mit QR-Platzhalter wie eine gewählte Datei.
+   */
+  startDemo: () => Promise<void>;
   /** offenes Shell-Overlay (Palette, Kürzel) */
   overlay: ShellOverlay;
   setOverlay: (overlay: ShellOverlay) => void;

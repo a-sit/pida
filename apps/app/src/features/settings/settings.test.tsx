@@ -217,16 +217,16 @@ describe('Suche (Abnahme E3 Punkt 3)', () => {
 });
 
 describe('Einstellungen › Dokument (PDF/A, Platzhaltersuche)', () => {
-  it('Standardwerte wie PDF-Over: PDF/A aus, Suche aus (Auswahl gesperrt, QR vorgewählt); nicht unter „Erweitert“', async () => {
+  it('Standardwerte: PDF/A aus wie PDF-Over, Suche an (anders als PDF-Over, QR vorgewählt); nicht unter „Erweitert“', async () => {
     const { dialog, user } = await open();
     await user.click(nav(dialog, 'Dokument'));
     expect(within(dialog).getByRole('heading', { level: 3, name: 'Dokument' })).toBeInTheDocument();
     const pdfa = within(dialog).getByRole('switch', { name: 'PDF/A-kompatibel signieren' });
     expect(pdfa).not.toBeChecked();
     expect(pdfa).toHaveAccessibleDescription(/erkennt PIDA automatisch .* erzwingt das auch für Dokumente ohne PDF\/A-Kennung/);
-    expect(within(dialog).getByRole('switch', { name: 'Signaturplatzhalter automatisch suchen' })).not.toBeChecked();
+    expect(within(dialog).getByRole('switch', { name: 'Signaturplatzhalter automatisch suchen' })).toBeChecked();
     const kind = within(dialog).getByRole('radiogroup', { name: 'Suchen nach' });
-    expect(kind).toHaveAttribute('aria-disabled', 'true');
+    expect(kind).not.toHaveAttribute('aria-disabled');
     expect(within(kind).getByRole('radio', { name: /QR-Code-Platzhalter/ })).toBeChecked();
     expect(within(kind).getByRole('radio', { name: /Leere Signaturfelder/ })).not.toBeChecked();
     await user.click(nav(dialog, 'Erweitert'));
@@ -242,17 +242,17 @@ describe('Einstellungen › Dokument (PDF/A, Platzhaltersuche)', () => {
     const search = within(dialog).getByRole('switch', { name: 'Signaturplatzhalter automatisch suchen' });
     const group = within(dialog).getByRole('radiogroup', { name: 'Suchen nach' });
     const field = within(group).getByRole('radio', { name: /Leere Signaturfelder/ });
+    // Suche ist standardmäßig an: die Auswahl wirkt sofort
     await user.click(field);
-    expect(field).not.toBeChecked();
-    await user.click(search);
-    expect(lastEvent(mock)).toEqual({ type: 'apply_settings', changes: { 'placeholder.search': true }, revision: 2 });
-    expect(group).not.toHaveAttribute('aria-disabled');
-    await user.click(field);
-    expect(lastEvent(mock)).toEqual({ type: 'apply_settings', changes: { 'placeholder.kind': 'fields' }, revision: 3 });
+    expect(lastEvent(mock)).toEqual({ type: 'apply_settings', changes: { 'placeholder.kind': 'fields' }, revision: 2 });
     expect(field).toBeChecked();
     await user.click(search);
+    expect(lastEvent(mock)).toEqual({ type: 'apply_settings', changes: { 'placeholder.search': false }, revision: 3 });
     expect(group).toHaveAttribute('aria-disabled', 'true');
     expect(field).toBeChecked();
+    const qr = within(group).getByRole('radio', { name: /QR-Code-Platzhalter/ });
+    await user.click(qr);
+    expect(qr).not.toBeChecked();
     expect((await mock.view()).settings!.settings.placeholder).toEqual({ search: false, kind: 'fields' });
   });
 

@@ -589,6 +589,8 @@ async fn real_engine_signs_into_the_first_field_pdfa_compatible() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn qr_search_toggled_after_opening() {
     let fx = Fixture::new();
+    // Suche ausgeschaltet (seit dem Demomodus Standard an)
+    fx.write_settings("[placeholder]\nsearch = false\n");
     let a = copy_pdf(QR_PDF, &fx.dir("in"), "qr.pdf");
     let Some(core) = start(&fx, Overlay { input_files: vec![a], ..Overlay::default() }, true, |_| {}) else {
         eprintln!("PIDA_PDFIUM_DIR nicht gesetzt – übersprungen");
@@ -596,7 +598,7 @@ async fn qr_search_toggled_after_opening() {
     };
     let v = wait_for(&core, "Arbeitsbereich", editing).await;
     let d = v.document.unwrap();
-    assert_eq!((d.target, d.qr.is_none()), (PlacementTarget::Free, true), "Suche aus (Standard)");
+    assert_eq!((d.target, d.qr.is_none()), (PlacementTarget::Free, true), "Suche aus");
     open_settings(&core).await;
     apply(&core, 1, &[("placeholder.search", json!(true))]).await;
     let v =
@@ -622,6 +624,7 @@ async fn qr_search_toggled_after_opening() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn qr_search_switched_on_leaves_the_new_page() {
     let fx = Fixture::new();
+    fx.write_settings("[placeholder]\nsearch = false\n");
     let a = copy_pdf("golden/pdfas-4.4.2/inputs/qr.pdf", &fx.dir("in"), "qr.pdf");
     let Some(core) = start(&fx, Overlay { input_files: vec![a], ..Overlay::default() }, true, |_| {}) else {
         eprintln!("PIDA_PDFIUM_DIR nicht gesetzt – übersprungen");

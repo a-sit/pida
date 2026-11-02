@@ -11,6 +11,7 @@
     "allow-core-dispatch",
     "allow-app-info",
     "allow-license-text",
+    "allow-demo-document",
     "allow-mobile-pick-files",
     {
       "identifier": "opener:allow-open-url",

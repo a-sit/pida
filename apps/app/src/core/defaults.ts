@@ -38,7 +38,7 @@ export function defaultSettings(): Settings {
       logo_only_size_mm: 23,
       cms_profile: 'pdfas_compat',
     },
-    placeholder: { search: false, kind: 'marker' },
+    placeholder: { search: true, kind: 'marker' },
     backend: { default: null },
     id_austria: { username: null, remember: false, fido2_default: false },
     keystore: { enabled: false, file: null, declared_type: null, alias: null, password_storage: 'memory', storage_chosen: true },

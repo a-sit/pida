@@ -271,6 +271,12 @@ export async function createWebBridge(): Promise<Bridge> {
       if (!r || !r.ok) throw new Error('ng-ui-licenses-missing');
       return r.text();
     },
+    // Demodokument liegt neben der Seite (Vite kopiert `public/`); in das Dateisystem des Kerns wie eine gewählte Datei
+    async demoDocument() {
+      const r = await fetch(new URL('PIDA-Demo.pdf', base).href).catch(() => null);
+      if (!r || !r.ok) throw new Error('ng-ui-open-failed');
+      return pkg.put_file('PIDA-Demo.pdf', new Uint8Array(await r.arrayBuffer()));
+    },
     async appInfo(): Promise<AppInfo> {
       return { version: pkg.version(), platform: 'web', core_available: true };
     },

@@ -3455,11 +3455,11 @@
     "batch": null,
     "document": {
       "announce": {
-        "bottom": "41",
-        "left": "108",
+        "bottom": "219",
+        "left": "67",
         "page": "1",
         "pages": "1",
-        "top": "70"
+        "top": "248"
       },
       "block": {
         "emblem_choosable": true,
@@ -3471,7 +3471,7 @@
       },
       "check": {
         "clamped": false,
-        "for_revision": 1,
+        "for_revision": 2,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -3575,18 +3575,18 @@
         "height": 82.0,
         "page_index": 0,
         "width": 229.99998474121094,
-        "x": 306.0,
-        "y": 198.0
+        "x": 191.0,
+        "y": 704.0
       },
       "placement_locked": false,
       "qr": null,
-      "revision": 1,
+      "revision": 2,
       "size_bytes": 6257,
       "sticker": {
-        "bottom": 116.0,
-        "left": 306.0,
-        "right": 536.0,
-        "top": 198.0
+        "bottom": 622.0,
+        "left": 191.0,
+        "right": 421.0,
+        "top": 704.0
       },
       "target": {
         "kind": "free"
@@ -3769,11 +3769,11 @@
     "batch": null,
     "document": {
       "announce": {
-        "bottom": "41",
-        "left": "108",
+        "bottom": "219",
+        "left": "67",
         "page": "1",
         "pages": "1",
-        "top": "70"
+        "top": "248"
       },
       "block": {
         "emblem_choosable": true,
@@ -3785,7 +3785,7 @@
       },
       "check": {
         "clamped": false,
-        "for_revision": 1,
+        "for_revision": 2,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -3889,18 +3889,18 @@
         "height": 82.0,
         "page_index": 0,
         "width": 229.99998474121094,
-        "x": 306.0,
-        "y": 198.0
+        "x": 191.0,
+        "y": 704.0
       },
       "placement_locked": false,
       "qr": null,
-      "revision": 1,
+      "revision": 2,
       "size_bytes": 6257,
       "sticker": {
-        "bottom": 116.0,
-        "left": 306.0,
-        "right": 536.0,
-        "top": 198.0
+        "bottom": 622.0,
+        "left": 191.0,
+        "right": 421.0,
+        "top": 704.0
       },
       "target": {
         "kind": "free"
@@ -4026,10 +4026,10 @@
     },
     "step": {
       "announce": {
-        "left": "108",
+        "left": "67",
         "page": "1",
         "pages": "1",
-        "top": "70"
+        "top": "248"
       },
       "block": {
         "emblem_choosable": true,
@@ -4056,9 +4056,9 @@
       "placement": {
         "height": 82.0,
         "page_index": 0,
-        "width": 229.99998474121094,
-        "x": 306.0,
-        "y": 198.0
+        "width": 230.0,
+        "x": 191.0,
+        "y": 704.0
       },
       "step": "position"
     },
@@ -4092,11 +4092,11 @@
     "batch": null,
     "document": {
       "announce": {
-        "bottom": "41",
-        "left": "108",
+        "bottom": "219",
+        "left": "67",
         "page": "1",
         "pages": "1",
-        "top": "70"
+        "top": "248"
       },
       "block": {
         "emblem_choosable": true,
@@ -4108,7 +4108,7 @@
       },
       "check": {
         "clamped": false,
-        "for_revision": 1,
+        "for_revision": 2,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -4212,18 +4212,18 @@
         "height": 82.0,
         "page_index": 0,
         "width": 229.99998474121094,
-        "x": 306.0,
-        "y": 198.0
+        "x": 191.0,
+        "y": 704.0
       },
       "placement_locked": false,
       "qr": null,
-      "revision": 1,
+      "revision": 2,
       "size_bytes": 6257,
       "sticker": {
-        "bottom": 116.0,
-        "left": 306.0,
-        "right": 536.0,
-        "top": 198.0
+        "bottom": 622.0,
+        "left": 191.0,
+        "right": 421.0,
+        "top": 704.0
       },
       "target": {
         "kind": "free"
@@ -4643,7 +4643,7 @@
         },
         "placeholder": {
           "kind": "marker",
-          "search": false
+          "search": true
         },
         "proxy": {
           "host": null,

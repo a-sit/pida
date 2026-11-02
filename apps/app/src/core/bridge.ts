@@ -104,6 +104,12 @@ export interface PlatformServices {
    * Programm, auch auf Android. Fehlen die Hinweise (Entwicklungsbuild): Fehler `ng-ui-licenses-missing`.
    */
   licenseText(kind: LicenseKind): Promise<string>;
+  /**
+   * Demodokument („Demo starten“, ⌘/Strg+D, im Web ⌥⇧D): eine Seite mit QR-Platzhalter Nr. 1 (`public/PIDA-Demo.pdf`,
+   * `tools/make-demo-pdf.py`). Liefert den Pfad einer frischen, beschreibbaren Kopie, die die Oberfläche wie eine
+   * gewählte Datei öffnet. Fehler: `ng-ui-open-failed`.
+   */
+  demoDocument(): Promise<string>;
   /** Version, Plattform, Kern verfügbar. */
   appInfo(): Promise<AppInfo>;
 }
@@ -293,6 +299,13 @@ export async function createTauriBridge(): Promise<Bridge> {
     async licenseText(kind) {
       try {
         return await invoke<string>('license_text', { kind });
+      } catch (e) {
+        throw new Error(errorCode(e));
+      }
+    },
+    async demoDocument() {
+      try {
+        return await invoke<string>('demo_document');
       } catch (e) {
         throw new Error(errorCode(e));
       }

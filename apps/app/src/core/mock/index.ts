@@ -1655,6 +1655,11 @@ export class MockCore implements Bridge {
     return '<!DOCTYPE html><html><head><title>Copyright notices for The Rust Standard Library</title></head><body><h1>Copyright notices for The Rust Standard Library</h1><p>The Rust Standard Library is dual-licensed under Apache 2.0 and MIT terms.</p><ul><li>core</li><li>alloc</li></ul><script>window.__pwned = true</script></body></html>';
   }
 
+  async demoDocument(): Promise<string> {
+    this.nativeCalls.push('demoDocument');
+    return mobile(this.opts) ? `${SANDBOX}/Library/Caches/demo/PIDA-Demo.pdf` : '/Users/demo/Library/Caches/at.asit.pida/demo/PIDA-Demo.pdf';
+  }
+
   async appInfo() {
     return { version: '0.2.0', platform: mobile(this.opts) ? (this.opts.platform ?? 'mock') : 'mock', core_available: true };
   }

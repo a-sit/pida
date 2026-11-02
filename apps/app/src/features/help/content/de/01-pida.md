@@ -31,6 +31,10 @@ freie Software unter der EUPL-1.2 und ein Open-Source-Projekt von A-SIT, kein of
   Fläche. Verschieben mit Maus, Finger oder Pfeiltasten; der Block rastet an Rändern, unter dem Text und in leere
   Signaturfelder ein. Signatur auch auf einer neuen Seite oder unsichtbar (ohne Signaturbild).
 - **Signaturfelder und QR-Platzhalter** im Dokument werden erkannt und als Ziel angeboten.
+- **Demo:** „Demo starten“ öffnet ein mitgeliefertes Demodokument mit QR-Platzhalter – zum gefahrlosen Ausprobieren.
+  Kürzel ⌘D bzw. Strg+D, im Browser ⌥⇧D bzw. Alt+Umschalt+D; auch in der Befehlspalette und auf Mobilgeräten über
+  „Mit Demodokument ausprobieren“ auf der Startseite. Signiert wird echt, das Dokument hat aber keinen rechtlich
+  bedeutsamen Inhalt.
 - **Stapel:** mehrere PDFs auf einmal – einmal bei ID Austria anmelden, jedes Dokument einzeln bestätigen.
   Geschützte oder fehlerhafte Dateien werden übersprungen.
 - **Signaturbild:** Profile „Standard (klein)“, „Amtssignatur“ und weitere aus PDF-AS, Sprache des Signaturblocks

@@ -40,6 +40,8 @@ fn capabilities_are_minimal() {
         "allow-open-log-dir",
         "allow-reveal-output",
         "allow-license-text",
+        // „Demo starten“: ohne Parameter, schreibt nur das eingebettete Demodokument in den eigenen Cache-Ordner
+        "allow-demo-document",
         "dialog:allow-open",
         "dialog:allow-save",
         "opener:allow-open-url",
@@ -76,6 +78,7 @@ fn mobile_capabilities_are_minimal() {
         "allow-core-dispatch",
         "allow-app-info",
         "allow-license-text",
+        "allow-demo-document",
         "allow-mobile-pick-files",
         "opener:allow-open-url",
     ]

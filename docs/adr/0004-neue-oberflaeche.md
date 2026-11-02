@@ -2070,7 +2070,7 @@ V0 (Datenschutz) → K0 → U0 ─┬─ K1 → A1            = E1
 | **F10** | Beim **Überspringen** bzw. bei einer **Ablehnung in der App** (SL 6000/6001) für ein einzelnes Dokument im Stapel bleiben die Zugangsdaten bis zum Ende des Laufs im Speicher; beim Einzeldokument im Arbeitsbereich nach einer Ablehnung bis zur Entscheidung im Fehlerschritt (Abweichung von F-72: PDF-Over löscht sie auch bei 6000/6001). Einverstanden? | **Ja** – sonst wäre „eine Anmeldung“ nach jedem Überspringen verloren und „Erneut versuchen“ nach einer Ablehnung bräuchte eine neue Anmeldung; Abbruch des Stapels, „Schließen“ im Fehlerschritt und jeder Abbruch in PIDA löschen sie wie F-72. |
 | **F11** | Vorhandene Zieldateien im Stapel: Standardwahl im Startdialog? | **„Beide behalten“** (`… (2).pdf`), Alternativen „Überschreiben“, „Überspringen“ (ohne Bestätigung für dieses Dokument). |
 | **F12** | Standard-Signiermittel **„Jedes Mal fragen“** (ux-konzept §12 Frage 2): Auswahl als Schritt der Signierkarte oder über den Konto-Chip – und wie lange gilt sie? | **Konto-Chip** (wie der Prototyp): ohne Auswahl öffnet „Signieren“ das Menü; die Wahl gilt für das aktuelle Dokument bzw. den Stapellauf, danach wird wieder gefragt. |
-| **F13** | **QR-Platzhaltersuche** bei Neuinstallation einschalten? Der Prototyp setzt QR-Platzhalter immer automatisch; der Kern sucht sie nur mit `placeholder.search` (Standard aus wie PDF-Over, kostet Ladezeit für die Bildsuche). | **Aus lassen** (PDF-Over-Verhalten, Ladezeit); leere Signaturfelder bietet der Arbeitsbereich ohnehin immer an; die Einstellung bleibt unter „Erweitert“. **Entschieden (Nachtrag 5):** Standard aus wie PDF-Over, Einstellung unter Einstellungen › Dokument. |
+| **F13** | **QR-Platzhaltersuche** bei Neuinstallation einschalten? Der Prototyp setzt QR-Platzhalter immer automatisch; der Kern sucht sie nur mit `placeholder.search` (Standard aus wie PDF-Over, kostet Ladezeit für die Bildsuche). | **Aus lassen** (PDF-Over-Verhalten, Ladezeit); leere Signaturfelder bietet der Arbeitsbereich ohnehin immer an; die Einstellung bleibt unter „Erweitert“. **Entschieden (Nachtrag 5):** Standard aus wie PDF-Over, Einstellung unter Einstellungen › Dokument. **Revidiert (Nachtrag 25):** Standard an (QR-Code-Platzhalter). |
 | **F14** | **A1 für alle Signiermittel:** Im Arbeitsbereich startet auch der Keystore bzw. die lokale BKU nie ohne „Signieren“ (bisher F-53: Standard-Signiermittel + automatische Positionierung signierte beim Öffnen). D3 verlangt das nur für ID Austria. | **Ja, für alle** (das Dokument ist vor dem Signieren immer sichtbar, einheitliche Bedienung); wer Automatik braucht, nutzt `-b … -a` bzw. die CLI. |
 
 ## 9. Nachträge
@@ -3727,3 +3727,27 @@ Tests:
 - `core-api/tests/qr_placeholder.rs` (PNG mit PDFium wird als derselbe Platzhalter erkannt, 360 dpi)
 - `src-tauri` (Protokoll)
 - `features/qr/qr.test.tsx`
+
+### Nachtrag 25 (02.11.2026): Platzhaltersuche standardmäßig an; „Demo starten“
+
+1. **Platzhaltersuche an** (revidiert F13): `PlaceholderSettings::default()` hat `search = true`, `kind = marker`, in
+   allen Apps und in `pida-cli` ohne Einstellungsdatei. Mit QR-Platzhalter vorbereitete Dokumente (PIDA, PDF-AS-WAI)
+   bekommen die Signatur ohne weiteren Schritt an die richtige Stelle; die Web-Variante tat das schon (Nachtrag 24,
+   Punkt 5). Gespeicherte Einstellungen behalten ihren Wert (die Datei enthält ihn immer), die Übernahme aus PDF-Over
+   übernimmt dessen `USE_PLACEHOLDER_SEARCH`. Abschalten weiter unter Einstellungen › Dokument.
+2. **„Demo starten“** öffnet ein mitgeliefertes Demodokument (`apps/app/public/PIDA-Demo.pdf`, eine Seite, Deutsch und
+   Englisch, QR-Platzhalter Nr. 1 ohne Profil; erzeugt mit `tools/make-demo-pdf.py`) wie eine gewählte Datei:
+   - **Kürzel:** ⌘D bzw. Strg+D in den Apps; im Browser ist das „Lesezeichen setzen“, dort ⌥⇧D bzw. Alt+Umschalt+D
+     (physische Taste, `KeyboardEvent.code`; unter macOS tippt ⌥⇧D ein Sonderzeichen).
+   - Außerdem Befehlsliste, Kürzelübersicht, Hilfeartikel „Bedienung“ und auf Mobilgeräten der Link „Mit Demodokument
+     ausprobieren“ auf der Startseite (dort gibt es keine Kürzel).
+   - **Kopie:** Desktop und Mobile legen das (im Programm eingebettete) Dokument bei jedem Start frisch im Cache-Ordner
+     ab (Command `demo_document`, Ordner `demo`, vorher geleert – keine Überschreib-Rückfrage einer früheren
+     Demo-Signatur); nicht aus dem Programmordner, der ist schreibgeschützt. Web: neben der Seite, über `put_file`.
+   - Signiert wird echt; das Dokument hat keinen rechtlich bedeutsamen Inhalt. Bei geparkter Arbeit fragt die Shell
+     wie bei anderen neuen PDFs.
+
+Tests:
+- `placement/tests/qr_placeholders.rs` (Demodokument: Platzhalter Nr. 1 erkannt, 240 pt breit)
+- `src-tauri/tests/security_config.rs` (Berechtigung `allow-demo-document`)
+- `app/demo.test.tsx`, `features/settings/settings.test.tsx` (Standard an)

@@ -39,7 +39,7 @@ import { ErrorCard, FinishedCard, LoadingCard, StartingCard, WarningCard, Worksp
 import { translator } from '../i18n/catalog';
 import { accessKeyFromEvent, trackAltKey, triggerAccessKey } from '../ui/AccessKeys';
 import { Toasts } from '../ui/Toasts';
-import { batchNav, buildCommands, buildShortcuts } from './commands';
+import { batchNav, buildCommands, buildShortcuts, demoKeys } from './commands';
 import { AppContext, type AppContextValue, type SettingsSectionId, type ShellOverlay, type Toast } from './context';
 import { DownloadBanner } from './DownloadBanner';
 import { EMBLEM_DROP_EVENT } from './events';
@@ -288,6 +288,18 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
     [dispatch],
   );
 
+  // „Demo starten“: frische Kopie des Demodokuments (Plattform) und weiter wie „Öffnen“ – bei geparkter Arbeit erst die
+  // Rückfrage, was der Kern daraus macht, entscheidet er
+  const startDemo = useCallback(async () => {
+    try {
+      const path = await bridge.demoDocument();
+      if (parkedRef.current) setJoin({ paths: [path] });
+      else void dispatch({ type: 'open_files', paths: [path] });
+    } catch (e) {
+      toast(t.code(e instanceof Error ? e.message : 'ng-ui-open-failed', {}, 'ng-ui-open-failed'), 'error');
+    }
+  }, [bridge, dispatch, t, toast]);
+
   const requestSign = useCallback(() => signHandler.current?.(), []);
   const registerSign = useCallback((handler: (() => void) | null) => {
     signHandler.current = handler;
@@ -322,11 +334,11 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
   }, [bridge]);
 
   // --- Tastatur --------------------------------------------------------------------------------
-  const keyState = useRef({ current, browse, openSettings, requestSign, overlay, dispatch });
-  keyState.current = { current, browse, openSettings, requestSign, overlay, dispatch };
+  const keyState = useRef({ current, browse, startDemo, openSettings, requestSign, overlay, dispatch });
+  keyState.current = { current, browse, startDemo, openSettings, requestSign, overlay, dispatch };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const { current: v, browse: b, openSettings: settings, requestSign: sign, overlay: o, dispatch: d } = keyState.current;
+      const { current: v, browse: b, startDemo: demo, openSettings: settings, requestSign: sign, overlay: o, dispatch: d } = keyState.current;
       const mod = isMac ? e.metaKey : e.ctrlKey;
       const k = e.key.toLowerCase();
       // F1 = Hilfe, auch über dem Signierdialog (z. B. „Was ist der Vergleichswert?“)
@@ -359,6 +371,16 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
         if (v.actions.open_files && !blocked) {
           e.preventDefault();
           void b();
+        }
+        return;
+      }
+      // „Demo starten“ (`demoKeys`): Apps ⌘/Strg+D, Web ⌥⇧D bzw. Alt+Umschalt+D über die physische Taste (unter macOS
+      // tippt ⌥⇧D ein Sonderzeichen); nicht beim Tippen
+      const dk = demoKeys();
+      if (e.code === 'KeyD' && mod === dk.mod && e.altKey === !!dk.alt && e.shiftKey === !!dk.shift && !(isMac ? e.ctrlKey : e.metaKey) && !isTyping(e.target)) {
+        if (v.actions.open_files && !blocked) {
+          e.preventDefault();
+          void demo();
         }
         return;
       }
@@ -431,8 +453,8 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
   }, [overlayOpen]);
 
   const ctx = useMemo<AppContextValue>(
-    () => ({ bridge, view: current, dispatch, t, announce, toast, dragActive, isMac, theme, setTheme, openSettings, openHelp, settingsSection: section, browse, signRecent, overlay, setOverlay, requestSign, registerSign }),
-    [bridge, current, dispatch, t, announce, toast, dragActive, isMac, theme, setTheme, openSettings, openHelp, section, browse, signRecent, overlay, requestSign, registerSign],
+    () => ({ bridge, view: current, dispatch, t, announce, toast, dragActive, isMac, theme, setTheme, openSettings, openHelp, settingsSection: section, browse, signRecent, startDemo, overlay, setOverlay, requestSign, registerSign }),
+    [bridge, current, dispatch, t, announce, toast, dragActive, isMac, theme, setTheme, openSettings, openHelp, section, browse, signRecent, startDemo, overlay, requestSign, registerSign],
   );
 
   const commands = useMemo(
@@ -443,12 +465,13 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
         isMac,
         dispatch,
         browse,
+        startDemo,
         requestSign,
         openSettings,
         setTheme,
         setOverlay,
       }),
-    [current, t, isMac, dispatch, browse, requestSign, openSettings, setTheme],
+    [current, t, isMac, dispatch, browse, startDemo, requestSign, openSettings, setTheme],
   );
 
   const step = current.step;

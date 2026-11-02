@@ -243,7 +243,7 @@ describe('Kopfzeile und Kürzel', () => {
   it('Befehlsliste: alle Befehle des Prototyps mit Freigaben aus `actions`, Kürzel 15/1/50 pt', () => {
     const t = translator('de');
     const view = workspaceView();
-    const deps = { view, t, isMac: true, dispatch: async () => true, browse: async () => undefined, requestSign: () => undefined, openSettings: () => undefined, setTheme: () => undefined, setOverlay: () => undefined };
+    const deps = { view, t, isMac: true, dispatch: async () => true, browse: async () => undefined, startDemo: async () => undefined, requestSign: () => undefined, openSettings: () => undefined, setTheme: () => undefined, setOverlay: () => undefined };
     const cmds = buildCommands(deps);
     expect(cmds.map((c) => c.id)).toEqual(COMMANDS.map((c) => c.id));
     expect(cmds.find((c) => c.id === 'sign')).toMatchObject({ label: 'Signieren', keys: ['⌘', '↵'], isDisabled: false });

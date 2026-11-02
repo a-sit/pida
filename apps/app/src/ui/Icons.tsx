@@ -357,6 +357,12 @@ export const IconQr = (p: IconProps) => (
     <path d="M14.5 14.5h2.5v2.5M20.5 14.5v.01M14.5 20.5h.01M17.5 20.5h3v-3" />
   </Icon>
 );
+export const IconPlay = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M10 8.5v7l5.5-3.5z" />
+  </Icon>
+);
 export const IconUser = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="8" r="4" />

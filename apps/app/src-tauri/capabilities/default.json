@@ -14,6 +14,7 @@
     "allow-open-log-dir",
     "allow-reveal-output",
     "allow-license-text",
+    "allow-demo-document",
     "dialog:allow-open",
     "dialog:allow-save",
     {
