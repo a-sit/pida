@@ -1,7 +1,7 @@
 {
   "name": "pida-app",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "PIDA – Oberfläche (Tauri 2, React 19, React Aria Components)",
   "license": "EUPL-1.2",
   "type": "module",
