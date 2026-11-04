@@ -40,7 +40,7 @@ fn installers_name_a_sit_as_publisher_and_copyright_holder() {
     let year: u16 = copyright[3..7].parse().expect("Jahr im Urheberrechtsvermerk");
     assert!(year >= 2026, "{copyright}");
     assert_eq!(bundle["license"], "EUPL-1.2");
-    assert_eq!(bundle["homepage"], "https://github.com/ataub1/pida");
+    assert_eq!(bundle["homepage"], "https://github.com/a-sit/pida");
     assert!(!TAURI_CONF.contains("PIDA contributors") && !WORKSPACE.contains("PIDA contributors"));
 
     // iOS: dieselbe Angabe im Projekt (Info.plist und xcodegen-Vorlage)
@@ -58,10 +58,7 @@ fn cargo_metadata_names_a_sit() {
     assert_eq!(env!("CARGO_PKG_AUTHORS"), "A-SIT");
     assert_eq!(env!("CARGO_PKG_LICENSE"), "EUPL-1.2");
     assert!(WORKSPACE.contains("\nauthors = [\"A-SIT\"]\n"), "[workspace.package] authors");
-    assert!(
-        WORKSPACE.contains("\nrepository = \"https://github.com/ataub1/pida\"\n"),
-        "[workspace.package] repository"
-    );
+    assert!(WORKSPACE.contains("\nrepository = \"https://github.com/a-sit/pida\"\n"), "[workspace.package] repository");
 }
 
 /// Herausgeber-Wechsel im NSIS-Installer: Der Installer übernimmt beim Start der Oberfläche den Ordner der bis 0.2.0

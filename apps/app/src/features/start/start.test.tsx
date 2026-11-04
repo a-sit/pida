@@ -62,7 +62,7 @@ describe('Start', () => {
     expect(hint).toHaveAttribute('role', 'note');
     expect(hint).toHaveTextContent('PIDA 0.3.0 ist verfügbar.');
     await user.click(within(hint).getByRole('link', { name: 'Release-Seite von PIDA 0.3.0 auf GitHub öffnen' }));
-    expect(mock.openedUrls).toEqual(['https://github.com/ataub1/pida/releases/tag/v0.3.0']);
+    expect(mock.openedUrls).toEqual(['https://github.com/a-sit/pida/releases/tag/v0.3.0']);
     await expectNoAxeViolations();
     await user.click(within(hint).getByRole('button', { name: 'Hinweis für diese Version ausblenden' }));
     await waitFor(() => expect(screen.queryByTestId('update-hint')).not.toBeInTheDocument());

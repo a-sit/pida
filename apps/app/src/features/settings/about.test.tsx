@@ -71,7 +71,7 @@ describe('Über PIDA: Kopf, Links, Urheberrecht', () => {
     await user.click(within(about).getByRole('link', { name: /Website/ }));
     await user.click(within(about).getByRole('link', { name: /Versionshinweise/ }));
     await user.click(within(about).getByRole('link', { name: /Quellcode/ }));
-    expect(mock.openedUrls).toEqual(['https://pdf.a-sit.at', 'https://github.com/ataub1/pida/releases/tag/v0.2.0', 'https://github.com/ataub1/pida']);
+    expect(mock.openedUrls).toEqual(['https://pdf.a-sit.at', 'https://github.com/a-sit/pida/releases/tag/v0.2.0', 'https://github.com/a-sit/pida']);
     await user.click(within(about).getByRole('link', { name: 'Logs anzeigen' }));
     await waitFor(() => expect(mock.nativeCalls).toContain('openLogDir'));
     expect(within(about).getByText('Basiert auf PDF-Over von A-SIT.')).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe('Über PIDA: Statuszeile in jedem Zustand des echten Kerns', () => {
     if (action === 'Herunterladen') {
       expect(buttons).toHaveLength(0);
       await user.click(within(card).getByRole('link', { name: 'Version 0.3.0 herunterladen (Release-Seite auf GitHub)' }));
-      expect(mock.openedUrls).toEqual(['https://github.com/ataub1/pida/releases/tag/v0.3.0']);
+      expect(mock.openedUrls).toEqual(['https://github.com/a-sit/pida/releases/tag/v0.3.0']);
     } else if (action) {
       expect(links).toHaveLength(0);
       await user.click(within(card).getByRole('button', { name: action }));
@@ -227,7 +227,7 @@ describe('Über PIDA mit dem Mock-Kern: Abläufe und Live-Region', () => {
     const { about, mock, user } = await openMockAbout({ update: 'available' });
     expect(within(about).getByRole('status')).toHaveTextContent('Version 0.3.0 ist verfügbar');
     await user.click(within(about).getByRole('link', { name: /Version 0\.3\.0 herunterladen/ }));
-    expect(mock.openedUrls).toEqual(['https://github.com/ataub1/pida/releases/tag/v0.3.0']);
+    expect(mock.openedUrls).toEqual(['https://github.com/a-sit/pida/releases/tag/v0.3.0']);
   });
 
   it('Android (Mock): keine Update-Zeile, keine Prüfung', async () => {

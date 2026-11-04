@@ -269,7 +269,7 @@ async fn many_sequential_requests_on_one_client() {
 async fn update_check_refuses_plain_http() {
     let server = MockServer::start(|_| MockResponse::json("[]")).await;
     let client = HttpClient::new(&direct(), Purpose::UpdateCheck).unwrap();
-    let err = client.get(&server.url("/repos/ataub1/pida/releases"), &[]).await.unwrap_err();
+    let err = client.get(&server.url("/repos/a-sit/pida/releases"), &[]).await.unwrap_err();
     assert!(matches!(err, NetError::Config(_)), "{err:?}");
     assert!(server.requests().is_empty(), "kein Request über http");
     let poll = HttpClient::new(&direct(), Purpose::AtrustPoll).unwrap();

@@ -8,7 +8,7 @@ bitten um **vertrauliche Meldung**.
 ## Lücke melden
 
 - **Bitte keine öffentlichen Issues, Diskussionen oder Pull-Requests** zu Sicherheitslücken.
-- Melden Sie vertraulich über GitHub: **[Sicherheitslücke melden](https://github.com/ataub1/pida/security/advisories/new)**
+- Melden Sie vertraulich über GitHub: **[Sicherheitslücke melden](https://github.com/a-sit/pida/security/advisories/new)**
   (Reiter *Security* → *Report a vulnerability*).
 - Hilfreich sind: betroffene Version bzw. Commit, Plattform, Schritte zur Reproduktion, erwartetes und
   tatsächliches Verhalten, mögliche Auswirkungen sowie – falls vorhanden – ein Vorschlag zur Behebung.
@@ -52,7 +52,7 @@ das jeweils nächste Pre-Release; ältere Pre-Releases werden nicht nachgepflegt
 ## English summary
 
 Please **do not report security issues publicly**. Use GitHub's private
-[vulnerability reporting](https://github.com/ataub1/pida/security/advisories/new) instead. Include the affected
+[vulnerability reporting](https://github.com/a-sit/pida/security/advisories/new) instead. Include the affected
 version/commit, platform, reproduction steps and impact, and never send real credentials, TANs, certificates or
 confidential documents (use the test data in `testdata/`). Only `main` and the latest pre-release receive fixes.
 Issues in A-Trust/ID Austria services or in the original PDF-Over belong to those projects.

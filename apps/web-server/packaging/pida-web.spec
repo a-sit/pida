@@ -9,7 +9,7 @@ Version:        %{pkgversion}
 Release:        1
 Summary:        PIDA Web – PDF-Dokumente im Browser signieren (ID Austria)
 License:        EUPL-1.2
-URL:            https://github.com/ataub1/pida
+URL:            https://github.com/a-sit/pida
 ExclusiveArch:  x86_64
 AutoReqProv:    no
 

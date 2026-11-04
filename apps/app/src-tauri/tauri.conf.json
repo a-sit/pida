@@ -40,7 +40,7 @@
     "shortDescription": "PIDA – PDF-Signatur mit ID Austria",
     "longDescription": "PIDA (PDF · ID · Austria) signiert PDF-Dokumente mit ID Austria, Chipkarte oder PKCS#12-Keystore (PAdES).",
     "publisher": "A-SIT",
-    "homepage": "https://github.com/ataub1/pida",
+    "homepage": "https://github.com/a-sit/pida",
     "copyright": "© 2026 A-SIT · EUPL-1.2",
     "license": "EUPL-1.2",
     "icon": [
