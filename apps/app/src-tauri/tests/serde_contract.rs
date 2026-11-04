@@ -665,8 +665,8 @@ fn about(update: Option<UpdateCheckView>) -> AboutView {
     AboutView {
         version: "0.2.0".into(),
         release_date: "2026-10-17".into(),
-        release_notes_url: "https://github.com/ataub1/pida/releases/tag/v0.2.0".into(),
-        source_url: "https://github.com/ataub1/pida".into(),
+        release_notes_url: "https://github.com/a-sit/pida/releases/tag/v0.2.0".into(),
+        source_url: "https://github.com/a-sit/pida".into(),
         update,
     }
 }
@@ -681,7 +681,7 @@ fn update_view(state: UpdateCheckState) -> UpdateCheckView {
             _ => None,
         },
         release_url: (state == UpdateCheckState::Available)
-            .then(|| "https://github.com/ataub1/pida/releases/tag/v0.3.0".into()),
+            .then(|| "https://github.com/a-sit/pida/releases/tag/v0.3.0".into()),
         checked_at: checked.then(|| "2026-10-17T10:42:17+02:00".into()),
         reason: (state == UpdateCheckState::Failed).then(|| "ng-update-failed-rate-limited".into()),
     }

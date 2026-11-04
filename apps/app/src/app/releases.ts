@@ -9,9 +9,9 @@
  */
 
 /** Releases-Abfrage (neueste zuerst). */
-export const RELEASES_API = 'https://api.github.com/repos/ataub1/pida/releases?per_page=10';
+export const RELEASES_API = 'https://api.github.com/repos/a-sit/pida/releases?per_page=10';
 /** Alle Releases (`/releases/latest` kennt keine Pre-releases). */
-export const RELEASES_PAGE = 'https://github.com/ataub1/pida/releases';
+export const RELEASES_PAGE = 'https://github.com/a-sit/pida/releases';
 
 export type DesktopPlatform = 'windows' | 'macos' | 'linux';
 

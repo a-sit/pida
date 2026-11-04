@@ -40,7 +40,7 @@ enum Reply {
 
 const TODAY: &str = r#"[
   {"tag_name":"v0.3.0","draft":true,"prerelease":true,"name":"Entwurf"},
-  {"tag_name":"v0.2.0","draft":false,"prerelease":true,"html_url":"https://github.com/ataub1/pida/releases/tag/v0.2.0"},
+  {"tag_name":"v0.2.0","draft":false,"prerelease":true,"html_url":"https://github.com/a-sit/pida/releases/tag/v0.2.0"},
   {"tag_name":"v0.1.0","draft":false,"prerelease":true}
 ]"#;
 const NEWER: &str = r#"[
@@ -186,8 +186,8 @@ async fn about_view_names_version_release_date_and_links() {
     assert_eq!(about.version, "0.2.0");
     assert_eq!(about.release_date, update::RELEASE_DATE);
     assert_eq!(about.release_date.len(), 10, "Versionsdatum JJJJ-MM-TT: {}", about.release_date);
-    assert_eq!(about.release_notes_url, "https://github.com/ataub1/pida/releases/tag/v0.2.0");
-    assert_eq!(about.source_url, "https://github.com/ataub1/pida");
+    assert_eq!(about.release_notes_url, "https://github.com/a-sit/pida/releases/tag/v0.2.0");
+    assert_eq!(about.source_url, "https://github.com/a-sit/pida");
     // gebaut aus Git: das Commit-Datum des gebauten Stands (ohne SOURCE_DATE_EPOCH)
     if std::env::var_os("SOURCE_DATE_EPOCH").is_none()
         && let Ok(out) = std::process::Command::new("git")
@@ -258,11 +258,11 @@ async fn startup_check_announces_a_new_version() {
     let v = wait_state(&core, UpdateCheckState::Available).await;
     let u = update(&v).unwrap();
     assert_eq!(u.latest_version.as_deref(), Some("0.3.0"));
-    assert_eq!(u.release_url.as_deref(), Some("https://github.com/ataub1/pida/releases/tag/v0.3.0"));
+    assert_eq!(u.release_url.as_deref(), Some("https://github.com/a-sit/pida/releases/tag/v0.3.0"));
     let hint = v.update_hint.clone().expect("Hinweis auf der Startseite");
     assert_eq!(
         (hint.version.as_str(), hint.release_url.as_str()),
-        ("0.3.0", "https://github.com/ataub1/pida/releases/tag/v0.3.0")
+        ("0.3.0", "https://github.com/a-sit/pida/releases/tag/v0.3.0")
     );
     assert!(v.notices.is_empty(), "keine Meldung zusätzlich: {:?}", v.notices);
     // während „Jetzt prüfen“ bleibt der Hinweis stehen

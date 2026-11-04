@@ -54,7 +54,7 @@ license = "EUPL-1.2"
 # Austria. Wird u. a. zum `Maintainer` des Debian-Pakets (tauri-bundler); Herausgeber und Copyright der Installer stehen
 # in apps/app/src-tauri/tauri.conf.json (`bundle.publisher`, `bundle.copyright`).
 authors = ["A-SIT"]
-repository = "https://github.com/ataub1/pida"
+repository = "https://github.com/a-sit/pida"
 publish = false
 
 [workspace.dependencies]

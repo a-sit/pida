@@ -3,7 +3,7 @@
 # Adresse und Port: /etc/pida-web/pida-web.env
 [Unit]
 Description=PIDA Web (Signieren im Browser)
-Documentation=https://github.com/ataub1/pida
+Documentation=https://github.com/a-sit/pida
 After=network.target
 
 [Service]

@@ -38,9 +38,9 @@ use crate::runtime::{CoreTask, Msg};
 use crate::view::{AboutView, UpdateCheckState, UpdateCheckView, UpdateHintView};
 
 /// Repository (Quellcode, Release-Seiten).
-pub const REPOSITORY_URL: &str = "https://github.com/ataub1/pida";
+pub const REPOSITORY_URL: &str = "https://github.com/a-sit/pida";
 /// Liste der Releases (GitHub REST API, öffentlich).
-pub const RELEASES_API: &str = "https://api.github.com/repos/ataub1/pida/releases";
+pub const RELEASES_API: &str = "https://api.github.com/repos/a-sit/pida/releases";
 /// Versionsdatum des gebauten Stands (`JJJJ-MM-TT`, `build.rs`: `SOURCE_DATE_EPOCH`, sonst Commit-Datum, sonst
 /// Datum des Bauens).
 pub const RELEASE_DATE: &str = env!("PIDA_RELEASE_DATE");
@@ -853,7 +853,7 @@ mod tests {
     #[test]
     fn releases_from_the_github_api() {
         let body = br#"[
-            {"tag_name":"v0.3.0","draft":true,"prerelease":false,"html_url":"https://github.com/ataub1/pida/releases/tag/v0.3.0"},
+            {"tag_name":"v0.3.0","draft":true,"prerelease":false,"html_url":"https://github.com/a-sit/pida/releases/tag/v0.3.0"},
             {"tag_name":"v0.2.1-rc.1","draft":false,"prerelease":true,"name":"RC","assets":[]},
             {"tag_name":"v0.2.0","draft":false,"prerelease":true},
             {"tag_name":"nightly","draft":false,"prerelease":true},
@@ -950,10 +950,10 @@ mod tests {
 
     #[test]
     fn release_pages() {
-        assert_eq!(release_page("v0.2.0"), "https://github.com/ataub1/pida/releases/tag/v0.2.0");
-        assert_eq!(release_page("v1.0.0-rc.1+b"), "https://github.com/ataub1/pida/releases/tag/v1.0.0-rc.1+b");
-        assert_eq!(release_page("v0.2/../x"), "https://github.com/ataub1/pida/releases");
-        assert_eq!(release_page(""), "https://github.com/ataub1/pida/releases");
+        assert_eq!(release_page("v0.2.0"), "https://github.com/a-sit/pida/releases/tag/v0.2.0");
+        assert_eq!(release_page("v1.0.0-rc.1+b"), "https://github.com/a-sit/pida/releases/tag/v1.0.0-rc.1+b");
+        assert_eq!(release_page("v0.2/../x"), "https://github.com/a-sit/pida/releases");
+        assert_eq!(release_page(""), "https://github.com/a-sit/pida/releases");
     }
 
     #[test]

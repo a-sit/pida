@@ -17,7 +17,7 @@ import './download.css';
 /** Alle Releases (Rückfall, wenn die Abfrage scheitert; `/releases/latest` kennt keine Pre-releases). */
 export const RELEASES_URL = RELEASES_PAGE;
 /** Projektseite (Quellcode, alle Releases). */
-export const PROJECT_URL = 'https://github.com/ataub1/pida';
+export const PROJECT_URL = 'https://github.com/a-sit/pida';
 
 type Platform = 'windows' | 'macos' | 'linux' | 'ios' | 'android';
 const DESKTOP: readonly DesktopPlatform[] = ['windows', 'macos', 'linux'];
@@ -189,7 +189,7 @@ function DownloadsDialog({ onClose }: { onClose: () => void }) {
         <p className="dl-github">
           {t.t('ng-ui-shell-dl-source')}{' '}
           <AriaButton className="link" onPress={() => open(PROJECT_URL)}>
-            github.com/ataub1/pida
+            github.com/a-sit/pida
             <IconExternal size={13} />
             <span className="sr-only"> {t.t('ng-ui-link-external')}</span>
           </AriaButton>

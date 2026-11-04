@@ -21,7 +21,7 @@ import type { MockArea, MockCtx, MockOptions, MockUpdateScenario } from './share
 /** Version und Versionsdatum des Mocks (wie ein Build vom 17.10.2026). */
 export const MOCK_VERSION = '0.2.0';
 export const MOCK_RELEASE_DATE = '2026-10-17';
-const REPO = 'https://github.com/ataub1/pida';
+const REPO = 'https://github.com/a-sit/pida';
 
 type Outcome = { kind: 'checked'; latest: string; at: string } | { kind: 'failed'; reason: string };
 

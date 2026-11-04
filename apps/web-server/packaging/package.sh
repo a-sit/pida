@@ -91,7 +91,7 @@ Maintainer: A-SIT
 Installed-Size: $size
 Section: web
 Priority: optional
-Homepage: https://github.com/ataub1/pida
+Homepage: https://github.com/a-sit/pida
 Description: PIDA Web – PDF-Dokumente im Browser signieren (ID Austria)
  Server der Browser-Variante von PIDA: liefert die Oberfläche aus (PIDA-Kern
  und PDFium als WebAssembly) und stellt den Rückkanal (DataURL) für das

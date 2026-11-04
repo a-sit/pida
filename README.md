@@ -4,7 +4,7 @@
 
 **PDF-Signatur mit ID Austria** · PDF · ID · Austria
 
-[**Download 0.7.0**](https://github.com/ataub1/pida/releases/tag/v0.7.0) ·
+[**Download 0.7.0**](https://github.com/a-sit/pida/releases/tag/v0.7.0) ·
 [Installation](#installation) ·
 [In English](#in-english)
 
@@ -130,24 +130,24 @@ Dokumente).</sub>
 
 ## Download
 
-Alle Pakete stehen auf der Release-Seite: **[PIDA 0.7.0](https://github.com/ataub1/pida/releases/tag/v0.7.0)**.
+Alle Pakete stehen auf der Release-Seite: **[PIDA 0.7.0](https://github.com/a-sit/pida/releases/tag/v0.7.0)**.
 
 | System | Paket (direkter Download) | Größe | Voraussetzung |
 |---|---|---|---|
-| Windows | [`PIDA_0.7.0_windows_x64-setup.exe`](https://github.com/ataub1/pida/releases/download/v0.7.0/PIDA_0.7.0_windows_x64-setup.exe) (empfohlen) | 11,0 MiB | Windows 10 oder 11, x64 |
-| Windows | [`PIDA_0.7.0_windows_x64.msi`](https://github.com/ataub1/pida/releases/download/v0.7.0/PIDA_0.7.0_windows_x64.msi) | 15,1 MiB | Windows 10 oder 11, x64 |
-| Windows (portabel) | [`PIDA_0.7.0_windows_x64-portable.zip`](https://github.com/ataub1/pida/releases/download/v0.7.0/PIDA_0.7.0_windows_x64-portable.zip) | 14,2 MiB | Windows 10 oder 11, x64, ohne Installation |
-| macOS | [`PIDA_0.7.0_macos_arm64.dmg`](https://github.com/ataub1/pida/releases/download/v0.7.0/PIDA_0.7.0_macos_arm64.dmg) | 13,1 MiB | macOS 11 oder neuer, Apple Silicon |
-| Linux (Debian, Ubuntu) | [`PIDA_0.7.0_linux_amd64.deb`](https://github.com/ataub1/pida/releases/download/v0.7.0/PIDA_0.7.0_linux_amd64.deb) | 15,6 MiB | x86_64 |
-| Linux (Fedora, RHEL) | [`PIDA_0.7.0_linux_x86_64.rpm`](https://github.com/ataub1/pida/releases/download/v0.7.0/PIDA_0.7.0_linux_x86_64.rpm) | 15,6 MiB | x86_64 |
-| Linux (portabel) | [`PIDA_0.7.0_linux_x86_64.AppImage`](https://github.com/ataub1/pida/releases/download/v0.7.0/PIDA_0.7.0_linux_x86_64.AppImage) | 89,5 MiB | x86_64, ohne Installation |
-| Android | [`PIDA_0.7.0_android_arm64.apk`](https://github.com/ataub1/pida/releases/download/v0.7.0/PIDA_0.7.0_android_arm64.apk) | 27,6 MiB | Android 9 oder neuer, arm64 |
-| Kommandozeile (macOS) | [`pida-cli_0.7.0_macos_arm64`](https://github.com/ataub1/pida/releases/download/v0.7.0/pida-cli_0.7.0_macos_arm64) | 15,7 MiB | macOS 11 oder neuer, Apple Silicon |
-| Server PIDA Web (Debian, Ubuntu) | [`pida-web_0.7.0_amd64.deb`](https://github.com/ataub1/pida/releases/download/v0.7.0/pida-web_0.7.0_amd64.deb) | 6,6 MiB | x86_64, Webserver mit HTTPS davor |
-| Server PIDA Web (RHEL, Alma, Rocky, Fedora, openSUSE) | [`pida-web-0.7.0-1.x86_64.rpm`](https://github.com/ataub1/pida/releases/download/v0.7.0/pida-web-0.7.0-1.x86_64.rpm) | 8,4 MiB | x86_64, Webserver mit HTTPS davor |
-| Server PIDA Web (andere Linux) | [`pida-web-0.7.0-linux-x86_64.tar.gz`](https://github.com/ataub1/pida/releases/download/v0.7.0/pida-web-0.7.0-linux-x86_64.tar.gz) (mit `install.sh`) | 8,4 MiB | x86_64, Webserver mit HTTPS davor |
+| Windows | [`PIDA_0.7.0_windows_x64-setup.exe`](https://github.com/a-sit/pida/releases/download/v0.7.0/PIDA_0.7.0_windows_x64-setup.exe) (empfohlen) | 11,0 MiB | Windows 10 oder 11, x64 |
+| Windows | [`PIDA_0.7.0_windows_x64.msi`](https://github.com/a-sit/pida/releases/download/v0.7.0/PIDA_0.7.0_windows_x64.msi) | 15,1 MiB | Windows 10 oder 11, x64 |
+| Windows (portabel) | [`PIDA_0.7.0_windows_x64-portable.zip`](https://github.com/a-sit/pida/releases/download/v0.7.0/PIDA_0.7.0_windows_x64-portable.zip) | 14,2 MiB | Windows 10 oder 11, x64, ohne Installation |
+| macOS | [`PIDA_0.7.0_macos_arm64.dmg`](https://github.com/a-sit/pida/releases/download/v0.7.0/PIDA_0.7.0_macos_arm64.dmg) | 13,1 MiB | macOS 11 oder neuer, Apple Silicon |
+| Linux (Debian, Ubuntu) | [`PIDA_0.7.0_linux_amd64.deb`](https://github.com/a-sit/pida/releases/download/v0.7.0/PIDA_0.7.0_linux_amd64.deb) | 15,6 MiB | x86_64 |
+| Linux (Fedora, RHEL) | [`PIDA_0.7.0_linux_x86_64.rpm`](https://github.com/a-sit/pida/releases/download/v0.7.0/PIDA_0.7.0_linux_x86_64.rpm) | 15,6 MiB | x86_64 |
+| Linux (portabel) | [`PIDA_0.7.0_linux_x86_64.AppImage`](https://github.com/a-sit/pida/releases/download/v0.7.0/PIDA_0.7.0_linux_x86_64.AppImage) | 89,5 MiB | x86_64, ohne Installation |
+| Android | [`PIDA_0.7.0_android_arm64.apk`](https://github.com/a-sit/pida/releases/download/v0.7.0/PIDA_0.7.0_android_arm64.apk) | 27,6 MiB | Android 9 oder neuer, arm64 |
+| Kommandozeile (macOS) | [`pida-cli_0.7.0_macos_arm64`](https://github.com/a-sit/pida/releases/download/v0.7.0/pida-cli_0.7.0_macos_arm64) | 15,7 MiB | macOS 11 oder neuer, Apple Silicon |
+| Server PIDA Web (Debian, Ubuntu) | [`pida-web_0.7.0_amd64.deb`](https://github.com/a-sit/pida/releases/download/v0.7.0/pida-web_0.7.0_amd64.deb) | 6,6 MiB | x86_64, Webserver mit HTTPS davor |
+| Server PIDA Web (RHEL, Alma, Rocky, Fedora, openSUSE) | [`pida-web-0.7.0-1.x86_64.rpm`](https://github.com/a-sit/pida/releases/download/v0.7.0/pida-web-0.7.0-1.x86_64.rpm) | 8,4 MiB | x86_64, Webserver mit HTTPS davor |
+| Server PIDA Web (andere Linux) | [`pida-web-0.7.0-linux-x86_64.tar.gz`](https://github.com/a-sit/pida/releases/download/v0.7.0/pida-web-0.7.0-linux-x86_64.tar.gz) (mit `install.sh`) | 8,4 MiB | x86_64, Webserver mit HTTPS davor |
 
-Prüfsummen stehen in [`SHA256SUMS.txt`](https://github.com/ataub1/pida/releases/download/v0.7.0/SHA256SUMS.txt) (prüfen mit `shasum -a 256 -c SHA256SUMS.txt` unter
+Prüfsummen stehen in [`SHA256SUMS.txt`](https://github.com/a-sit/pida/releases/download/v0.7.0/SHA256SUMS.txt) (prüfen mit `shasum -a 256 -c SHA256SUMS.txt` unter
 macOS, `sha256sum -c SHA256SUMS.txt` unter Linux bzw. `Get-FileHash <Datei> -Algorithm SHA256` in der Windows
 PowerShell). Eine iOS-Version ist nicht Teil der Releases.
 
@@ -385,7 +385,7 @@ Signatures follow the **PDF-AS method**, just like PDF-Over. Licensed under the 
   others will sign, a “Done” view and “Recently signed”, customisable signature block
   with preview, PDF/A support, German and English, light and dark mode, command palette (⌘K / Ctrl+K). PDF-Over
   settings can be imported on first start; PDF-Over command-line arguments keep working (`pida-cli`).
-- **Download:** [PIDA 0.7.0](https://github.com/ataub1/pida/releases/tag/v0.7.0) (pre-release) – Windows 10/11 x64 (`-setup.exe`, `.msi` or portable `.zip`), macOS 11+
+- **Download:** [PIDA 0.7.0](https://github.com/a-sit/pida/releases/tag/v0.7.0) (pre-release) – Windows 10/11 x64 (`-setup.exe`, `.msi` or portable `.zip`), macOS 11+
   on Apple Silicon (`.dmg`), Linux x86_64 (`.deb`/`.rpm`/AppImage), Android 9+ arm64 (`.apk`), plus the
   command-line tool `pida-cli` for macOS on Apple Silicon and the PIDA Web server for x86_64 Linux
   (`pida-web` as `.deb`, `.rpm`, `.tar.gz`). Checksums are in `SHA256SUMS.txt`. iOS is not included.

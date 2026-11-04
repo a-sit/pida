@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fetchLatestRelease, pickRelease, RELEASES_API, RELEASES_PAGE } from './releases';
 
-const dl = (tag: string, name: string) => ({ name, browser_download_url: `https://github.com/ataub1/pida/releases/download/${tag}/${name}` });
+const dl = (tag: string, name: string) => ({ name, browser_download_url: `https://github.com/a-sit/pida/releases/download/${tag}/${name}` });
 
 /** Dateien wie in der Release v0.2.5 (plus Web-Pakete, die der Dialog nicht anbietet). */
 function release(tag: string, extra: Record<string, unknown> = {}) {
   const v = tag.slice(1);
   return {
     tag_name: tag,
-    html_url: `https://github.com/ataub1/pida/releases/tag/${tag}`,
+    html_url: `https://github.com/a-sit/pida/releases/tag/${tag}`,
     draft: false,
     prerelease: true,
     assets: [
@@ -33,9 +33,9 @@ describe('Download-Dialog: neueste Release von GitHub', () => {
     const r = pickRelease([release('v0.2.5')]);
     expect(r?.version).toBe('0.2.5');
     expect(r?.prerelease).toBe(true);
-    expect(r?.page).toBe('https://github.com/ataub1/pida/releases/tag/v0.2.5');
+    expect(r?.page).toBe('https://github.com/a-sit/pida/releases/tag/v0.2.5');
     expect(r?.installers.windows.map((i) => i.format)).toEqual(['.exe', 'MSI', 'ZIP']);
-    expect(r?.installers.windows[0]?.url).toBe('https://github.com/ataub1/pida/releases/download/v0.2.5/PIDA_0.2.5_windows_x64-setup.exe');
+    expect(r?.installers.windows[0]?.url).toBe('https://github.com/a-sit/pida/releases/download/v0.2.5/PIDA_0.2.5_windows_x64-setup.exe');
     expect(r?.installers.macos.map((i) => i.format)).toEqual(['DMG']);
     // das Web-Paket (pida-web_…deb) ist kein Desktop-Installer
     expect(r?.installers.linux.map((i) => i.url.split('/').pop())).toEqual(['PIDA_0.2.5_linux_amd64.deb', 'PIDA_0.2.5_linux_x86_64.rpm', 'PIDA_0.2.5_linux_x86_64.AppImage']);

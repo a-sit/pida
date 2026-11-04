@@ -2,13 +2,13 @@
   "about_available": {
     "about": {
       "release_date": "2026-10-17",
-      "release_notes_url": "https://github.com/ataub1/pida/releases/tag/v0.2.0",
-      "source_url": "https://github.com/ataub1/pida",
+      "release_notes_url": "https://github.com/a-sit/pida/releases/tag/v0.2.0",
+      "source_url": "https://github.com/a-sit/pida",
       "update": {
         "checked_at": "2026-10-17T10:42:17+02:00",
         "latest_version": "0.3.0",
         "reason": null,
-        "release_url": "https://github.com/ataub1/pida/releases/tag/v0.3.0",
+        "release_url": "https://github.com/a-sit/pida/releases/tag/v0.3.0",
         "state": "available"
       },
       "version": "0.2.0"
@@ -164,15 +164,15 @@
       "step": "open"
     },
     "update_hint": {
-      "release_url": "https://github.com/ataub1/pida/releases/tag/v0.3.0",
+      "release_url": "https://github.com/a-sit/pida/releases/tag/v0.3.0",
       "version": "0.3.0"
     }
   },
   "about_checking": {
     "about": {
       "release_date": "2026-10-17",
-      "release_notes_url": "https://github.com/ataub1/pida/releases/tag/v0.2.0",
-      "source_url": "https://github.com/ataub1/pida",
+      "release_notes_url": "https://github.com/a-sit/pida/releases/tag/v0.2.0",
+      "source_url": "https://github.com/a-sit/pida",
       "update": {
         "checked_at": null,
         "latest_version": null,
@@ -337,8 +337,8 @@
   "about_disabled": {
     "about": {
       "release_date": "2026-10-17",
-      "release_notes_url": "https://github.com/ataub1/pida/releases/tag/v0.2.0",
-      "source_url": "https://github.com/ataub1/pida",
+      "release_notes_url": "https://github.com/a-sit/pida/releases/tag/v0.2.0",
+      "source_url": "https://github.com/a-sit/pida",
       "update": {
         "checked_at": null,
         "latest_version": null,
@@ -503,8 +503,8 @@
   "about_failed": {
     "about": {
       "release_date": "2026-10-17",
-      "release_notes_url": "https://github.com/ataub1/pida/releases/tag/v0.2.0",
-      "source_url": "https://github.com/ataub1/pida",
+      "release_notes_url": "https://github.com/a-sit/pida/releases/tag/v0.2.0",
+      "source_url": "https://github.com/a-sit/pida",
       "update": {
         "checked_at": null,
         "latest_version": null,
@@ -669,8 +669,8 @@
   "about_ios": {
     "about": {
       "release_date": "2026-10-17",
-      "release_notes_url": "https://github.com/ataub1/pida/releases/tag/v0.2.0",
-      "source_url": "https://github.com/ataub1/pida",
+      "release_notes_url": "https://github.com/a-sit/pida/releases/tag/v0.2.0",
+      "source_url": "https://github.com/a-sit/pida",
       "update": null,
       "version": "0.2.0"
     },
@@ -829,8 +829,8 @@
   "about_policy_off": {
     "about": {
       "release_date": "2026-10-17",
-      "release_notes_url": "https://github.com/ataub1/pida/releases/tag/v0.2.0",
-      "source_url": "https://github.com/ataub1/pida",
+      "release_notes_url": "https://github.com/a-sit/pida/releases/tag/v0.2.0",
+      "source_url": "https://github.com/a-sit/pida",
       "update": {
         "checked_at": null,
         "latest_version": null,
@@ -997,8 +997,8 @@
   "about_unchecked": {
     "about": {
       "release_date": "2026-10-17",
-      "release_notes_url": "https://github.com/ataub1/pida/releases/tag/v0.2.0",
-      "source_url": "https://github.com/ataub1/pida",
+      "release_notes_url": "https://github.com/a-sit/pida/releases/tag/v0.2.0",
+      "source_url": "https://github.com/a-sit/pida",
       "update": {
         "checked_at": null,
         "latest_version": null,
@@ -1163,8 +1163,8 @@
   "about_up_to_date": {
     "about": {
       "release_date": "2026-10-17",
-      "release_notes_url": "https://github.com/ataub1/pida/releases/tag/v0.2.0",
-      "source_url": "https://github.com/ataub1/pida",
+      "release_notes_url": "https://github.com/a-sit/pida/releases/tag/v0.2.0",
+      "source_url": "https://github.com/a-sit/pida",
       "update": {
         "checked_at": "2026-10-17T10:42:17+02:00",
         "latest_version": "0.2.0",
