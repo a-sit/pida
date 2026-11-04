@@ -58,10 +58,7 @@ fn cargo_metadata_names_a_sit() {
     assert_eq!(env!("CARGO_PKG_AUTHORS"), "A-SIT");
     assert_eq!(env!("CARGO_PKG_LICENSE"), "EUPL-1.2");
     assert!(WORKSPACE.contains("\nauthors = [\"A-SIT\"]\n"), "[workspace.package] authors");
-    assert!(
-        WORKSPACE.contains("\nrepository = \"https://github.com/a-sit/pida\"\n"),
-        "[workspace.package] repository"
-    );
+    assert!(WORKSPACE.contains("\nrepository = \"https://github.com/a-sit/pida\"\n"), "[workspace.package] repository");
 }
 
 /// Herausgeber-Wechsel im NSIS-Installer: Der Installer übernimmt beim Start der Oberfläche den Ordner der bis 0.2.0
