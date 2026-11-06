@@ -313,7 +313,7 @@ ng-ui-insp-placement-text = Page { $page } · { $zone }
 ng-ui-insp-placement-field = In signature field “{ $name }”
 ng-ui-insp-placement-qr = In the QR code placeholder
 ng-ui-insp-placement-free = Place freely
-ng-ui-insp-placement-hint = Drag the block on the page – it snaps to margins and below the text.
+ng-ui-insp-placement-hint = Drag the block on the page or double-click (double-tap) where you want it – it snaps to margins and below the text.
 ng-ui-insp-auto-place = Re-place
 # Setting “Automatic positioning” (ADR 0004 addendum 8)
 ng-ui-insp-placement-auto = Automatic (per setting)

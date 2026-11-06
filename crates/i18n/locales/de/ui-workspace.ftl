@@ -313,7 +313,7 @@ ng-ui-insp-placement-text = Seite { $page } · { $zone }
 ng-ui-insp-placement-field = Im Signaturfeld „{ $name }“
 ng-ui-insp-placement-qr = Im QR-Code-Platzhalter
 ng-ui-insp-placement-free = Frei platzieren
-ng-ui-insp-placement-hint = Ziehen Sie den Block auf der Seite – er rastet an Rändern und unter dem Text ein.
+ng-ui-insp-placement-hint = Ziehen Sie den Block auf der Seite oder doppelklicken bzw. doppeltippen Sie auf die gewünschte Stelle – er rastet an Rändern und unter dem Text ein.
 ng-ui-insp-auto-place = Neu platzieren
 # Einstellung „Automatische Positionierung“ (ADR 0004 Nachtrag 8)
 ng-ui-insp-placement-auto = Automatisch (laut Einstellung)
