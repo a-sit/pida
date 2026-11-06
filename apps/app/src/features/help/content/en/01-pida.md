@@ -28,8 +28,8 @@ Republic of Austria or of A-Trust GmbH.
 ## Using PIDA {#bedienung}
 
 - **Workspace:** drag a PDF in or select one – PIDA places the signature block automatically on free space. Move it
-  with the mouse, your finger or the arrow keys; the block snaps to margins, below the text and into empty signature
-  fields. You can also sign on a new page or invisibly (without a signature block).
+  with the mouse, your finger or the arrow keys, or double-click (double-tap) to put it right where you want it; the
+  block snaps to margins, below the text and into empty signature fields. You can also sign on a new page or invisibly (without a signature block).
 - **Signature fields and QR placeholders** in the document are detected and offered as targets.
 - **Demo:** “Start demo” opens a bundled demo document with a QR placeholder – to try PIDA without risk. Shortcut ⌘D
   or Ctrl+D, in the browser ⌥⇧D or Alt+Shift+D; also in the command palette and, on mobile devices, via “Try it with

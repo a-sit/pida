@@ -28,8 +28,8 @@ freie Software unter der EUPL-1.2 und ein Open-Source-Projekt von A-SIT, kein of
 ## Bedienung
 
 - **Arbeitsbereich:** PDF hineinziehen oder auswählen – PIDA platziert den Signaturblock automatisch auf freier
-  Fläche. Verschieben mit Maus, Finger oder Pfeiltasten; der Block rastet an Rändern, unter dem Text und in leere
-  Signaturfelder ein. Signatur auch auf einer neuen Seite oder unsichtbar (ohne Signaturbild).
+  Fläche. Verschieben mit Maus, Finger oder Pfeiltasten, oder per Doppelklick bzw. Doppeltippen direkt an eine Stelle
+  setzen; der Block rastet an Rändern, unter dem Text und in leere Signaturfelder ein. Signatur auch auf einer neuen Seite oder unsichtbar (ohne Signaturbild).
 - **Signaturfelder und QR-Platzhalter** im Dokument werden erkannt und als Ziel angeboten.
 - **Demo:** „Demo starten“ öffnet ein mitgeliefertes Demodokument mit QR-Platzhalter – zum gefahrlosen Ausprobieren.
   Kürzel ⌘D bzw. Strg+D, im Browser ⌥⇧D bzw. Alt+Umschalt+D; auch in der Befehlspalette und auf Mobilgeräten über
