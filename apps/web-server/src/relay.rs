@@ -157,6 +157,16 @@ impl Relay {
         self.session(id).filter(|s| same(&s.token, token)).ok_or(RelayError::NotFound)
     }
 
+    /// Gibt es die Sitzung (noch)? Für die DataURL, bevor der Server den Rumpf der Anfrage liest.
+    pub fn exists(&self, id: &str) -> bool {
+        self.session(id).is_some()
+    }
+
+    /// Passen Kennung und Token? Für die Seiten-Endpunkte, bevor der Server den Rumpf der Anfrage liest.
+    pub fn is_authorized(&self, id: &str, token: &str) -> bool {
+        self.authorized(id, token).is_ok()
+    }
+
     /// DataURL: SL-Antwort von A-Trust ablegen und auf den nächsten Befehl der Seite warten.
     pub async fn deliver(&self, id: &str, response: Vec<u8>) -> Reply {
         let Some(session) = self.session(id) else {
@@ -256,6 +266,8 @@ mod tests {
         assert_eq!(id.len(), 32);
         assert_eq!(token.len(), 64);
         assert_eq!(relay.take_response(&id, "falsch").await, Err(RelayError::NotFound));
+        assert!(relay.exists(&id) && !relay.exists("unbekannt"));
+        assert!(relay.is_authorized(&id, &token) && !relay.is_authorized(&id, "falsch"));
 
         // A-Trust liefert die erste Antwort und wartet
         let r1 = relay.clone();

@@ -27,11 +27,11 @@ use std::time::Duration;
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full, Limited};
 use hyper::body::Incoming;
-use hyper::header::{AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE};
+use hyper::header::{AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE, ETAG, IF_NONE_MATCH};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
-use hyper_util::rt::TokioIo;
+use hyper_util::rt::{TokioIo, TokioTimer};
 
 use crate::relay::{Relay, RelayError, Reply};
 
@@ -42,6 +42,12 @@ const MAX_DATA_URL_BODY: usize = 4 << 20;
 /// Höchstgröße eines Befehls der Seite (Dokument als Base64): A-Trust nimmt höchstens 20 MB an (der Kern lehnt
 /// größere PDFs schon beim Laden ab, `MAX_DOCUMENT_BYTES`), Base64 macht daraus knapp 27 MB.
 const MAX_COMMAND_BODY: usize = 28 << 20;
+/// So lange darf der Kopf einer Anfrage brauchen (sonst hält eine stumme Verbindung den Platz beliebig lange).
+const HEADER_TIMEOUT: Duration = Duration::from_secs(20);
+/// So lange darf der Rumpf einer Anfrage brauchen (Dokument als Base64 über eine langsame Leitung).
+const BODY_TIMEOUT: Duration = Duration::from_secs(120);
+/// Pause nach einem Fehler beim Annehmen einer Verbindung (z. B. keine freien Dateideskriptoren).
+const ACCEPT_BACKOFF: Duration = Duration::from_millis(100);
 
 struct App {
     dir: PathBuf,
@@ -75,9 +81,10 @@ fn no_store(mut r: Resp) -> Resp {
 
 async fn read_body(req: Request<Incoming>, limit: usize) -> Result<(String, Vec<u8>), StatusCode> {
     let content_type = req.headers().get(CONTENT_TYPE).and_then(|v| v.to_str().ok()).unwrap_or("").to_owned();
-    match Limited::new(req.into_body(), limit).collect().await {
-        Ok(b) => Ok((content_type, b.to_bytes().to_vec())),
-        Err(_) => Err(StatusCode::PAYLOAD_TOO_LARGE),
+    match tokio::time::timeout(BODY_TIMEOUT, Limited::new(req.into_body(), limit).collect()).await {
+        Ok(Ok(b)) => Ok((content_type, b.to_bytes().to_vec())),
+        Ok(Err(_)) => Err(StatusCode::PAYLOAD_TOO_LARGE),
+        Err(_) => Err(StatusCode::REQUEST_TIMEOUT),
     }
 }
 
@@ -131,22 +138,52 @@ fn content_type_for(path: &Path) -> &'static str {
     }
 }
 
-async fn static_file(dir: &Path, uri_path: &str) -> Resp {
+/// Kennung des Dateistands (Größe und Änderungszeit) für bedingte Anfragen.
+fn etag_for(meta: &std::fs::Metadata) -> Option<String> {
+    let modified = meta.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?;
+    Some(format!("\"{:x}-{:x}\"", meta.len(), modified.as_nanos()))
+}
+
+/// Die Oberfläche darf nicht in fremden Seiten eingebettet werden (Clickjacking).
+fn no_framing(mut r: Resp) -> Resp {
+    r.headers_mut().insert("X-Frame-Options", "DENY".parse().expect("konstant"));
+    r
+}
+
+async fn static_file(dir: &Path, uri_path: &str, if_none_match: Option<&str>) -> Resp {
     let rel = uri_path.trim_start_matches('/');
     let rel = if rel.is_empty() { "index.html" } else { rel };
+    // Dateien unter assets/ tragen einen Hash im Namen (Vite) und ändern sich nie; alles andere wird beim Server
+    // nachgefragt und kommt bei unverändertem Stand ohne Inhalt zurück (WebAssembly-Kern, PDFium: mehrere MB).
+    let cache = if rel.starts_with("assets/") { "public, max-age=31536000, immutable" } else { "no-cache" };
     let rel = Path::new(rel);
     if rel.components().any(|c| !matches!(c, Component::Normal(_))) {
         return status(StatusCode::NOT_FOUND);
     }
     let path = dir.join(rel);
-    match tokio::fs::read(&path).await {
-        Ok(data) => {
-            let mut r = respond(StatusCode::OK, content_type_for(&path), data);
-            r.headers_mut().insert(CACHE_CONTROL, "no-cache".parse().expect("konstant"));
-            r
+    let etag = match tokio::fs::metadata(&path).await {
+        Ok(meta) if meta.is_file() => etag_for(&meta),
+        _ => return status(StatusCode::NOT_FOUND),
+    };
+    let unchanged = match (&etag, if_none_match) {
+        (Some(tag), Some(sent)) => sent.split(',').any(|s| s.trim().trim_start_matches("W/") == tag),
+        _ => false,
+    };
+    let mut r = if unchanged {
+        let mut r = Response::new(Full::new(Bytes::new()));
+        *r.status_mut() = StatusCode::NOT_MODIFIED;
+        r
+    } else {
+        match tokio::fs::read(&path).await {
+            Ok(data) => respond(StatusCode::OK, content_type_for(&path), data),
+            Err(_) => return status(StatusCode::NOT_FOUND),
         }
-        Err(_) => status(StatusCode::NOT_FOUND),
+    };
+    r.headers_mut().insert(CACHE_CONTROL, cache.parse().expect("konstant"));
+    if let Some(tag) = etag.and_then(|t| t.parse().ok()) {
+        r.headers_mut().insert(ETAG, tag);
     }
+    no_framing(r)
 }
 
 async fn handle(app: Arc<App>, req: Request<Incoming>) -> Result<Resp, Infallible> {
@@ -170,9 +207,11 @@ async fn handle(app: Arc<App>, req: Request<Incoming>) -> Result<Resp, Infallibl
         // DataURL: A-Trust schickt die SL-Antwort und wartet auf den nächsten Befehl
         (&Method::POST, ["api", "sl", "data", id]) => {
             let id = (*id).to_owned();
-            match read_body(req, MAX_DATA_URL_BODY).await {
+            // unbekannte Sitzung: gleich die Abschlussseite, ohne den Rumpf anzunehmen
+            match if app.relay.exists(&id) { read_body(req, MAX_DATA_URL_BODY).await.map(Some) } else { Ok(None) } {
                 Err(code) => status(code),
-                Ok((ct, body)) => {
+                Ok(None) => no_store(final_page(false)),
+                Ok(Some((ct, body))) => {
                     let fields = form::fields(&ct, &body);
                     match form::field(&fields, "XMLResponse") {
                         None => status(StatusCode::BAD_REQUEST),
@@ -196,6 +235,10 @@ async fn handle(app: Arc<App>, req: Request<Incoming>) -> Result<Resp, Infallibl
         (&Method::POST, ["api", "sl", "sessions", id, "command"]) => {
             let id = (*id).to_owned();
             let token = bearer(&req);
+            // erst prüfen, dann lesen: ohne gültige Sitzung nimmt der Server keine 28 MB an
+            if !app.relay.is_authorized(&id, &token) {
+                return Ok(api_response(relay_status(RelayError::NotFound)));
+            }
             match read_body(req, MAX_COMMAND_BODY).await {
                 Err(code) => status(code),
                 Ok((_, body)) => match String::from_utf8(body) {
@@ -231,15 +274,19 @@ async fn handle(app: Arc<App>, req: Request<Incoming>) -> Result<Resp, Infallibl
             let m = app.mock.as_ref().expect("geprüft");
             no_store(respond(StatusCode::OK, "text/html; charset=utf-8", m.answer(id, *action == "confirm").await.0))
         }
-        (&Method::GET | &Method::HEAD, _) if !path.starts_with("/api/") => static_file(&app.dir, &path).await,
+        (&Method::GET | &Method::HEAD, _) if !path.starts_with("/api/") => {
+            let if_none_match = req.headers().get(IF_NONE_MATCH).and_then(|v| v.to_str().ok());
+            static_file(&app.dir, &path, if_none_match).await
+        }
         _ => status(StatusCode::NOT_FOUND),
     };
-    // API-Antworten (SL-XML, Abschlussseiten) dürfen im Browser nie als Dokument dieser Herkunft laufen
-    let mut resp = resp;
-    if path.starts_with("/api/") {
-        resp.headers_mut().insert("Content-Security-Policy", "sandbox; default-src 'none'".parse().expect("konstant"));
-    }
-    Ok(resp)
+    Ok(if path.starts_with("/api/") { api_response(resp) } else { resp })
+}
+
+/// API-Antworten (SL-XML, Abschlussseiten) dürfen im Browser nie als Dokument dieser Herkunft laufen.
+fn api_response(mut resp: Resp) -> Resp {
+    resp.headers_mut().insert("Content-Security-Policy", "sandbox; default-src 'none'".parse().expect("konstant"));
+    resp
 }
 
 struct Args {
@@ -325,11 +372,23 @@ async fn main() {
     });
     println!("PIDA (Web) auf http://{}/", args.bind);
     loop {
-        let Ok((stream, _)) = listener.accept().await else { continue };
+        let stream = match listener.accept().await {
+            Ok((stream, _)) => stream,
+            Err(e) => {
+                // z. B. keine freien Dateideskriptoren: nicht in einer engen Schleife drehen
+                tracing::warn!("Verbindung nicht angenommen: {e}");
+                tokio::time::sleep(ACCEPT_BACKOFF).await;
+                continue;
+            }
+        };
         let app = Arc::clone(&app);
         tokio::spawn(async move {
             let service = service_fn(move |req| handle(Arc::clone(&app), req));
-            let _ = http1::Builder::new().serve_connection(TokioIo::new(stream), service).await;
+            let _ = http1::Builder::new()
+                .timer(TokioTimer::new())
+                .header_read_timeout(HEADER_TIMEOUT)
+                .serve_connection(TokioIo::new(stream), service)
+                .await;
         });
     }
 }
