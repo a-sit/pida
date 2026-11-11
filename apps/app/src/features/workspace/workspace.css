@@ -747,7 +747,7 @@
   user-select: none;
   -webkit-user-select: none;
 }
-.page-frame.is-loading::after {
+.page-frame:has(> .page-tile[data-state='loading'])::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -759,7 +759,10 @@
     background-position: -200% 0;
   }
 }
-.page-frame.is-failed .page-failed {
+.page-tile[data-state='failed'] {
+  visibility: hidden;
+}
+.page-frame .page-failed {
   position: absolute;
   inset: 0;
   display: grid;
@@ -921,6 +924,10 @@
   /* wie `.switch` (Gewicht und Zeilenhöhe der Schalter darunter) */
   min-height: 32px;
   font-weight: var(--fw-medium);
+}
+/* DE/EN bleibt nebeneinander: Bei schmalem Inspektor bricht die Beschriftung um, nicht die Segmente. */
+.insp-block-lang-row .segmented-group {
+  flex: none;
 }
 .insp-block-lang.is-disabled .switch-label {
   color: var(--c-text-3);

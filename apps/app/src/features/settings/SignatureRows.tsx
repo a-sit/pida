@@ -199,8 +199,11 @@ export function LogoSizeRow() {
   };
   const latest = useRef(send);
   latest.current = send;
+  // Beim Schließen (z. B. Einstellungen zu, bevor die Entprellung abläuft) den letzten Wert noch senden
+  const pending = useRef<number | null>(null);
   useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
+    if (timer.current && pending.current !== null) latest.current(pending.current);
+    else if (timer.current) clearTimeout(timer.current);
   }, []);
   const problem = s.problem('signature.logo_only_size_mm');
   return (
@@ -210,6 +213,7 @@ export function LogoSizeRow() {
         valueCm={draft ?? logoCm(mm)}
         onChange={(cm) => {
           setDraft(cm);
+          pending.current = cm;
           if (timer.current) clearTimeout(timer.current);
           timer.current = setTimeout(() => latest.current(cm), 300);
         }}

@@ -152,7 +152,7 @@ export async function createWebBridge(): Promise<Bridge> {
   };
 
   const pick = (accept: string, multiple: boolean): Promise<string[] | null> =>
-    new Promise((resolve) => {
+    new Promise((resolve, reject) => {
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = accept;
@@ -164,9 +164,15 @@ export async function createWebBridge(): Promise<Bridge> {
           resolve(null);
           return;
         }
-        const paths: string[] = [];
-        for (const f of files) paths.push(pkg.put_file(f.name, new Uint8Array(await f.arrayBuffer())));
-        resolve(paths);
+        // Lesen kann scheitern (Datei inzwischen weg, zu groß für den Speicher): dann als Fehler melden statt die
+        // Zusage nie zu erfüllen – die Oberfläche bliebe sonst ohne Rückmeldung
+        try {
+          const paths: string[] = [];
+          for (const f of files) paths.push(pkg.put_file(f.name, new Uint8Array(await f.arrayBuffer())));
+          resolve(paths);
+        } catch {
+          reject(new Error('ng-ui-open-failed'));
+        }
       });
       input.click();
     });
@@ -228,8 +234,16 @@ export async function createWebBridge(): Promise<Bridge> {
         if (!e.dataTransfer?.files.length) return;
         e.preventDefault();
         const paths: string[] = [];
-        for (const f of [...e.dataTransfer.files]) paths.push(pkg.put_file(f.name, new Uint8Array(await f.arrayBuffer())));
-        cb({ type: 'drop', paths, x: e.clientX, y: e.clientY });
+        // der Reihe nach; eine nicht lesbare Datei (z. B. ein Ordner) fällt aus, die übrigen kommen an – und das
+        // Ablegen endet in jedem Fall (sonst bliebe die Ablagefläche hervorgehoben)
+        for (const f of [...e.dataTransfer.files]) {
+          try {
+            paths.push(pkg.put_file(f.name, new Uint8Array(await f.arrayBuffer())));
+          } catch {
+            /* übersprungen */
+          }
+        }
+        cb(paths.length > 0 ? { type: 'drop', paths, x: e.clientX, y: e.clientY } : { type: 'leave' });
       };
       window.addEventListener('dragenter', enter);
       window.addEventListener('dragover', over);

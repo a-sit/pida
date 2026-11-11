@@ -201,6 +201,19 @@ function SigningDialog({
   const bodyRef = useRef<HTMLDivElement>(null);
   const [askAbort, setAskAbort] = useState(false);
   const [skipHint, setSkipHint] = useState(false);
+  // Der Hinweis gilt der gerade übersprungenen Anfrage: er bleibt beim nächsten Dokument stehen und verschwindet
+  // mit dem übernächsten (sonst stand er bis zum Ende des Stapels)
+  const batchDoc = batch?.doc?.id ?? null;
+  const hintDocs = useRef<{ skipped: typeof batchDoc; next: typeof batchDoc } | null>(null);
+  useEffect(() => {
+    const h = hintDocs.current;
+    if (!h || batchDoc === h.skipped) return;
+    if (h.next === null) h.next = batchDoc;
+    else if (batchDoc !== h.next) {
+      hintDocs.current = null;
+      setSkipHint(false);
+    }
+  }, [batchDoc]);
   const saving = stage === 'finishing' || stage === 'saving';
   const finishing = mode === 'finishing' || saving;
   // Stapel: Esc/× fragen nach, „Stapel abbrechen“ in der Karte bricht sofort ab (`abort_batch`, F-72)
@@ -215,7 +228,10 @@ function SigningDialog({
   };
   const skip = () => {
     // eine schon angezeigte Anfrage bleibt in der App sichtbar, bis sie dort abläuft (§1.2)
-    if (stage === 'confirming' && (method === 'app' || method === 'qr')) setSkipHint(true);
+    if (stage === 'confirming' && (method === 'app' || method === 'qr')) {
+      hintDocs.current = { skipped: batchDoc, next: null };
+      setSkipHint(true);
+    }
     setAskAbort(false);
     void dispatch({ type: 'skip_batch_document' });
   };
