@@ -170,6 +170,8 @@ pub async fn run(client: &HttpClient, info: &PollInfo, config: PollConfig, cance
         match result {
             Ok(response) => match parse_poll_response(&response.body) {
                 PollStatus::Finished | PollStatus::Error => return PollOutcome::Reload,
+                // „weiter warten“ – aber nicht über die A-Trust-Frist hinaus (dann zeigt die neu geladene Seite den Stand)
+                PollStatus::Wait if tokio::time::Instant::now() >= deadline => return PollOutcome::Reload,
                 PollStatus::Wait => continue,
                 PollStatus::Unknown => {
                     tracing::warn!("unbekannte Long-Poll-Antwort – Poll beendet, Maske wartet weiter");

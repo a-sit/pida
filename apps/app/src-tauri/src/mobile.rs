@@ -91,11 +91,11 @@ pub fn ingest_urls(urls: &[url::Url], inbox: &Path) -> Ingested {
             .flatten()
             .filter(|p| std::fs::metadata(p).is_ok_and(|m| m.is_file() && m.len() <= MAX_DOCUMENT_BYTES));
         let copied = readable.and_then(|path| {
-            let bytes = std::fs::read(&path).ok()?;
             let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
             let target = unique_target(inbox, &name);
             std::fs::create_dir_all(target.parent()?).ok()?;
-            std::fs::write(&target, bytes).ok()?;
+            // kopieren statt lesen und schreiben: ein großes Dokument muss dafür nicht in den Speicher
+            std::fs::copy(&path, &target).ok()?;
             Some(target)
         });
         match copied {

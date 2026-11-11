@@ -262,6 +262,12 @@ pub(crate) fn signature_details(data: &[u8], info: &SigDictInfo) -> SignatureDet
     let Some(pairs) = info.byte_range_raw.as_deref() else {
         return fail(PriorStatus::Invalid, "pdf-signature-byterange");
     };
+    // Mehr als die Datei kann eine ordentliche /ByteRange nicht abdecken: viele (überlappende) Paare würden sonst
+    // beim bloßen Öffnen beliebig viel Hash-Arbeit erzwingen.
+    let covered = pairs.chunks(2).try_fold(0u64, |sum, p| sum.checked_add(u64::try_from(*p.get(1)?).ok()?));
+    if covered.is_none_or(|sum| sum > data.len() as u64) {
+        return fail(PriorStatus::Invalid, "pdf-signature-byterange");
+    }
     let Some(mut reader) = RangeReader::new(data, pairs) else {
         return fail(PriorStatus::Invalid, "pdf-signature-byterange");
     };
