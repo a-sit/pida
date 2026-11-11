@@ -20,8 +20,10 @@ struct FilesResponse: Encodable {
 }
 
 enum SandboxFiles {
-  /// Höchstgröße einer Datei (wie `MAX_DOCUMENT_BYTES` der Shell, Plan §7.7).
-  static let maxBytes: Int64 = 512 * 1024 * 1024
+  /// Höchstgröße einer Datei: die Grenze des Kerns (20 MB wie bei A-Trust, `MAX_DOCUMENT_BYTES`). Von einer
+  /// größeren Datei kommen nur `maxBytes + 1` Bytes in die Sandbox – genug, damit der Kern sie wie überall als
+  /// „größer als 20 MB“ ablehnt, ohne dass hunderte MB kopiert werden.
+  static let maxBytes: Int64 = 20_000_000
 
   /// Wurzel der App-Sandbox (Container).
   static var containerRoot: URL {
@@ -145,18 +147,39 @@ enum SandboxFiles {
   private static func copyRegularFile(_ source: URL, displayName: String, to destination: URL) throws -> CopiedFile {
     let values = try? source.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
     guard values?.isRegularFile == true else { throw NativeError(code: "not-a-file") }
-    if let size = values?.fileSize, Int64(size) > maxBytes { throw NativeError(code: "too-large") }
+    let tooLarge = values?.fileSize.map { Int64($0) > maxBytes } ?? false
     let name = safeName(displayName)
     let target = uniqueTarget(in: destination, name: name)
     let fm = FileManager.default
     do {
       try fm.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-      try fm.copyItem(at: source, to: target)
+      if tooLarge {
+        try copyPrefix(of: source, to: target, bytes: maxBytes + 1)
+      } else {
+        try fm.copyItem(at: source, to: target)
+      }
     } catch {
       try? fm.removeItem(at: target.deletingLastPathComponent())
       throw NativeError(code: "io-error")
     }
     return CopiedFile(name: name, path: target.path)
+  }
+
+  /// Kopiert nur die ersten `bytes` Bytes (zu große Datei: der Kern lehnt sie an der Größe ab).
+  private static func copyPrefix(of source: URL, to target: URL, bytes: Int64) throws {
+    let input = try FileHandle(forReadingFrom: source)
+    defer { try? input.close() }
+    guard FileManager.default.createFile(atPath: target.path, contents: nil) else {
+      throw NativeError(code: "io-error")
+    }
+    let output = try FileHandle(forWritingTo: target)
+    defer { try? output.close() }
+    var left = bytes
+    while left > 0 {
+      guard let chunk = try input.read(upToCount: Int(min(left, 1 << 20))), !chunk.isEmpty else { break }
+      try output.write(contentsOf: chunk)
+      left -= Int64(chunk.count)
+    }
   }
 
   /// Entfernt Kopien in `Documents/Inbox`, die älter als `age` sind (die Rust-Seite liest solche Dateien

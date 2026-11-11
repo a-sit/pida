@@ -185,6 +185,7 @@ use std::sync::{Arc, Mutex};
 
 pub use backends::{SecretStoreCache, password_storage};
 pub use broker::ShellHooks;
+pub use docs::MAX_DOCUMENT_BYTES;
 pub use view::{
     BackendOptionView, BlockView, DocInfo, DoneItemView, FieldInfo, FormAnswerView, InteractionView, KeystoreEntryView,
     KeystoreFormatView, KeystoreImportView, MainBarView, MigrationOfferView, NoticeView, OutputView, PlatformOs,

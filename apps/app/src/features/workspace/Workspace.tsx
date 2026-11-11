@@ -26,6 +26,7 @@ import { useNarrow } from '../../ui/hooks';
 import { IconEyeOff, IconFitWidth, IconQr, IconSidebar, IconSignature, IconZoomIn, IconZoomOut } from '../../ui/Icons';
 import { accessibilityOf } from '../accessibility';
 import { Inspector } from './Inspector';
+import { webProfile } from '../../core/web-profile';
 import { SignCheck } from './SignCheck';
 import { signerChoice } from './signers';
 import { Pages } from './Pages';
@@ -309,6 +310,9 @@ function WorkspaceView({ doc }: { doc: DocumentView }) {
   const zoomState = useRef({ zoomBy, blocked: false });
   zoomState.current = { zoomBy, blocked: !!overlay || view.settings !== null || view.step.step === 'signing' };
   useEffect(() => {
+    // Im Browser gehören diese Kürzel dem Seitenzoom des Browsers (Barrierefreiheit) – das Dokument zoomt man
+    // dort über die Knöpfe der Werkzeugleiste
+    if (webProfile() !== null) return undefined;
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey) || e.altKey || zoomState.current.blocked || document.querySelector('[data-modal-layer]') !== null) return;
       if (e.key === '+' || e.key === '=') {

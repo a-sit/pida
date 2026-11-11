@@ -14,6 +14,7 @@
 //! [`SESSION_TTL`]; die Zahl offener Sitzungen ist begrenzt ([`MAX_SESSIONS`]).
 
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -22,6 +23,13 @@ use tokio::sync::{Notify, oneshot};
 
 /// Höchstzahl gleichzeitig offener Sitzungen.
 pub const MAX_SESSIONS: usize = 2000;
+/// Höchstzahl offener Sitzungen je Client (IP-Adresse): Ein einzelner Client kann den Rückkanal nicht für alle
+/// füllen. Großzügig, weil hinter einer Adresse viele Menschen sitzen können (Behörde, Firma hinter NAT).
+pub const MAX_SESSIONS_PER_CLIENT: usize = 200;
+/// Höchstzahl neuer Sitzungen je Client in [`RATE_WINDOW`] (eine Signatur = eine Sitzung).
+pub const MAX_NEW_PER_WINDOW: u32 = 60;
+/// Zeitfenster für [`MAX_NEW_PER_WINDOW`].
+pub const RATE_WINDOW: Duration = Duration::from_secs(60);
 /// Lebensdauer einer Sitzung (Anmeldung, Bestätigung, Stapel).
 pub const SESSION_TTL: Duration = Duration::from_secs(30 * 60);
 /// So lange wartet die Anfrage von A-Trust auf den nächsten Befehl der Seite.
@@ -47,6 +55,8 @@ pub enum RelayError {
     NotFound,
     /// zu viele offene Sitzungen
     Busy,
+    /// dieser Client hat zu viele offene Sitzungen bzw. legt zu schnell neue an
+    TooMany,
     /// A-Trust wartet gerade auf keinen Befehl
     NotWaiting,
     /// kein zulässiger SL-Befehl
@@ -99,6 +109,7 @@ struct State {
 
 struct Session {
     token: String,
+    client: IpAddr,
     created: Instant,
     state: Mutex<State>,
     arrived: Notify,
@@ -108,6 +119,8 @@ struct Session {
 #[derive(Clone, Default)]
 pub struct Relay {
     sessions: Arc<Mutex<HashMap<String, Arc<Session>>>>,
+    /// neue Sitzungen je Client im laufenden Zeitfenster: `(Beginn, Anzahl)`
+    recent: Arc<Mutex<HashMap<IpAddr, (Instant, u32)>>>,
 }
 
 fn random_hex(bytes: usize) -> String {
@@ -126,12 +139,29 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 impl Relay {
-    /// Neue Sitzung: `(id, token)`.
-    pub fn create(&self) -> Result<(String, String), RelayError> {
+    /// Neue Sitzung für `client`: `(id, token)`.
+    pub fn create(&self, client: IpAddr) -> Result<(String, String), RelayError> {
         let mut sessions = lock(&self.sessions);
         sessions.retain(|_, s| s.created.elapsed() < SESSION_TTL);
         if sessions.len() >= MAX_SESSIONS {
             return Err(RelayError::Busy);
+        }
+        if sessions.values().filter(|s| s.client == client).count() >= MAX_SESSIONS_PER_CLIENT {
+            tracing::warn!("zu viele offene SL-Sitzungen eines Clients");
+            return Err(RelayError::TooMany);
+        }
+        {
+            let mut recent = lock(&self.recent);
+            let now = Instant::now();
+            let entry = recent.entry(client).or_insert((now, 0));
+            if now.duration_since(entry.0) >= RATE_WINDOW {
+                *entry = (now, 0);
+            }
+            if entry.1 >= MAX_NEW_PER_WINDOW {
+                tracing::warn!("ein Client legt zu schnell SL-Sitzungen an");
+                return Err(RelayError::TooMany);
+            }
+            entry.1 += 1;
         }
         let id = random_hex(16);
         let token = random_hex(32);
@@ -139,6 +169,7 @@ impl Relay {
             id.clone(),
             Arc::new(Session {
                 token: token.clone(),
+                client,
                 created: Instant::now(),
                 state: Mutex::default(),
                 arrived: Notify::new(),
@@ -246,6 +277,8 @@ impl Relay {
             }
             keep
         });
+        drop(sessions);
+        lock(&self.recent).retain(|_, (start, _)| start.elapsed() < RATE_WINDOW);
     }
 
     /// Offene Sitzungen (Tests).
@@ -259,10 +292,40 @@ impl Relay {
 mod tests {
     use super::*;
 
+    const CLIENT: IpAddr = IpAddr::V4(std::net::Ipv4Addr::new(192, 0, 2, 1));
+    const OTHER: IpAddr = IpAddr::V4(std::net::Ipv4Addr::new(192, 0, 2, 2));
+
+    #[test]
+    fn one_client_cannot_create_sessions_without_limit() {
+        // Tempo: nach MAX_NEW_PER_WINDOW ist für diesen Client Schluss, für andere nicht
+        let relay = Relay::default();
+        for _ in 0..MAX_NEW_PER_WINDOW {
+            let (id, token) = relay.create(CLIENT).unwrap();
+            relay.finish(&id, &token, false).unwrap();
+        }
+        assert_eq!(relay.create(CLIENT), Err(RelayError::TooMany));
+        assert!(relay.create(OTHER).is_ok());
+        // ein neues Zeitfenster gibt den Client wieder frei
+        lock(&relay.recent).get_mut(&CLIENT).unwrap().0 -= RATE_WINDOW;
+        assert!(relay.create(CLIENT).is_ok());
+
+        // offene Sitzungen: die Grenze je Client greift auch ohne Tempo
+        let relay = Relay::default();
+        for _ in 0..MAX_SESSIONS_PER_CLIENT {
+            relay.create(CLIENT).unwrap();
+            lock(&relay.recent).clear();
+        }
+        assert_eq!(relay.create(CLIENT), Err(RelayError::TooMany));
+        assert_eq!(relay.len(), MAX_SESSIONS_PER_CLIENT);
+        assert!(relay.create(OTHER).is_ok());
+        relay.sweep();
+        assert!(lock(&relay.recent).contains_key(&OTHER), "laufendes Zeitfenster bleibt");
+    }
+
     #[tokio::test]
     async fn chain_with_two_commands_then_finish() {
         let relay = Relay::default();
-        let (id, token) = relay.create().unwrap();
+        let (id, token) = relay.create(CLIENT).unwrap();
         assert_eq!(id.len(), 32);
         assert_eq!(token.len(), 64);
         assert_eq!(relay.take_response(&id, "falsch").await, Err(RelayError::NotFound));
@@ -313,7 +376,7 @@ mod tests {
     #[tokio::test]
     async fn command_without_waiting_atrust_and_unknown_dataurl() {
         let relay = Relay::default();
-        let (id, token) = relay.create().unwrap();
+        let (id, token) = relay.create(CLIENT).unwrap();
         assert_eq!(relay.command(&id, &token, "x".into()), Err(RelayError::Invalid));
         assert_eq!(relay.command(&id, &token, cms()), Err(RelayError::NotWaiting));
         assert_eq!(relay.deliver("unbekannt", b"x".to_vec()).await, Reply::Abort);
@@ -322,7 +385,7 @@ mod tests {
     #[tokio::test]
     async fn abort_answers_atrust() {
         let relay = Relay::default();
-        let (id, token) = relay.create().unwrap();
+        let (id, token) = relay.create(CLIENT).unwrap();
         let r = relay.clone();
         let i = id.clone();
         let atrust = tokio::spawn(async move { r.deliver(&i, b"x".to_vec()).await });
@@ -334,7 +397,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     async fn poll_returns_none_without_answer() {
         let relay = Relay::default();
-        let (id, token) = relay.create().unwrap();
+        let (id, token) = relay.create(CLIENT).unwrap();
         assert_eq!(relay.take_response(&id, &token).await.unwrap(), None);
     }
 

@@ -397,6 +397,10 @@ impl Dialog {
                 tracing::warn!("zu viele Weiterleitungen – Abbruch");
                 return Err(BackendError::LoopDetected);
             }
+            // Jede Anfrage der Sitzung (Erstanfrage, Weiterleitung, `Refresh`, Formularziel) geht nur an A-Trust
+            // bzw. die Origin des konfigurierten Endpunkts: die Sitzung trägt Cookies, Formulare tragen
+            // Zugangsdaten, und die Antwort (Seite oder Security-Layer-XML) wird als die von A-Trust angenommen.
+            self.ensure_trusted_url(&request.url, "Anfrage")?;
             tracing::debug!(method = request.method.as_str(), url = %pida_net::redact_url(&request.url), "A-Trust-Request");
             // Basis für relative Ziele ist die URI des auslösenden Requests (Körper nicht kopieren)
             let url = request.url.clone();
@@ -524,15 +528,19 @@ impl Dialog {
     /// Klon setzt die Origin `https://service.a-trust.at` selbst.
     fn ensure_trusted(&self, page_url: &Url, page: &ParsedPage, what: &str) -> Result<(), BackendError> {
         for url in [page_url, &page.form_action] {
-            if !trusted_target(url, &self.config.endpoint, &self.config.selectors) {
-                tracing::warn!(target_origin = %origin_of(url), what, "Ziel gehört nicht zu A-Trust");
-                return Err(BackendError::Protocol(format!(
-                    "{what}: {} gehört nicht zu A-Trust – Vorgang abgebrochen",
-                    origin_of(url)
-                )));
-            }
+            self.ensure_trusted_url(url, what)?;
         }
         Ok(())
+    }
+
+    /// Ein einzelnes Ziel gegen [`trusted_target`] prüfen – gilt für jede Anfrage der Sitzung ([`Self::send`]),
+    /// die Poll-Adresse (Bearer-Token) und das QR-Bild.
+    fn ensure_trusted_url(&self, url: &Url, what: &str) -> Result<(), BackendError> {
+        if trusted_target(url, &self.config.endpoint, &self.config.selectors) {
+            return Ok(());
+        }
+        tracing::warn!(target_origin = %origin_of(url), what, "Ziel gehört nicht zu A-Trust");
+        Err(BackendError::Protocol(format!("{what}: {} gehört nicht zu A-Trust – Vorgang abgebrochen", origin_of(url))))
     }
 
     fn context(&self, page: &ParsedPage, problem: Option<FormProblem>) -> FormContext {
@@ -847,6 +855,10 @@ impl Dialog {
 
     /// R8: QR-Bild mit eigenem Client ohne Cookies; Fehler → `None` (Maske zeigt `QrImageFailed`).
     async fn load_qr_image(&self, url: &Url) -> Result<Option<QrImage>, BackendError> {
+        // ein Bild von einem fremden Host wird nicht geholt (die Maske zeigt dann `QrImageFailed`)
+        if self.ensure_trusted_url(url, "QR-Bild").is_err() {
+            return Ok(None);
+        }
         let Ok(client) = HttpClient::new(&self.config.net, Purpose::AtrustImage) else { return Ok(None) };
         match self.cancellable(client.get(url, &[])).await? {
             Ok(r) if (200..300).contains(&r.status) && !r.body.is_empty() => {
@@ -873,6 +885,10 @@ impl Dialog {
         login: &mut LoginState,
     ) -> Result<Request, BackendError> {
         let reload = Request::get(page.base_url.clone());
+        // das Bearer-Token der Abfrage geht nur an A-Trust
+        if let Some(info) = &poll_info {
+            self.ensure_trusted_url(&info.url, "Statusabfrage")?;
+        }
         let poll_client = match &poll_info {
             Some(_) => Some(HttpClient::new(&self.config.net, Purpose::AtrustPoll).map_err(net_to_backend)?),
             None => None,

@@ -1396,9 +1396,61 @@ async fn credentials_tan_and_fido2_never_go_to_foreign_hosts() {
         assert!(forms(&broker).is_empty(), "{target}: keine Maske für eine fremde Seite");
         assert!(provider.requests.lock().unwrap().is_empty(), "{target}: keine FIDO2-Assertion");
     }
-    // der fremde Host hat nur GETs gesehen – weder Passwort noch TAN noch Assertion
-    assert!(foreign.requests().iter().all(|r| r.method == "GET" && r.body.is_empty()));
-    assert_eq!(foreign.requests().len(), 3);
+    // der fremde Host wird gar nicht erst angefragt (auch die Weiterleitung wird nicht verfolgt) – weder
+    // Sitzungs-Cookies noch Passwort, TAN oder Assertion
+    assert!(foreign.requests().is_empty());
+}
+
+/// QR-Seite von A-Trust, aber Bild bzw. Statusabfrage zeigen auf einen fremden Host: das Bild wird nicht geholt
+/// (Maske ohne Bild), das Bearer-Token der Abfrage geht dort nicht hin (Abbruch).
+#[tokio::test]
+async fn qr_image_and_poll_never_go_to_foreign_hosts() {
+    let foreign = foreign_host().await;
+    for part in ["image", "poll"] {
+        let image = foreign.url("/mobile/qrimage.ashx?sid=F").to_string();
+        let poll = foreign.url("/mobile/poll/LongPoll.ashx?id=5").to_string();
+        let server = MockServer::start(move |req| {
+            if is(req, "POST", "default.aspx") {
+                return start_session(0);
+            }
+            if is(req, "GET", "Login.aspx") {
+                return page("login.html", &[("SID", "S0")]);
+            }
+            if is(req, "POST", "Login.aspx") {
+                return MockResponse::redirect(302, "qr.aspx?sid=S0");
+            }
+            if is(req, "GET", "qr.aspx") {
+                let html = fixture("qr.html", &[("SID", "S0"), ("REF", "QR12"), ("POLLID", "5"), ("TOKEN", "qt")]);
+                return MockResponse::html(if part == "image" {
+                    html.replace("qrimage.ashx?sid=S0", &image)
+                } else {
+                    html.replace("../poll/LongPoll.ashx?id=5", &poll)
+                });
+            }
+            if is(req, "GET", "qrimage.ashx") {
+                return MockResponse::body("image/png", b"\x89PNG\r\n\x1a\nFAKE".to_vec());
+            }
+            MockResponse::status(404)
+        })
+        .await;
+        let backend = backend(&server, |_| {});
+        let broker = Arc::new(ScriptedBroker::new([login_reply(PASSWORD, false), ScriptedReply::Cancel]));
+        let mut session = open(&backend, &broker).await;
+        let err = session.certificate().await.unwrap_err();
+        if part == "image" {
+            // (der Abbruch der Maske beendet den Lauf; wie, ist hier gleichgültig)
+            match &forms(&broker)[1] {
+                NativeForm::QrCode { image, ctx, .. } => {
+                    assert!(image.is_none());
+                    assert_eq!(ctx.problem, Some(FormProblem::QrImageFailed));
+                }
+                other => panic!("{other:?}"),
+            }
+        } else {
+            assert!(matches!(&err, BackendError::Protocol(m) if m.contains("gehört nicht zu A-Trust")), "{err:?}");
+        }
+    }
+    assert!(foreign.requests().is_empty(), "weder Bild noch Statusabfrage beim fremden Host");
 }
 
 #[tokio::test]
@@ -2450,8 +2502,7 @@ async fn renewal_redirected_to_a_foreign_host_sends_no_credentials() {
     let mut session = open(&backend, &broker).await;
     let err = session.certificate().await.unwrap_err();
     assert!(matches!(err, BackendError::Protocol(_)), "{err:?}");
-    assert!(!foreign.requests().is_empty(), "Umleitung verfolgt");
-    assert!(foreign.requests().iter().all(|r| r.method == "GET" && r.body.is_empty()), "nie Zugangsdaten");
+    assert!(foreign.requests().is_empty(), "Umleitung zum fremden Host wird nicht verfolgt");
     assert_eq!(login_posts(&server).len(), 1);
 }
 
