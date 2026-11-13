@@ -57,8 +57,8 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         # Version wie Cargo.toml/package.json/tauri.conf.json (die CLI überschreibt sie beim Build aus `version`)
-        CFBundleShortVersionString: 0.7.1
-        CFBundleVersion: "0.7.1"
+        CFBundleShortVersionString: 0.8.0
+        CFBundleVersion: "0.8.0"
         # --- PIDA (M-iOS, docs/integration/mobile-ios.md) ---
         CFBundleDisplayName: PIDA
         # Urheberrecht wie bundle.copyright in tauri.conf.json (ADR 0004 Nachtrag 21)

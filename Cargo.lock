@@ -3876,7 +3876,7 @@ dependencies = [
 
 [[package]]
 name = "pida-app"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "clap",
  "pida-backend-api",
@@ -3909,7 +3909,7 @@ dependencies = [
 
 [[package]]
 name = "pida-backend-api"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "pida-cades",
@@ -3925,7 +3925,7 @@ dependencies = [
 
 [[package]]
 name = "pida-backend-atrust"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "aes",
  "async-trait",
@@ -3952,7 +3952,7 @@ dependencies = [
 
 [[package]]
 name = "pida-backend-atrust-web"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -3965,7 +3965,7 @@ dependencies = [
 
 [[package]]
 name = "pida-backend-keystore"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "der 0.7.10",
@@ -3984,7 +3984,7 @@ dependencies = [
 
 [[package]]
 name = "pida-backend-localbku"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -4000,7 +4000,7 @@ dependencies = [
 
 [[package]]
 name = "pida-cades"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "base64 0.23.1",
  "cms 0.2.3",
@@ -4026,7 +4026,7 @@ dependencies = [
 
 [[package]]
 name = "pida-cli"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "clap",
@@ -4048,7 +4048,7 @@ dependencies = [
 
 [[package]]
 name = "pida-config"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "directories",
  "hex",
@@ -4068,7 +4068,7 @@ dependencies = [
 
 [[package]]
 name = "pida-core-api"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "gloo-timers",
@@ -4109,14 +4109,14 @@ dependencies = [
 
 [[package]]
 name = "pida-fs"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "web-time",
 ]
 
 [[package]]
 name = "pida-i18n"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "fluent-bundle",
  "fluent-syntax",
@@ -4130,14 +4130,14 @@ dependencies = [
 
 [[package]]
 name = "pida-java-properties"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "pida-net"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "encoding_rs",
  "hyper",
@@ -4157,7 +4157,7 @@ dependencies = [
 
 [[package]]
 name = "pida-pades"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "flate2",
@@ -4184,7 +4184,7 @@ dependencies = [
 
 [[package]]
 name = "pida-pdf-cos"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "flate2",
  "lopdf",
@@ -4198,7 +4198,7 @@ dependencies = [
 
 [[package]]
 name = "pida-pdf-incremental"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "flate2",
  "js-sys",
@@ -4213,7 +4213,7 @@ dependencies = [
 
 [[package]]
 name = "pida-placement"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "pida-pdf-cos",
  "pida-render",
@@ -4228,7 +4228,7 @@ dependencies = [
 
 [[package]]
 name = "pida-render"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "flate2",
  "pdfium-render",
@@ -4241,7 +4241,7 @@ dependencies = [
 
 [[package]]
 name = "pida-sigblock"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "flate2",
  "gif",
@@ -4267,7 +4267,7 @@ dependencies = [
 
 [[package]]
 name = "pida-sl12"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "base64 0.23.1",
  "quick-xml",
@@ -4276,7 +4276,7 @@ dependencies = [
 
 [[package]]
 name = "pida-web"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "console_error_panic_hook",
@@ -4300,7 +4300,7 @@ dependencies = [
 
 [[package]]
 name = "pida-web-server"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "base64 0.23.1",
  "bytes",
@@ -4319,7 +4319,7 @@ dependencies = [
 
 [[package]]
 name = "pida-workflow"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "pida-backend-api",
  "pida-config",
@@ -6197,7 +6197,7 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-pida-mobile"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "jni 0.22.4",
  "ndk-context",
