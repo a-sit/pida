@@ -1020,8 +1020,6 @@ export function changePage(doc: MockDoc, edit: EditState, page: number): EditSta
 /** `ToggleNewPage` (bei signierten Dokumenten gesperrt). */
 export function toggleNewPage(doc: MockDoc, edit: EditState): EditState | null {
   if (!edit.placement) return edit;
-  // „Auf neuer Seite“ nur mit einem einzigen Signaturblock (Kern: `ng-blocks-new-page`)
-  if (!edit.newPage && (edit.others?.length ?? 0) > 0) return null;
   if (!constraintsFor(doc, edit).new_page_allowed && !edit.newPage) return null;
   const newPage = !edit.newPage;
   const page = newPage ? doc.spec.pages.length : doc.spec.pages.length - 1;
@@ -1100,11 +1098,12 @@ function blockRect(doc: MockDoc, b: MockBlock): RectPt {
 /** `AddBlock`: neuer, frei platzierter Block an einer freien Stelle der Seite; er wird der ausgewählte. `null` = abgelehnt. */
 export function addBlock(doc: MockDoc, edit: EditState, page: number | null, block: { width: number; height: number }): EditState | null | string {
   if (!edit.placement || edit.invisible) return edit;
-  if (edit.newPage) return 'ng-blocks-new-page';
   const others = edit.others ?? [];
   if (others.length + 1 >= MAX_BLOCKS) return 'ng-blocks-limit';
   const pages = doc.spec.pages.length;
-  const target = page !== null && Number.isInteger(page) && page >= 0 && page < pages ? page : Math.min(edit.placement.page_index, pages - 1);
+  // mit „Auf neuer Seite“ auch auf der virtuellen neuen Seite (`== Seitenzahl`)
+  const last = edit.newPage ? pages : pages - 1;
+  const target = page !== null && Number.isInteger(page) && page >= 0 && page <= last ? page : Math.min(edit.placement.page_index, last);
   const [pw, ph] = pageSize(doc, target);
   const current: MockBlock = { placement: edit.placement, origin: edit.origin, target: edit.target };
   const taken = [...others, current].filter((b) => b.placement.page_index === target).map((b) => blockRect(doc, b));
@@ -1121,6 +1120,27 @@ export function addBlock(doc: MockDoc, edit: EditState, page: number | null, blo
   const next = [...others];
   next.splice(at, 0, current);
   return bump(edit, { others: next, active: next.length, placement, origin: 'user', target: { kind: 'free' }, automatic: false, clamped: false });
+}
+
+/**
+ * Mehrfachsignatur mit „Auf neuer Seite“ (Kern: `order_blocks`): Nur die erste Signatur kann die Seite anhängen –
+ * Blöcke auf der neuen Seite stehen deshalb zuerst (automatisch umnummeriert). Ohne neue Seite rücken Blöcke von der
+ * virtuellen Seite auf die letzte vorhandene.
+ */
+export function orderBlocks(doc: MockDoc, edit: EditState): EditState {
+  const others = edit.others ?? [];
+  if (others.length === 0 || !edit.placement) return edit;
+  const pages = doc.spec.pages.length;
+  if (!edit.newPage) {
+    if (!others.some((b) => b.placement.page_index >= pages)) return edit;
+    return { ...edit, others: others.map((b) => (b.placement.page_index >= pages ? { ...b, placement: { ...b.placement, page_index: pages - 1 } } : b)) };
+  }
+  const order: (MockBlock | null)[] = [...others];
+  order.splice(activeIndex(edit), 0, null);
+  const onNew = (b: MockBlock | null) => (b ? b.placement.page_index : edit.placement!.page_index) >= pages;
+  const sorted = [...order.filter(onNew), ...order.filter((b) => !onNew(b))];
+  if (sorted.every((b, i) => b === order[i])) return edit;
+  return { ...edit, active: sorted.indexOf(null), others: sorted.filter((b): b is MockBlock => b !== null) };
 }
 
 /** `SelectBlock`: der ausgewählte und der gewählte Block tauschen die Plätze. */
@@ -1387,7 +1407,7 @@ function blocksView(doc: MockDoc, edit: EditState, phase: DocumentPhase, sticker
   return {
     items,
     limit: MAX_BLOCKS,
-    can_add: open && !edit.newPage && items.length < MAX_BLOCKS && constraintsFor(doc, edit).new_visible_field_allowed,
+    can_add: open && items.length < MAX_BLOCKS && constraintsFor(doc, edit).new_visible_field_allowed,
     free_targets: open ? freeTargets(doc, edit, block, qrOffered).length : 0,
   };
 }

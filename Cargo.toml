@@ -44,7 +44,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.8.0"
+version = "0.8.1"
 edition = "2024"
 # MSRV = die verifizierte Toolchain (Rust 1.99 stable). Die Abhängigkeiten selbst verlangen mindestens 1.88
 # (lopdf 0.45, image 0.25, time 0.3.55, keyring 4); eine niedrigere MSRV wird erst nach CI-Nachweis gesenkt.

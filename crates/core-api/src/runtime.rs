@@ -2760,9 +2760,12 @@ impl CoreTask {
         if n == 0 {
             return;
         }
-        let page = page.filter(|p| *p < n).unwrap_or(view.placement.page_index.min(n - 1));
+        // mit „Auf neuer Seite“ auch auf der virtuellen neuen Seite (`== Seitenzahl`)
+        let last = if view.new_page { n } else { n - 1 };
+        let page = page.filter(|p| *p <= last).unwrap_or(view.placement.page_index.min(last));
         let (w, h) = (view.block.width, view.block.height);
-        let Some(&(page_w, page_h)) = view.doc.page_sizes.get(page) else { return };
+        let size = if page < n { view.doc.page_sizes.get(page).copied() } else { view.new_page_size };
+        let Some((page_w, page_h)) = size else { return };
         // belegte Rechtecke der vorhandenen Blöcke auf dieser Seite (mit 6 pt Abstand)
         const GAP: f32 = 6.0;
         let taken: Vec<pida_pdf_cos::Rect> = view
@@ -2805,8 +2808,8 @@ impl CoreTask {
         let wanted = Placement { page_index: page, x, y, width: w, height: h };
         // Klemmen gegen die Seite des neuen Blocks (nicht die des ausgewählten)
         let Some(doc) = self.current_doc() else { return };
-        let Some(info) = doc.pages.get(page) else { return };
-        let t = PageTransform::new(info, ScreenGeometry::identity());
+        let Some(info) = crate::workspace::page_info(&doc, page) else { return };
+        let t = PageTransform::new(&info, ScreenGeometry::identity());
         let pt = t.clamp_block(Point { x: wanted.x, y: wanted.y }, w, h);
         self.apply(Event::BlockAdded(Placement { x: pt.x, y: pt.y, ..wanted }));
     }

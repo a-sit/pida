@@ -996,9 +996,8 @@ describe('Mehrfachsignatur (je Block eine eigene Signatur)', () => {
     // Signieren: Anzahl im Knopf und als Hinweis davor (ID Austria: evtl. je eine Bestätigung)
     expect(within(inspector()).getByRole('button', { name: /^3-mal signieren/ })).toBeInTheDocument();
     expect(screen.getByTestId('sign-count')).toHaveTextContent('Dieses Dokument erhält 3 Signaturen. Mit ID Austria kann für jede Signatur eine eigene Bestätigung nötig sein.');
-    // „Auf neuer Seite“ nur mit einem Block
-    expect(screen.getByRole('switch', { name: 'Auf neuer Seite' })).toBeDisabled();
-    expect(within(inspector()).getByText('Nur mit einem einzigen Signaturblock möglich.')).toBeInTheDocument();
+    // „Auf neuer Seite“ bleibt auch mit mehreren Blöcken bedienbar
+    expect(screen.getByRole('switch', { name: 'Auf neuer Seite' })).toBeEnabled();
     expect(mock.dispatched.some((e) => e.type === 'sign_with')).toBe(false);
     await expectNoAxeViolations();
   });
@@ -1013,6 +1012,31 @@ describe('Mehrfachsignatur (je Block eine eigene Signatur)', () => {
     const warn = screen.getByTestId('overlap-warning');
     expect(warn).toHaveTextContent('Der Signaturblock überdeckt einen anderen Signaturblock.');
     expect(within(warn).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('„Auf neuer Seite“ mit mehreren Blöcken: weiterer Block möglich, Hinweis zur Reihenfolge', async () => {
+    const base = three();
+    // der ausgewählte Block liegt auf der virtuellen neuen Seite (Seite 4) und ist Nummer 1
+    const doc = {
+      ...base,
+      new_page: true,
+      placement: { ...base.placement, page_index: 3 },
+      blocks: {
+        ...base.blocks!,
+        items: [
+          { index: 0, active: true, page: 3, rect: { left: 182.64, right: 412.64, top: 300, bottom: 218 }, target: { kind: 'free' as const } },
+          { index: 1, active: false, page: 0, rect: { left: 329, right: 559, top: 118, bottom: 36 }, target: { kind: 'free' as const } },
+        ],
+      },
+    };
+    const { mock, user } = renderApp({ view: workspaceView(doc) });
+    await screen.findByRole('application', { name: 'Signaturblock 1 von 2' });
+    expect(within(inspector()).getByText(/Blöcke auf der neuen Seite werden zuerst signiert und stehen deshalb vorn\./)).toBeInTheDocument();
+    const add = within(inspector()).getByRole('button', { name: 'Weiteren Block hinzufügen' });
+    expect(add).toBeEnabled();
+    await user.click(add);
+    expect(lastEvent(mock)).toMatchObject({ type: 'add_block' });
+    expect(screen.getByRole('switch', { name: 'Auf neuer Seite' })).toBeChecked();
   });
 
   it('„Alle Platzhalter belegen“ ab zwei freien Zielen', async () => {

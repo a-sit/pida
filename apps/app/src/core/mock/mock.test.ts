@@ -793,7 +793,7 @@ describe('Mehrfachsignatur (je Block eine eigene Signatur)', () => {
     expect(c.dispatched.some((e) => e.type === 'sign_with')).toBe(false);
   });
 
-  it('Grenzen: höchstens 10 Blöcke, „Auf neuer Seite“ nur mit einem Block, unsichtbar eine Signatur', async () => {
+  it('Grenzen: höchstens 10 Blöcke, unsichtbar eine Signatur', async () => {
     const c = core({ scenario: 'contract' });
     await until(c, hasDoc);
     for (let i = 0; i < 9; i++) await c.dispatch({ type: 'add_block', page: 0 });
@@ -804,20 +804,36 @@ describe('Mehrfachsignatur (je Block eine eigene Signatur)', () => {
     v = await c.view();
     expect(blocks(v).items).toHaveLength(10);
     expect(v.notices.some((n) => n.code === 'ng-blocks-limit')).toBe(true);
-    await c.dispatch({ type: 'toggle_new_page' });
-    v = await c.view();
-    expect(v.document!.new_page).toBe(false);
-    expect(v.notices.some((n) => n.code === 'ng-blocks-new-page')).toBe(true);
     await c.dispatch({ type: 'set_invisible', invisible: true });
     v = await c.view();
     expect(blocks(v).items).toHaveLength(1);
-    // auf neuer Seite: kein weiterer Block
-    const d = core({ scenario: 'contract' });
-    await until(d, hasDoc);
-    await d.dispatch({ type: 'toggle_new_page' });
-    await d.dispatch({ type: 'add_block', page: 0 });
-    v = await d.view();
-    expect([v.document!.new_page, blocks(v).items.length, blocks(v).can_add]).toEqual([true, 1, false]);
+  });
+
+  it('„Auf neuer Seite“ mit mehreren Blöcken: die Blöcke der neuen Seite werden nach vorn nummeriert', async () => {
+    const c = core({ scenario: 'contract' });
+    let v = await until(c, hasDoc);
+    const pages = v.document!.doc.page_count;
+    const order = (x: ViewState) => blocks(x).items.map((b) => [b.active, b.page]);
+    await c.dispatch({ type: 'add_block', page: 0 });
+    v = await c.view();
+    expect(order(v)).toEqual([[false, blocks(v).items[0]!.page], [true, 0]]);
+    // der ausgewählte (zweite) Block wandert auf die neue Seite und wird Nummer 1
+    await c.dispatch({ type: 'toggle_new_page' });
+    v = await c.view();
+    expect(v.document!.new_page).toBe(true);
+    expect(blocks(v).can_add).toBe(true);
+    expect(order(v)[0]).toEqual([true, pages]);
+    // ein weiterer Block direkt auf der neuen Seite: Nummer 2
+    await c.dispatch({ type: 'add_block', page: pages });
+    v = await c.view();
+    expect(order(v).slice(0, 2)).toEqual([[false, pages], [true, pages]]);
+    expect(v.document!.check.overlaps_block).toBe(false);
+    // „Auf neuer Seite“ aus: alle Blöcke liegen wieder auf vorhandenen Seiten
+    await c.dispatch({ type: 'toggle_new_page' });
+    v = await c.view();
+    expect(v.document!.new_page).toBe(false);
+    expect(blocks(v).items.every((b) => b.page < pages)).toBe(true);
+    expect(blocks(v).items).toHaveLength(3);
   });
 
   it('„Alle Platzhalter belegen“: der freie Block wandert ins erste Feld, je weiterem Feld ein Block; ein Feld nur einmal', async () => {

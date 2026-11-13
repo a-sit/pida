@@ -29,12 +29,12 @@ use crate::output::{ExitCode, OutputDecision, save_dialog};
 use crate::queue::{DocResult, Queue};
 use crate::state::{
     BackendOption, BlockSlot, Context, DocFacts, Effect, Event, MAX_BLOCKS, MSG_BACKEND_CHOICE_REQUIRED,
-    MSG_BLOCK_TARGET_TAKEN, MSG_BLOCKS_LIMIT, MSG_BLOCKS_NEW_PAGE, MSG_CONSTRAINT_CERTIFIED,
-    MSG_CONSTRAINT_INVISIBLE_PROFILE, MSG_DEFAULT_BACKEND_UNAVAILABLE, MSG_DOCUMENT_LEAVES_DEVICE, MSG_FIELD_LOCKED,
-    MSG_NO_BACKEND, MSG_POSITIONING_NOT_POSSIBLE, MSG_RESUME_BACKEND_UNAVAILABLE, MSG_SIGNER_UNAVAILABLE,
-    MSG_SIGNING_CANCELLED, MSG_SIGNING_DECLINED, ParkedPlacement, PlaceholderAnswer, PlaceholderFound, PlacementLock,
-    PlacementOrigin, PositionChoice, ResumePlan, RetryTarget, Rounds, SignFlow, SigningPhase, State, Step, Target,
-    Transition, WorkflowError, WorkspaceEdit, backend_for_choice,
+    MSG_BLOCK_TARGET_TAKEN, MSG_BLOCKS_LIMIT, MSG_CONSTRAINT_CERTIFIED, MSG_CONSTRAINT_INVISIBLE_PROFILE,
+    MSG_DEFAULT_BACKEND_UNAVAILABLE, MSG_DOCUMENT_LEAVES_DEVICE, MSG_FIELD_LOCKED, MSG_NO_BACKEND,
+    MSG_POSITIONING_NOT_POSSIBLE, MSG_RESUME_BACKEND_UNAVAILABLE, MSG_SIGNER_UNAVAILABLE, MSG_SIGNING_CANCELLED,
+    MSG_SIGNING_DECLINED, ParkedPlacement, PlaceholderAnswer, PlaceholderFound, PlacementLock, PlacementOrigin,
+    PositionChoice, ResumePlan, RetryTarget, Rounds, SignFlow, SigningPhase, State, Step, Target, Transition,
+    WorkflowError, WorkspaceEdit, backend_for_choice,
 };
 
 /// Meldungs-ID des Platzierungshinweises „neue Seite nicht erlaubt“ (`PlacementNotice::code`).
@@ -424,6 +424,8 @@ fn to_workspace(
             None => (n.saturating_sub(1), None, false),
         },
     };
+    // Mehrfachsignatur: liegt ein ruhender Block auf der virtuellen neuen Seite, gibt es sie
+    let new_page = new_page || (n > 0 && edit.others.iter().any(|b| b.page >= n));
     edit.parked = None;
     edit.rounds = None;
     match placement {
@@ -546,20 +548,62 @@ fn workspace_position(
 }
 
 /// Position eines ruhenden Blocks (Mehrfachsignatur) wie [`workspace_position`]; `None`, wenn sein Ziel fehlt.
-fn slot_position(edit: &WorkspaceEdit, slot: &BlockSlot, doc: &DocFacts) -> Option<PositionChoice> {
+/// Ein Block auf der virtuellen neuen Seite (`new_page`) behält sie: seine Position hängt die Seite an bzw. – ab
+/// der zweiten Signatur – liegt auf der dann vorhandenen Seite.
+fn slot_position(edit: &WorkspaceEdit, slot: &BlockSlot, doc: &DocFacts, new_page: bool) -> Option<PositionChoice> {
     match slot.target {
         Target::Qr => edit.qr.clone().map(PositionChoice::Placeholder),
         Target::Field(i) => edit.fields.get(i).cloned().map(PositionChoice::Field),
         Target::Free => slot.placement.map(|mut p| {
-            p.page_index = p.page_index.min(doc.page_count.saturating_sub(1));
+            p.page_index = p.page_index.min(last_page(doc.page_count, new_page));
             PositionChoice::Manual(p)
         }),
     }
 }
 
+/// Letzte Seite, auf der ein Block liegen kann: mit „Auf neuer Seite“ die virtuelle neue Seite (`== Seitenzahl`).
+fn last_page(page_count: usize, new_page: bool) -> usize {
+    if new_page { page_count } else { page_count.saturating_sub(1) }
+}
+
+/// Mehrfachsignatur mit „Auf neuer Seite“: Nur die erste Signatur kann die Seite anhängen (danach ist das Dokument
+/// signiert). Blöcke auf der neuen Seite stehen deshalb in der Reihenfolge zuerst – automatisch umnummeriert,
+/// sonst bleibt die Reihenfolge. Ohne neue Seite rücken Blöcke von der virtuellen Seite auf die letzte vorhandene.
+/// `active_page` = Seite des ausgewählten Blocks.
+fn order_blocks(edit: &mut WorkspaceEdit, active_page: usize, new_page: bool, page_count: usize) {
+    if edit.others.is_empty() {
+        return;
+    }
+    let last = page_count.saturating_sub(1);
+    if !new_page {
+        for b in edit.others.iter_mut().filter(|b| b.page >= page_count) {
+            b.page = last;
+            b.placement = b.placement.map(|p| Placement { page_index: last, ..p });
+        }
+        return;
+    }
+    let on_new = |page: usize| page >= page_count;
+    let at = edit.active_index();
+    // (ausgewählt?, Block) in der bisherigen Reihenfolge
+    let mut order: Vec<Option<BlockSlot>> = edit.others.iter().copied().map(Some).collect();
+    order.insert(at, None);
+    let key = |b: &Option<BlockSlot>| !on_new(b.map_or(active_page, |b| b.page));
+    if order.windows(2).all(|w| key(&w[0]) <= key(&w[1])) {
+        return;
+    }
+    order.sort_by_key(key); // stabil: innerhalb der Gruppen bleibt die Reihenfolge
+    edit.active = order.iter().position(Option::is_none).unwrap_or(0);
+    edit.others = order.into_iter().flatten().collect();
+}
+
 /// Positionen aller Blöcke in ihrer Reihenfolge (`active` = Position des ausgewählten Blocks); leer bei genau
 /// einem Block bzw. unsichtbar. `None`, wenn einem Block das Ziel fehlt.
-fn all_positions(edit: &WorkspaceEdit, active: &PositionChoice, doc: &DocFacts) -> Option<Vec<PositionChoice>> {
+fn all_positions(
+    edit: &WorkspaceEdit,
+    active: &PositionChoice,
+    doc: &DocFacts,
+    new_page: bool,
+) -> Option<Vec<PositionChoice>> {
     if edit.invisible || edit.others.is_empty() {
         return Some(Vec::new());
     }
@@ -569,7 +613,7 @@ fn all_positions(edit: &WorkspaceEdit, active: &PositionChoice, doc: &DocFacts) 
         if k == at {
             all.push(active.clone());
         }
-        all.push(slot_position(edit, slot, doc)?);
+        all.push(slot_position(edit, slot, doc, new_page)?);
     }
     if at == edit.others.len() {
         all.push(active.clone());
@@ -577,9 +621,15 @@ fn all_positions(edit: &WorkspaceEdit, active: &PositionChoice, doc: &DocFacts) 
     Some(all)
 }
 
-/// Ausgewählten Block als ruhenden Block ablegen (nie auf der virtuellen neuen Seite).
-fn park_block(edit: &WorkspaceEdit, page: usize, placement: Option<Placement>, doc: &DocFacts) -> BlockSlot {
-    let last = doc.page_count.saturating_sub(1);
+/// Ausgewählten Block als ruhenden Block ablegen (auf der virtuellen neuen Seite nur mit „Auf neuer Seite“).
+fn park_block(
+    edit: &WorkspaceEdit,
+    page: usize,
+    placement: Option<Placement>,
+    doc: &DocFacts,
+    new_page: bool,
+) -> BlockSlot {
+    let last = last_page(doc.page_count, new_page);
     BlockSlot {
         target: edit.target,
         origin: edit.origin,
@@ -1088,7 +1138,12 @@ fn settle_on_target(
 fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
     let State::Positioning { queue, page, placement, new_page, doc, edit } = state else { unreachable!("Positioning") };
     let n = doc.page_count;
-    let stay = |queue, page, placement, new_page, doc, edit, effects| {
+    let stay = |queue, page, placement: Option<Placement>, new_page, doc, edit: Option<WorkspaceEdit>, effects| {
+        // Mehrfachsignatur: Blöcke auf der neuen Seite zuerst (nur die erste Signatur kann die Seite anhängen)
+        let edit = edit.map(|mut e| {
+            order_blocks(&mut e, placement.map_or(page, |p| p.page_index), new_page, n);
+            e
+        });
         Transition::with(State::Positioning { queue, page, placement, new_page, doc, edit }, effects)
     };
     // Bearbeitung durch die Nutzerin (Ziehen, Tastatur, Seite, neue Seite): frei, Herkunft „User“, nicht
@@ -1121,20 +1176,16 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
         Event::BlockAdded(p) => {
             let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
             let usable = placement.is_some() && !e.invisible && doc.new_visible_field_allowed;
-            if !usable || p.page_index >= n || !(p.x.is_finite() && p.y.is_finite()) {
+            // auf der virtuellen neuen Seite nur, wenn es sie gibt („Auf neuer Seite“)
+            let outside = p.page_index > n || (p.page_index == n && !new_page);
+            if !usable || outside || !(p.x.is_finite() && p.y.is_finite()) {
                 return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
             }
-            let refused = if new_page {
-                Some(MSG_BLOCKS_NEW_PAGE)
-            } else if e.others.len() + 1 >= MAX_BLOCKS {
-                Some(MSG_BLOCKS_LIMIT)
-            } else {
-                None
-            };
-            if let Some(code) = refused {
-                return stay(queue, page, placement, new_page, doc, Some(e), vec![Effect::Notify(code.into())]);
+            if e.others.len() + 1 >= MAX_BLOCKS {
+                let effects = vec![Effect::Notify(MSG_BLOCKS_LIMIT.into())];
+                return stay(queue, page, placement, new_page, doc, Some(e), effects);
             }
-            let slot = park_block(&e, page, placement, &doc);
+            let slot = park_block(&e, page, placement, &doc, new_page);
             let at = e.active_index();
             e.others.insert(at, slot);
             e.active = e.others.len();
@@ -1142,11 +1193,11 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
             e.origin = PlacementOrigin::User;
             e.automatic = false;
             let mut effects = Vec::new();
-            if p.page_index != page {
+            if p.page_index != page && p.page_index < n {
                 effects.push(Effect::RenderPage { doc: doc.id, page: p.page_index });
             }
             effects.push(Effect::BuildBlockPreview(doc.id));
-            stay(queue, p.page_index, Some(p), false, doc, Some(e), effects)
+            stay(queue, p.page_index, Some(p), new_page, doc, Some(e), effects)
         }
         Event::BlockSelected(i) => {
             let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
@@ -1154,7 +1205,7 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
             if i > e.others.len() || i == at {
                 return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
             }
-            let slot = park_block(&e, page, placement, &doc);
+            let slot = park_block(&e, page, placement, &doc, new_page);
             let next = e.others.remove(if i < at { i } else { i - 1 });
             e.others.insert(if at < i { at } else { at - 1 }, slot);
             e.active = i;
@@ -1165,7 +1216,7 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
                 effects.push(Effect::RenderPage { doc: doc.id, page: next.page });
             }
             effects.push(Effect::BuildBlockPreview(doc.id));
-            stay(queue, next.page, next.placement, false, doc, Some(e), effects)
+            stay(queue, next.page, next.placement, new_page, doc, Some(e), effects)
         }
         Event::BlockRemoved(i) => {
             let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
@@ -1189,7 +1240,7 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
                 effects.push(Effect::RenderPage { doc: doc.id, page: next.page });
             }
             effects.push(Effect::BuildBlockPreview(doc.id));
-            stay(queue, next.page, next.placement, false, doc, Some(e), effects)
+            stay(queue, next.page, next.placement, new_page, doc, Some(e), effects)
         }
         Event::TargetsFilled(targets) => {
             let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
@@ -1301,12 +1352,6 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
             // Ergebnis) – Vorschau für die neue Seite neu bauen.
             effects.push(Effect::BuildBlockPreview(doc.id));
             stay(queue, target, placement, new_page, doc, by_user(edit), effects)
-        }
-        Event::NewPageToggled if !new_page && edit.as_ref().is_some_and(|e| !e.others.is_empty()) => {
-            // „Auf neuer Seite“ nur mit einem einzigen Block: eine neue Seite nach der ersten Signatur
-            // veränderte das bereits signierte Dokument
-            let effects = vec![Effect::Notify(MSG_BLOCKS_NEW_PAGE.into())];
-            stay(queue, page, placement, new_page, doc, edit, effects)
         }
         Event::NewPageToggled => {
             if new_page {
@@ -1424,7 +1469,7 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
                 return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
             };
             // Mehrfachsignatur: Positionen aller Blöcke in ihrer Reihenfolge
-            let Some(all) = all_positions(&e, &position, &doc) else {
+            let Some(all) = all_positions(&e, &position, &doc, new_page) else {
                 return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
             };
             // DocMDP-zertifiziert: kein neues sichtbares Feld (nur vorhandene Felder oder unsichtbar)

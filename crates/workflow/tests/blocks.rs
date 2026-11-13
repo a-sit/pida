@@ -137,6 +137,7 @@ fn removing_blocks() {
 
 #[test]
 fn limits_and_refusals() {
+    // (Seite 3 = virtuelle neue Seite: ohne „Auf neuer Seite“ kein Block dort)
     // Obergrenze
     let mut s = workspace();
     for i in 1..MAX_BLOCKS {
@@ -146,21 +147,65 @@ fn limits_and_refusals() {
     let t = step(s.clone(), Event::BlockAdded(at(0, 500.0)), &ws());
     assert_eq!(t.state, s);
     assert_eq!(t.effects, vec![Effect::Notify("ng-blocks-limit".into())]);
-    // „Auf neuer Seite“ nur mit einem Block – in beiden Richtungen
-    let two = step(workspace(), Event::BlockAdded(at(0, 40.0)), &ws());
-    let t = step(two.state.clone(), Event::NewPageToggled, &ws());
-    assert_eq!(t.state, two.state);
-    assert_eq!(t.effects, vec![Effect::Notify("ng-blocks-new-page".into())]);
-    let on_new_page = step(workspace(), Event::NewPageToggled, &ws()).state;
-    let t = step(on_new_page.clone(), Event::BlockAdded(at(0, 40.0)), &ws());
-    assert_eq!(t.state, on_new_page);
-    assert_eq!(t.effects, vec![Effect::Notify("ng-blocks-new-page".into())]);
     // unsichtbar, außerhalb des Dokuments, klassischer Ablauf: ohne Wirkung
     let invisible = step(workspace(), Event::InvisibleSet(true), &ws()).state;
     assert_eq!(step(invisible.clone(), Event::BlockAdded(at(0, 40.0)), &ws()).state, invisible);
     assert_eq!(step(workspace(), Event::BlockAdded(at(3, 40.0)), &ws()).state, workspace());
+    assert_eq!(step(workspace(), Event::BlockAdded(at(4, 40.0)), &ws()).state, workspace());
     let classic = positioning(&[1]);
     assert_eq!(step(classic.clone(), Event::BlockAdded(at(0, 40.0)), &Context::default()).state, classic);
+}
+
+fn pages_in_order(s: &State) -> Vec<usize> {
+    let e = edit_of(s);
+    let mut pages: Vec<usize> = e.others.iter().map(|b| b.page).collect();
+    pages.insert(e.active, shown(s).0);
+    pages
+}
+
+/// „Auf neuer Seite“ mit mehreren Blöcken: Nur die erste Signatur kann die Seite anhängen – Blöcke auf der neuen
+/// Seite werden deshalb automatisch nach vorn nummeriert.
+#[test]
+fn blocks_on_the_new_page_are_numbered_first() {
+    // zwei Blöcke auf vorhandenen Seiten, der zweite (Seite 0) ist ausgewählt
+    let s = step(workspace(), Event::BlockAdded(at(0, 40.0)), &ws()).state;
+    assert_eq!(pages_in_order(&s), vec![2, 0]);
+    // „Auf neuer Seite“: der ausgewählte Block wandert auf die neue Seite (3) und wird Nummer 1
+    let t = step(s, Event::NewPageToggled, &ws());
+    assert!(matches!(t.state, State::Positioning { new_page: true, .. }));
+    assert_eq!(pages_in_order(&t.state), vec![3, 2]);
+    assert_eq!(edit_of(&t.state).active, 0);
+    // ein weiterer Block auf der neuen Seite kommt gleich danach, einer auf einer vorhandenen Seite ans Ende
+    let s = step(t.state, Event::BlockAdded(at(3, 300.0)), &ws()).state;
+    assert_eq!((pages_in_order(&s), edit_of(&s).active), (vec![3, 3, 2], 1));
+    let s = step(s, Event::BlockAdded(at(1, 80.0)), &ws()).state;
+    assert_eq!((pages_in_order(&s), edit_of(&s).active), (vec![3, 3, 2, 1], 3));
+    // den letzten auf die neue Seite ziehen: er rückt hinter die anderen der neuen Seite
+    let s = step(s, Event::PlacementChanged(at(3, 20.0)), &ws()).state;
+    assert_eq!((pages_in_order(&s), edit_of(&s).active), (vec![3, 3, 3, 2], 2));
+    // signieren: die erste Position hängt die Seite an, alle Positionen der neuen Seite behalten sie
+    let t = step(s.clone(), sign_with(BackendId::Keystore), &ws());
+    let rounds = edit_of(&t.state).rounds.clone().unwrap();
+    let page_of = |p: &PositionChoice| match p {
+        PositionChoice::Manual(p) => p.page_index,
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(rounds.positions.iter().map(page_of).collect::<Vec<_>>(), vec![3, 3, 3, 2]);
+    // Abbruch: Arbeitsbereich wie zuvor, die neue Seite bleibt
+    let back = step(t.state, Event::Cancel, &ws());
+    assert_eq!(back.state, s);
+    // „Auf neuer Seite“ aus: alle Blöcke der neuen Seite rücken auf die letzte vorhandene
+    let off = step(s, Event::NewPageToggled, &ws());
+    assert!(matches!(off.state, State::Positioning { new_page: false, .. }));
+    assert_eq!(pages_in_order(&off.state), vec![2, 2, 2, 2]);
+}
+
+/// Auf signierten Dokumenten gibt es keine neue Seite – auch nicht für einen weiteren Block.
+#[test]
+fn no_block_on_a_new_page_without_the_new_page() {
+    let s = workspace();
+    let t = step(s.clone(), Event::BlockAdded(at(3, 40.0)), &ws());
+    assert_eq!(t.state, s);
 }
 
 #[test]

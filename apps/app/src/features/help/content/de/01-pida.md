@@ -36,7 +36,8 @@ freie Software unter der EUPL-1.2 und ein Open-Source-Projekt von A-SIT, kein of
   wählt einen Block aus, verschoben und platziert wird immer der ausgewählte. „Alle Platzhalter belegen“ setzt in
   jedes leere Signaturfeld einen Block. Jeder Block erhält eine eigene Signatur, in der Reihenfolge der Nummern –
   der Knopf heißt dann zum Beispiel „3-mal signieren“. Mit ID Austria kann für jede Signatur eine eigene Bestätigung
-  nötig sein. Bricht der Vorgang ab, wird nichts gespeichert. „Auf neuer Seite“ gibt es nur mit einem einzigen Block.
+  nötig sein. Bricht der Vorgang ab, wird nichts gespeichert. Mit „Auf neuer Seite“ dürfen auch mehrere Blöcke auf der
+  neuen Seite liegen; sie werden zuerst signiert und bekommen deshalb automatisch die ersten Nummern.
 - **Demo:** „Demo starten“ öffnet ein mitgeliefertes Demodokument mit QR-Platzhalter – zum gefahrlosen Ausprobieren.
   Kürzel ⌘D bzw. Strg+D, im Browser ⌥⇧D bzw. Alt+Umschalt+D; auch in der Befehlspalette und auf Mobilgeräten über
   „Mit Demodokument ausprobieren“ auf der Startseite. Signiert wird echt, das Dokument hat aber keinen rechtlich

@@ -442,10 +442,11 @@ fn target_view(target: Target) -> PlacementTarget {
 }
 
 /// Seite und Rechteck eines ruhenden Blocks (Mehrfachsignatur): frei aus seiner gemerkten Lage, sonst am Ziel.
-fn slot_rect(data: Option<&DocData>, edit: &WorkspaceEdit, slot: &BlockSlot, pages: usize) -> Option<(usize, Rect)> {
+/// `last` = letzte mögliche Seite (mit „Auf neuer Seite“ die virtuelle neue Seite).
+fn slot_rect(data: Option<&DocData>, edit: &WorkspaceEdit, slot: &BlockSlot, last: usize) -> Option<(usize, Rect)> {
     let p = slot.placement?;
     match slot.target {
-        Target::Free => Some((p.page_index.min(pages.saturating_sub(1)), block_rect(&p, p.width, p.height))),
+        Target::Free => Some((p.page_index.min(last), block_rect(&p, p.width, p.height))),
         target => rect_at(data?, edit, target, BlockGeometry { width: p.width, height: p.height }),
     }
 }
@@ -655,7 +656,8 @@ impl crate::runtime::CoreTask {
         let others: Vec<Option<(usize, Rect)>> = if edit.invisible {
             Vec::new()
         } else {
-            edit.others.iter().map(|b| slot_rect(data.as_deref(), edit, b, n)).collect()
+            let last = if s.new_page { n } else { n.saturating_sub(1) };
+            edit.others.iter().map(|b| slot_rect(data.as_deref(), edit, b, last)).collect()
         };
         if let Some(mine) = sticker_rect {
             check.overlaps_block =
@@ -700,7 +702,7 @@ impl crate::runtime::CoreTask {
             let open = editing && !edit.invisible && !edit.placement_locked() && s.placement.is_some();
             BlocksView {
                 limit: u32::try_from(MAX_BLOCKS).unwrap_or(u32::MAX),
-                can_add: open && !s.new_page && items.len() < MAX_BLOCKS && s.doc.new_visible_field_allowed,
+                can_add: open && items.len() < MAX_BLOCKS && s.doc.new_visible_field_allowed,
                 free_targets: if open { u32::try_from(free_fields + free_qr).unwrap_or(u32::MAX) } else { 0 },
                 items,
             }
