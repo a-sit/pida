@@ -3,7 +3,7 @@
   "productName": "PIDA",
   "identifier": "at.asit.pida.app",
   "mainBinaryName": "pida",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "build": {
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist",
