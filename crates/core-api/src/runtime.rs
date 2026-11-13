@@ -186,6 +186,10 @@ fn ui_event_kind(e: &UiEvent) -> &'static str {
         UiEvent::OfferMigration => "offer_migration",
         UiEvent::InspectKeystore { .. } => "inspect_keystore",
         UiEvent::UnlockPlacement => "unlock_placement",
+        UiEvent::AddBlock { .. } => "add_block",
+        UiEvent::SelectBlock { .. } => "select_block",
+        UiEvent::RemoveBlock { .. } => "remove_block",
+        UiEvent::FillTargets => "fill_targets",
         UiEvent::SetBatchAutoPosition { .. } => "set_batch_auto_position",
         UiEvent::GoHome => "go_home",
         UiEvent::ResumeParked => "resume_parked",
@@ -238,6 +242,11 @@ pub(crate) struct SignSlot {
     block_page: Option<Option<usize>>,
     /// Zusammenfassung „Fertig“ (nach der Selbstprüfung)
     pub(crate) summary: Option<SummaryInfo>,
+    /// Mehrfachsignatur: das zuletzt signierte Zwischenergebnis als Quelle der laufenden Runde (`None` = das
+    /// Original); [`Effect::OpenSession`] setzt es zurück
+    chain_doc: Option<Arc<DocData>>,
+    /// Mehrfachsignatur: `signed` wird beim nächsten `prepare` zur Quelle ([`Effect::NextSignature`])
+    chain_pending: bool,
 }
 
 impl SignSlot {
@@ -1406,6 +1415,7 @@ impl CoreTask {
             Effect::OpenSession(id) => self.effect_open(id),
             Effect::ReadCertificate => self.effect_certificate(),
             Effect::Prepare { doc, position, min_reserve } => self.effect_prepare(doc, position, min_reserve),
+            Effect::NextSignature => lock(&self.shared.sign).chain_pending = true,
             Effect::Sign => self.effect_sign(false),
             Effect::SignDocument => self.effect_sign(true),
             Effect::ReleaseDocument => self.release_document(),
@@ -1416,7 +1426,13 @@ impl CoreTask {
             }
             Effect::Finish => self.effect_finish(),
             Effect::CloseSession => {
-                let session = lock(&self.shared.sign).session.take();
+                let session = {
+                    let mut slot = lock(&self.shared.sign);
+                    // Mehrfachsignatur: das Zwischenergebnis wird nicht mehr gebraucht (das Ergebnis liegt in `signed`)
+                    slot.chain_doc = None;
+                    slot.chain_pending = false;
+                    slot.session.take()
+                };
                 drop(session);
             }
             Effect::CancelSession => self.cancel_session(),
@@ -1639,7 +1655,10 @@ impl CoreTask {
             language: self.cfg.language(),
             batch_size: match &self.state {
                 State::BatchSigning { run, .. } => run.order.len().max(1),
-                // Arbeitsbereich: ein Dokument je Sitzung
+                // Arbeitsbereich: ein Dokument je Sitzung (Mehrfachsignatur: je Block ein Auftrag)
+                State::Signing { edit: Some(e), .. } if self.ws.enabled => {
+                    e.rounds.as_ref().map_or(1, |r| r.positions.len().max(1))
+                }
                 _ if self.ws.enabled => 1,
                 s => s.queue().map(|q| q.len()).unwrap_or(1).max(1),
             },
@@ -1650,6 +1669,12 @@ impl CoreTask {
 
     fn effect_open(&mut self, id: BackendId) {
         self.ws.own_cancel = false;
+        // Mehrfachsignatur: jeder Start beginnt beim Original (ein Teilergebnis wird verworfen)
+        {
+            let mut slot = lock(&self.shared.sign);
+            slot.chain_doc = None;
+            slot.chain_pending = false;
+        }
         let caps = self.options.iter().find(|o| o.id == id).and_then(|o| o.capabilities.clone());
         // Arbeitsbereich, „Erneut versuchen“: eine offene, unversehrte Sitzung desselben Signiermittels wird
         // wiederverwendet – ohne neue Anmeldung und ohne zweites Lesen des Zertifikats (ADR 0004 §3.6)
@@ -1823,10 +1848,26 @@ impl CoreTask {
     }
 
     fn effect_prepare(&mut self, doc: DocId, position: PositionChoice, min_reserve: Option<usize>) {
-        let Some(data) = self.shared.docs.get(doc) else {
+        let Some(original) = self.shared.docs.get(doc) else {
             self.queue.push_back(Event::SigningFailed(WorkflowError::Unexpected("Dokument nicht geladen".into())));
             return;
         };
+        // Mehrfachsignatur: ab der zweiten Runde ist das Zwischenergebnis die Quelle; ein solcher Vorgang wird
+        // nicht für „Signatur fortsetzen“ gesichert (bricht er ab, wird alles verworfen)
+        let (multi, first_round) = match &self.state {
+            State::Signing { edit: Some(e), .. } => {
+                (e.rounds.is_some(), e.rounds.as_ref().is_none_or(|r| r.index == 0))
+            }
+            State::BatchSigning { run, .. } => (run.positions.len() > 1, run.round == 0),
+            _ => (false, true),
+        };
+        if first_round {
+            // erste Signatur eines Dokuments (auch nach „Erneut versuchen“ bzw. im Stapel beim nächsten Dokument):
+            // Quelle ist das Original, ein Zwischenergebnis wird verworfen
+            let mut slot = lock(&self.shared.sign);
+            slot.chain_doc = None;
+            slot.chain_pending = false;
+        }
         // Arbeitsbereich: dieselbe Automatik wie die Vorschau (`auto_place`), sonst PDF-AS-Regel
         let avoid_widgets = self.ws.enabled;
         let shared = self.shared.clone();
@@ -1845,10 +1886,10 @@ impl CoreTask {
         let restore = self
             .resume_active
             .take()
-            .filter(|(id, p)| *id == doc && Some(p.record.backend) == backend && min_reserve.is_none())
+            .filter(|(id, p)| *id == doc && Some(p.record.backend) == backend && min_reserve.is_none() && !multi)
             .map(|(_, p)| p);
         // Mobile: nach `prepare` für „Signatur fortsetzen“ sichern (ersetzt ein nicht angenommenes Angebot)
-        let persist = match (self.mobile.persist_prepared, backend) {
+        let persist = match (self.mobile.persist_prepared && !multi, backend) {
             (true, Some(backend)) if restore.is_none() => {
                 self.resume_offer = None;
                 self.persist_owned = true;
@@ -1858,7 +1899,7 @@ impl CoreTask {
                     .queue()
                     .and_then(|q| q.current.as_ref())
                     .map(|d| d.display_name.clone())
-                    .unwrap_or_else(|| data.name.clone());
+                    .unwrap_or_else(|| original.name.clone());
                 // Regel für vorhandene Zieldateien: im Stapellauf die des Laufs, beim fortgesetzten
                 // Stapeldokument (neu vorbereitet) die gespeicherte
                 let on_existing = match &self.state {
@@ -1870,6 +1911,10 @@ impl CoreTask {
             _ => None,
         };
         self.spawn_blocking_event(Some(epoch), signing_panic, move || {
+            let data = match chained_source(&shared, epoch, &original) {
+                Ok(data) => data,
+                Err(event) => return *event,
+            };
             if let Some(persisted) = &restore {
                 match persisted.restore(shared.engine.as_ref(), &data.src) {
                     Ok(prepared) => {
@@ -2071,9 +2116,11 @@ impl CoreTask {
 
     fn effect_finish(&mut self) {
         let shared = self.shared.clone();
-        let data = self.current_doc();
-        let (epoch, prepared, result, attrs, chain, cert_cache) = {
+        let original = self.current_doc();
+        let (epoch, prepared, result, attrs, chain, cert_cache, data) = {
             let mut slot = lock(&shared.sign);
+            // Mehrfachsignatur: geprüft wird gegen die Quelle dieser Runde (das Zwischenergebnis)
+            let data = slot.chain_doc.clone().or(original);
             (
                 slot.epoch,
                 slot.prepared.take(),
@@ -2081,6 +2128,7 @@ impl CoreTask {
                 slot.attrs.take(),
                 slot.chain.clone(),
                 slot.cert_cache.clone(),
+                data,
             )
         };
         self.spawn_blocking_event(Some(epoch), signing_panic, move || {
@@ -2659,6 +2707,11 @@ impl CoreTask {
             // Einstellung „Automatische Positionierung“: „Diesmal selbst platzieren“ (Nachtrag 8) – nur dieses
             // Dokument, startet nichts (A1)
             UiEvent::UnlockPlacement if self.ws.enabled => self.apply(Event::PlacementUnlocked),
+            // Mehrfachsignatur (je Block eine eigene Signatur): nur im Arbeitsbereich, startet nichts (A1)
+            UiEvent::AddBlock { page } if self.ws.enabled => self.add_block(page),
+            UiEvent::SelectBlock { index } if self.ws.enabled => self.apply(Event::BlockSelected(index as usize)),
+            UiEvent::RemoveBlock { index } if self.ws.enabled => self.apply(Event::BlockRemoved(index as usize)),
+            UiEvent::FillTargets if self.ws.enabled => self.fill_targets(),
             // „Zur Startseite“ (Nachtrag 10): der Reducer parkt offene Arbeit (im klassischen Ablauf wie
             // `navigate{Open}`); Fortsetzen und Verwerfen nur im Arbeitsbereich-Modus
             UiEvent::GoHome => self.apply(Event::WentHome),
@@ -2684,12 +2737,90 @@ impl CoreTask {
             | UiEvent::PostponeFirstRun
             | UiEvent::OfferMigration
             | UiEvent::UnlockPlacement
+            | UiEvent::AddBlock { .. }
+            | UiEvent::SelectBlock { .. }
+            | UiEvent::RemoveBlock { .. }
+            | UiEvent::FillTargets
             | UiEvent::SetBatchAutoPosition { .. }
             | UiEvent::ResumeParked
             | UiEvent::DiscardParked) => {
                 tracing::debug!(event = ui_event_kind(&e), "in diesem Modus ohne Wirkung (ADR 0004) – ignoriert");
             }
         }
+    }
+
+    /// „Weiteren Block hinzufügen“ (Mehrfachsignatur): freie Stelle auf der Seite suchen – zuerst die freien
+    /// Flächen des Layouts, dann ein Raster von unten rechts – die keinen anderen Block überdeckt; Grenzen
+    /// (Höchstzahl, neue Seite) meldet der Reducer.
+    fn add_block(&mut self, page: Option<usize>) {
+        let State::Positioning { placement: Some(current), .. } = &self.state else { return };
+        let current = *current;
+        let Some(view) = self.document_view() else { return };
+        let n = view.doc.page_count;
+        if n == 0 {
+            return;
+        }
+        let page = page.filter(|p| *p < n).unwrap_or(view.placement.page_index.min(n - 1));
+        let (w, h) = (view.block.width, view.block.height);
+        let Some(&(page_w, page_h)) = view.doc.page_sizes.get(page) else { return };
+        // belegte Rechtecke der vorhandenen Blöcke auf dieser Seite (mit 6 pt Abstand)
+        const GAP: f32 = 6.0;
+        let taken: Vec<pida_pdf_cos::Rect> = view
+            .blocks
+            .iter()
+            .flat_map(|b| b.items.iter())
+            .filter(|b| b.page == page)
+            .filter_map(|b| b.rect)
+            .map(|r| pida_pdf_cos::Rect {
+                llx: r.left - GAP,
+                lly: r.bottom - GAP,
+                urx: r.right + GAP,
+                ury: r.top + GAP,
+            })
+            .collect();
+        let free = |x: f32, top: f32| {
+            let mine = pida_pdf_cos::Rect { llx: x, lly: top - h, urx: x + w, ury: top };
+            !taken.iter().any(|t| crate::workspace::rects_intersect(mine, *t))
+        };
+        // Kandidaten (linke obere Ecke): freie Flächen des Layouts, dann Raster von unten nach oben
+        let mut candidates: Vec<(f32, f32)> = view
+            .layout
+            .iter()
+            .filter(|l| l.page == page)
+            .flat_map(|l| l.free.iter())
+            .map(|r| (r.left, r.top))
+            .collect();
+        const MARGIN: f32 = 36.0;
+        let xs = [page_w - w - MARGIN, MARGIN, (page_w - w) / 2.0];
+        let mut top = MARGIN + h;
+        while top <= page_h - MARGIN {
+            candidates.extend(xs.iter().map(|x| (*x, top)));
+            top += h + 2.0 * GAP;
+        }
+        let (x, y) = candidates
+            .into_iter()
+            .filter(|(x, top)| *x >= 0.0 && x + w <= page_w && top - h >= 0.0 && *top <= page_h)
+            .find(|(x, top)| free(*x, *top))
+            .unwrap_or((current.x + 24.0, current.y - 24.0));
+        let wanted = Placement { page_index: page, x, y, width: w, height: h };
+        // Klemmen gegen die Seite des neuen Blocks (nicht die des ausgewählten)
+        let Some(doc) = self.current_doc() else { return };
+        let Some(info) = doc.pages.get(page) else { return };
+        let t = PageTransform::new(info, ScreenGeometry::identity());
+        let pt = t.clamp_block(Point { x: wanted.x, y: wanted.y }, w, h);
+        self.apply(Event::BlockAdded(Placement { x: pt.x, y: pt.y, ..wanted }));
+    }
+
+    /// „Alle Platzhalter belegen“ (Mehrfachsignatur): alle für den Block geeigneten leeren Signaturfelder und der
+    /// QR-Platzhalter; welche davon noch frei sind, entscheidet der Reducer.
+    fn fill_targets(&mut self) {
+        let Some(view) = self.document_view() else { return };
+        let mut targets: Vec<pida_workflow::Target> =
+            view.fields.iter().filter(|f| f.suitable).map(|f| pida_workflow::Target::Field(f.index as usize)).collect();
+        if view.qr.is_some() {
+            targets.push(pida_workflow::Target::Qr);
+        }
+        self.apply(Event::TargetsFilled(targets));
     }
 
     /// Ausgangslage für Ziehen und Tastatur: frei die Lage, bei Feld/QR die linke obere Ecke des Ziels
@@ -3594,6 +3725,38 @@ impl PersistJob {
             }
         }
     }
+}
+
+/// Quelle der laufenden Signaturrunde: das Original bzw. – in der Mehrfachsignatur ab der zweiten Runde – das
+/// eben signierte Zwischenergebnis ([`Effect::NextSignature`]), neu geöffnet und analysiert (Seiten, Felder und
+/// vorhandene Signaturen wie bei einem geladenen Dokument). Es bleibt nur im Speicher; bricht der Vorgang ab,
+/// wird es verworfen.
+fn chained_source(shared: &Shared, epoch: u64, original: &Arc<DocData>) -> Result<Arc<DocData>, Box<Event>> {
+    let signed = {
+        let mut slot = lock(&shared.sign);
+        if slot.epoch != epoch {
+            return Err(Box::new(Event::BackendFailed(BackendError::Cancelled)));
+        }
+        if !slot.chain_pending {
+            return Ok(slot.chain_doc.clone().unwrap_or_else(|| original.clone()));
+        }
+        slot.signed.take()
+    };
+    let Some(signed) = signed else {
+        return Err(Box::new(Event::SigningFailed(WorkflowError::Unexpected("Zwischenergebnis fehlt".into()))));
+    };
+    let src = pida_pdf_cos::SourcePdf::open(signed.bytes(), &pida_pdf_cos::Limits::default())
+        .map_err(|e| Box::new(Event::SigningFailed(crate::docs::load_error(&e))))?;
+    let report =
+        shared.engine.analyze(&src).map_err(|e| Box::new(Event::SigningFailed(crate::docs::analysis_error(&e))))?;
+    let data = Arc::new(DocData::new(original.id, PathBuf::from(&original.name), Arc::new(src), report));
+    let mut slot = lock(&shared.sign);
+    if slot.epoch != epoch {
+        return Err(Box::new(Event::BackendFailed(BackendError::Cancelled)));
+    }
+    slot.chain_doc = Some(data.clone());
+    slot.chain_pending = false;
+    Ok(data)
 }
 
 /// Vorbereitetes Dokument in den Signiervorgang übernehmen (verworfen, wenn der Vorgang inzwischen

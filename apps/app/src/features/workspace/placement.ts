@@ -8,7 +8,7 @@
  * Flächen und die Überdeckung. Koordinaten wie im Kern: pt, `PAGE_ABS` (Ursprung links unten, y nach oben;
  * eine Lage ist die linke obere Ecke `x`/`y` = Oberkante von unten).
  */
-import type { AnnounceDetail, DocumentView, FieldTargetView, GuideKind, GuideView, PlacementTarget, QrTargetView, RectPt } from '../../core/types';
+import type { AnnounceDetail, BlockSlotView, DocumentView, FieldTargetView, GuideKind, GuideView, PlacementTarget, QrTargetView, RectPt } from '../../core/types';
 import type { Translator } from '../../i18n/catalog';
 
 /** 100 % Zoom = 96 px je Zoll (1 pt = 1,333 px) wie im Prototyp. */
@@ -243,6 +243,9 @@ export function announceText(t: Translator, doc: DocumentView, snapped: GuideKin
   if (!a.page) return '';
   // linke obere Ecke wie die Millimeter-Eingabe und PDF-AS (docs/analyse/06 R-6)
   const parts = [t.t('ng-ui-ws-announce', { page: a.page, pages: a.pages ?? a.page, left: a.left ?? '0', top: a.top ?? '0' })];
+  // Mehrfachsignatur: welcher Block gemeint ist
+  const total = blockTotal(doc);
+  if (total > 1) parts.unshift(t.t('ng-ui-ws-announce-blocks', { n: activeBlock(doc) + 1, total }));
   // ausführlich (Einstellungen › Barrierefreiheit): Lage in Worten
   if (detail === 'detailed' && doc.sticker) {
     const sizes = displayPages(doc);
@@ -255,6 +258,7 @@ export function announceText(t: Translator, doc: DocumentView, snapped: GuideKin
   if (snapped.length > 0) parts.push(t.t('ng-ui-ws-announce-snap', { where: snapWord(t, snapped) }));
   const c = doc.check;
   if (placeholderUncovered(doc)) parts.push(t.t('ng-ui-ws-announce-qr-uncovered'));
+  if (c.for_revision === doc.revision && c.overlaps_block === true && !doc.invisible) parts.push(t.t('ng-ui-ws-announce-block'));
   if (c.for_revision === doc.revision && doc.target.kind === 'free') {
     if (c.overlaps_content === true) parts.push(t.t('ng-ui-ws-announce-overlap'));
     else if (c.overlaps_widget) parts.push(t.t('ng-ui-ws-announce-widget'));
@@ -272,10 +276,31 @@ export function placeholderUncovered(doc: DocumentView): boolean {
   return !doc.invisible && doc.target.kind === 'qr' && c.for_revision === doc.revision && c.placeholder_uncovered === true;
 }
 
+/**
+ * Mehrfachsignatur (Kern: `DocumentView::blocks`): alle Signaturblöcke in ihrer Reihenfolge – je Block eine eigene
+ * Signatur. Unsichtbar bzw. ohne Angabe des Kerns: genau ein Block.
+ */
+export function blockItems(doc: DocumentView): BlockSlotView[] {
+  if (doc.invisible) return [];
+  return doc.blocks?.items ?? [];
+}
+
+/** Anzahl der Signaturen, die das Dokument erhält (unsichtbar: eine). */
+export function blockTotal(doc: DocumentView): number {
+  return Math.max(1, blockItems(doc).length);
+}
+
+/** Stelle des ausgewählten Blocks (0-basiert). */
+export function activeBlock(doc: DocumentView): number {
+  return blockItems(doc).find((b) => b.active)?.index ?? 0;
+}
+
 /** Überdeckung gilt nur, wenn die Prüfung zur aktuellen Revision gehört (§4.3). */
-export function overlapState(doc: DocumentView): 'content' | 'widget' | null {
+export function overlapState(doc: DocumentView): 'block' | 'content' | 'widget' | null {
   const c = doc.check;
   if (doc.invisible || c.for_revision !== doc.revision) return null;
+  // Mehrfachsignatur: ein anderer Signaturblock desselben Dokuments
+  if (c.overlaps_block === true) return 'block';
   if (c.overlaps_content === true) return 'content';
   if (c.overlaps_widget) return 'widget';
   return null;

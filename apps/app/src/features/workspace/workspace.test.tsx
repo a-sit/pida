@@ -156,7 +156,7 @@ describe('Sticker und Seiten', () => {
       revision: 2,
       placement: { page_index: 2, x: 309, y: 322, width: 230, height: 82 },
       sticker: { left: 309, right: 539, top: 322, bottom: 240 },
-      check: { for_revision: 2, overlaps_content: false, overlaps_widget: false, clamped: false, placeholder_uncovered: false },
+      check: { for_revision: 2, overlaps_content: false, overlaps_widget: false, clamped: false, placeholder_uncovered: false, overlaps_block: false },
       announce: { page: '3', pages: '3', left: '109', top: '114', bottom: '85' },
     });
     act(() => mock.setView(workspaceView(next)));
@@ -165,7 +165,7 @@ describe('Sticker und Seiten', () => {
 });
 
 describe('Überdeckung, Felder, Optionen', () => {
-  const overlap = (extra: Partial<DocumentView> = {}) => documentView({ check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false }, ...extra });
+  const overlap = (extra: Partial<DocumentView> = {}) => documentView({ check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false, overlaps_block: false }, ...extra });
 
   it('Überdeckung: Rahmen und Warnung direkt über „Signieren“ mit „Freie Fläche suchen“ → auto_place', async () => {
     const { mock, user } = renderApp({ view: workspaceView(overlap()) });
@@ -627,7 +627,7 @@ describe('Seitenansicht, Zoom und Barrierefreiheit', () => {
       revision: 2,
       placement: { page_index: 2, x: 309, y: 322, width: 230, height: 82 },
       sticker: { left: 309, right: 539, top: 322, bottom: 240 },
-      check: { for_revision: 2, overlaps_content: false, overlaps_widget: false, clamped: false, placeholder_uncovered: false },
+      check: { for_revision: 2, overlaps_content: false, overlaps_widget: false, clamped: false, placeholder_uncovered: false, overlaps_block: false },
       announce: { page: '3', pages: '3', left: '109', top: '114', bottom: '85' },
     });
     act(() => mock.setView(workspaceView(moved)));
@@ -654,7 +654,7 @@ describe('Seitenansicht, Zoom und Barrierefreiheit', () => {
   it('axe: Arbeitsbereich, Felder, Überdeckung, Englisch', async () => {
     const doc = documentView({
       fields: [fieldTarget({ index: 0, name: 'Feld', page: 1, rect: { left: 300, right: 540, top: 200, bottom: 114 }, selectable: true })],
-      check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false },
+      check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false, overlaps_block: false },
     });
     const { unmount } = renderApp({ view: workspaceView(doc) });
     await screen.findByRole('application', { name: 'Signaturblock' });
@@ -841,7 +841,7 @@ describe('Automatische Positionierung (Einstellung, ADR 0004 Nachtrag 8)', () =>
   });
 
   it('Überdeckung bei gesperrtem Block: „Diesmal selbst platzieren“ statt „Freie Fläche suchen“', async () => {
-    const doc = lockedDoc({ check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false } });
+    const doc = lockedDoc({ check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false, overlaps_block: false } });
     const { mock, user } = renderApp({ view: workspaceView(doc) });
     await screen.findByRole('application', { name: 'Signaturblock' });
     const warn = screen.getByTestId('overlap-warning');
@@ -924,5 +924,114 @@ describe('Inhaltsbereich im Arbeitsbereich', () => {
     main.scrollTop = 64;
     fireEvent.scroll(main);
     expect(main.scrollTop).toBe(0);
+  });
+});
+
+describe('Mehrfachsignatur (je Block eine eigene Signatur)', () => {
+  const inspector = () => screen.getByRole('complementary', { name: 'Signatur' });
+  const FIELD = fieldTarget({ index: 0, name: 'Unterschrift_Antragsteller', page: 1, rect: { left: 299, right: 539, top: 300, bottom: 214 }, selectable: true });
+  const single = (extra: Partial<DocumentView> = {}) =>
+    documentView({
+      blocks: { items: [{ index: 0, active: true, page: 2, rect: { left: 182.64, right: 412.64, top: 300, bottom: 218 }, target: { kind: 'free' } }], limit: 10, can_add: true, free_targets: 0 },
+      ...extra,
+    });
+  /** drei Blöcke: Seite 1 frei, im Feld (Seite 2), Seite 3 frei – der dritte ist ausgewählt */
+  const three = (extra: Partial<DocumentView> = {}) =>
+    documentView({
+      fields: [FIELD],
+      blocks: {
+        items: [
+          { index: 0, active: false, page: 0, rect: { left: 329, right: 559, top: 118, bottom: 36 }, target: { kind: 'free' } },
+          { index: 1, active: false, page: 1, rect: FIELD.block, target: { kind: 'field', index: 0 } },
+          { index: 2, active: true, page: 2, rect: { left: 182.64, right: 412.64, top: 300, bottom: 218 }, target: { kind: 'free' } },
+        ],
+        limit: 10,
+        can_add: true,
+        free_targets: 0,
+      },
+      ...extra,
+    });
+
+  it('ein Block: „Weiteren Block hinzufügen“ im Inspektor, sonst alles wie bisher', async () => {
+    const { mock, user } = renderApp({ view: workspaceView(single()) });
+    await screen.findByRole('application', { name: 'Signaturblock' });
+    const section = within(inspector()).getByTestId('blocks-section');
+    expect(within(section).getByRole('heading', { name: 'Signaturblöcke' })).toBeInTheDocument();
+    expect(within(section).queryByRole('list')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sign-count')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('block-remove')).not.toBeInTheDocument();
+    expect(within(inspector()).getByRole('button', { name: /^Signieren/ })).toBeInTheDocument();
+    await user.click(within(section).getByRole('button', { name: 'Weiteren Block hinzufügen' }));
+    expect(lastEvent(mock)).toMatchObject({ type: 'add_block' });
+    expect(mock.dispatched.some((e) => e.type === 'sign_with')).toBe(false);
+  });
+
+  it('drei Blöcke: nummeriert auf der Seite und in der Liste, „3-mal signieren“ mit Hinweis', async () => {
+    const { mock, user } = renderApp({ view: workspaceView(three()) });
+    const s = await screen.findByRole('application', { name: 'Signaturblock 3 von 3' });
+    expect(within(s).getByTestId('sticker-number')).toHaveTextContent('3');
+    expect(s).toHaveAccessibleDescription(/Entf entfernt diesen Block/);
+    // die anderen Blöcke stehen an ihrer Stelle und sind wählbar
+    const others = screen.getAllByTestId('block-other');
+    expect(others.map((o) => o.getAttribute('aria-label'))).toEqual(['Signaturblock 1 von 3 auswählen', 'Signaturblock 2 von 3 auswählen']);
+    await user.click(others[0]!);
+    expect(lastEvent(mock)).toEqual({ type: 'select_block', index: 0 });
+    // das belegte Feld zeigt keine Markierung „Ins Feld setzen“
+    expect(document.querySelector('.field-marker-field')).toBeNull();
+    // Liste im Inspektor
+    const list = within(inspector()).getByRole('list', { name: 'Signaturblöcke' });
+    const rows = within(list).getAllByRole('listitem');
+    expect(rows.map((r) => r.textContent)).toEqual(['1Seite 1 · rechts unten', '2Signaturfeld „Unterschrift_Antragsteller“', '3Seite 3 · unten mittig']);
+    expect(within(rows[2]!).getByRole('button', { name: /Block 3 auswählen/ })).toHaveAttribute('aria-current', 'true');
+    await user.click(within(rows[1]!).getByRole('button', { name: /Block 2 auswählen/ }));
+    expect(lastEvent(mock)).toEqual({ type: 'select_block', index: 1 });
+    await user.click(within(rows[0]!).getByRole('button', { name: 'Block 1 entfernen' }));
+    expect(lastEvent(mock)).toEqual({ type: 'remove_block', index: 0 });
+    // „×“ am ausgewählten Block und Entf
+    await user.click(screen.getByRole('button', { name: 'Signaturblock 3 entfernen' }));
+    expect(lastEvent(mock)).toEqual({ type: 'remove_block', index: 2 });
+    mock.dispatched.length = 0;
+    fireEvent.keyDown(s, { key: 'Delete' });
+    expect(lastEvent(mock)).toEqual({ type: 'remove_block', index: 2 });
+    // Signieren: Anzahl im Knopf und als Hinweis davor (ID Austria: evtl. je eine Bestätigung)
+    expect(within(inspector()).getByRole('button', { name: /^3-mal signieren/ })).toBeInTheDocument();
+    expect(screen.getByTestId('sign-count')).toHaveTextContent('Dieses Dokument erhält 3 Signaturen. Mit ID Austria kann für jede Signatur eine eigene Bestätigung nötig sein.');
+    // „Auf neuer Seite“ nur mit einem Block
+    expect(screen.getByRole('switch', { name: 'Auf neuer Seite' })).toBeDisabled();
+    expect(within(inspector()).getByText('Nur mit einem einzigen Signaturblock möglich.')).toBeInTheDocument();
+    expect(mock.dispatched.some((e) => e.type === 'sign_with')).toBe(false);
+    await expectNoAxeViolations();
+  });
+
+  it('Grenze erreicht bzw. Überdeckung eines anderen Blocks: Begründung statt Knopf', async () => {
+    const full = three();
+    const doc = { ...full, blocks: { ...full.blocks!, can_add: false, limit: 3 }, check: { ...full.check, overlaps_block: true } };
+    renderApp({ view: workspaceView(doc) });
+    await screen.findByRole('application', { name: 'Signaturblock 3 von 3' });
+    expect(within(inspector()).getByRole('button', { name: 'Weiteren Block hinzufügen' })).toBeDisabled();
+    expect(screen.getByTestId('blocks-add-reason')).toHaveTextContent('Mehr als 3 Signaturblöcke je Dokument sind nicht möglich.');
+    const warn = screen.getByTestId('overlap-warning');
+    expect(warn).toHaveTextContent('Der Signaturblock überdeckt einen anderen Signaturblock.');
+    expect(within(warn).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('„Alle Platzhalter belegen“ ab zwei freien Zielen', async () => {
+    const doc = single({ fields: [FIELD, { ...FIELD, index: 1, name: 'Unterschrift_Zweite' }] });
+    const { mock, user } = renderApp({ view: workspaceView({ ...doc, blocks: { ...doc.blocks!, free_targets: 2 } }) });
+    await screen.findByRole('application', { name: 'Signaturblock' });
+    await user.click(within(inspector()).getByRole('button', { name: 'Alle 2 Platzhalter belegen' }));
+    expect(lastEvent(mock)).toEqual({ type: 'fill_targets' });
+  });
+
+  it('gesperrt, unsichtbar bzw. beim Signieren: kein Abschnitt bzw. nichts bedienbar', async () => {
+    const { unmount } = renderApp({ view: workspaceView(single({ invisible: true, sticker: null })) });
+    await screen.findByRole('complementary', { name: 'Signatur' });
+    expect(screen.queryByTestId('blocks-section')).not.toBeInTheDocument();
+    unmount();
+    renderApp({ view: workspaceView(three({ phase: 'signing' }), { actions: { ...workspaceView().actions, edit_placement: false, sign: false } }) });
+    await screen.findByRole('complementary', { name: 'Signatur' });
+    for (const o of screen.getAllByTestId('block-other')) expect(o).toBeDisabled();
+    expect(screen.queryByTestId('block-remove')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sign-count')).not.toBeInTheDocument();
   });
 });

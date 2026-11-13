@@ -83,6 +83,8 @@ export interface SigningOptions {
   referenceValue?: string;
   /** Zertifikat in dieser Sitzung schon gelesen (Stapel ab dem zweiten Dokument mit sichtbarem Block) */
   certificateRead?: boolean;
+  /** Mehrfachsignatur: Anzahl der Signaturen dieses Dokuments (je Block eine; Standard 1) */
+  signatures?: number;
   /** Keystore in dieser Sitzung schon entsperrt (Stapel: Passwort nur einmal) */
   sessionUnlocked?: boolean;
   /** erster Signierversuch scheitert mit diesem Fehler (Stapel: Störungen je Dokument) */
@@ -131,8 +133,9 @@ export class SigningSession {
       index: 1,
       total: 1,
       login_done: this.loginDone,
-      confirmations_done: this.confirmations,
-      confirmations_total: 1,
+      // Mehrfachsignatur: der Mock bestätigt alle Signaturen des Dokuments in einem Schritt
+      confirmations_done: this.confirmations * (this.opts.signatures ?? 1),
+      confirmations_total: this.opts.signatures ?? 1,
       certificate: this.certificate,
       batch: false,
       pause: null,

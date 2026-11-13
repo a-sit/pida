@@ -83,6 +83,8 @@ pub trait SignedDoc: Send + Sync + std::fmt::Debug {
     fn write_atomically(&self, target: &OutputTarget) -> Result<OutputInfo, PadesError>;
     /// Länge.
     fn len(&self) -> u64;
+    /// Das signierte PDF als Bytes (Mehrfachsignatur: Quelle der nächsten Signatur).
+    fn bytes(&self) -> Vec<u8>;
     /// Leer (nie)?
     fn is_empty(&self) -> bool {
         self.len() == 0
@@ -159,6 +161,9 @@ impl SignedDoc for SignedPdf {
     }
     fn len(&self) -> u64 {
         SignedPdf::len(self)
+    }
+    fn bytes(&self) -> Vec<u8> {
+        SignedPdf::bytes(self)
     }
 }
 

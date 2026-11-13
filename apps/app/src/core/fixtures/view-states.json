@@ -6575,9 +6575,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -6984,9 +7020,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -7377,9 +7449,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": false,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": false,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -7786,9 +7894,46 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "index": 0,
+                "kind": "field"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": false,
           "for_revision": 3,
+          "overlaps_block": false,
           "overlaps_content": null,
           "overlaps_widget": true,
           "placeholder_uncovered": false
@@ -8193,9 +8338,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": false,
           "for_revision": 0,
+          "overlaps_block": false,
           "overlaps_content": null,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -8379,9 +8560,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -8720,9 +8937,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -9079,9 +9332,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -9438,9 +9727,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -9797,9 +10122,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -10156,9 +10517,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -10515,9 +10912,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -10874,9 +11307,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -11233,9 +11702,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -11592,9 +12097,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -11951,9 +12492,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -12310,9 +12887,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -12669,9 +13282,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "qr"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -13030,6 +13679,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": null,
             "status": {
               "state": "analyzing"
@@ -13046,6 +13696,7 @@
               "kind": "manual",
               "page": 2
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "ready"
@@ -13062,6 +13713,7 @@
               "kind": "field",
               "name": "Unterschrift"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "positioned"
@@ -13077,6 +13729,7 @@
             "position": {
               "kind": "qr"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "error-PDFPwdProtected",
@@ -13093,6 +13746,7 @@
             "position": {
               "kind": "invisible"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "codes": [
@@ -13111,6 +13765,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "queued"
@@ -13126,6 +13781,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "stage": "confirming",
@@ -13142,6 +13798,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "path": "/Users/demo/h_signed.pdf",
@@ -13158,6 +13815,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "backend-document-too-large",
@@ -13177,6 +13835,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": true,
@@ -13193,6 +13852,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": false,
@@ -13209,6 +13869,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "cancelled"
@@ -13373,6 +14034,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": null,
             "status": {
               "state": "analyzing"
@@ -13389,6 +14051,7 @@
               "kind": "manual",
               "page": 2
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "ready"
@@ -13405,6 +14068,7 @@
               "kind": "field",
               "name": "Unterschrift"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "positioned"
@@ -13420,6 +14084,7 @@
             "position": {
               "kind": "qr"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "error-PDFPwdProtected",
@@ -13436,6 +14101,7 @@
             "position": {
               "kind": "invisible"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "codes": [
@@ -13454,6 +14120,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "queued"
@@ -13469,6 +14136,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "stage": "confirming",
@@ -13485,6 +14153,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "path": "/Users/demo/h_signed.pdf",
@@ -13501,6 +14170,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "backend-document-too-large",
@@ -13520,6 +14190,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": true,
@@ -13536,6 +14207,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": false,
@@ -13552,6 +14224,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "cancelled"
@@ -13716,6 +14389,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": null,
             "status": {
               "state": "analyzing"
@@ -13732,6 +14406,7 @@
               "kind": "manual",
               "page": 2
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "ready"
@@ -13748,6 +14423,7 @@
               "kind": "field",
               "name": "Unterschrift"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "positioned"
@@ -13763,6 +14439,7 @@
             "position": {
               "kind": "qr"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "error-PDFPwdProtected",
@@ -13779,6 +14456,7 @@
             "position": {
               "kind": "invisible"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "codes": [
@@ -13797,6 +14475,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "queued"
@@ -13812,6 +14491,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "stage": "confirming",
@@ -13828,6 +14508,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "path": "/Users/demo/h_signed.pdf",
@@ -13844,6 +14525,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "backend-document-too-large",
@@ -13863,6 +14545,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": true,
@@ -13879,6 +14562,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": false,
@@ -13895,6 +14579,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "cancelled"
@@ -14309,9 +14994,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -14901,9 +15622,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -15212,6 +15969,7 @@
             "page": 1,
             "qualification": "Qes",
             "self_check": true,
+            "signatures": 1,
             "signer": "Max Mustermann",
             "signing_time": "2026-10-15T10:12:00+02:00"
           }
@@ -15259,9 +16017,45 @@
           "preview_revision": 3,
           "width": 232.5
         },
+        "blocks": {
+          "can_add": true,
+          "free_targets": 1,
+          "items": [
+            {
+              "active": false,
+              "index": 0,
+              "page": 0,
+              "rect": {
+                "bottom": 36.0,
+                "left": 36.0,
+                "right": 236.0,
+                "top": 96.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            },
+            {
+              "active": true,
+              "index": 1,
+              "page": 1,
+              "rect": {
+                "bottom": 36.0,
+                "left": 297.5,
+                "right": 559.5,
+                "top": 120.0
+              },
+              "target": {
+                "kind": "free"
+              }
+            }
+          ],
+          "limit": 10
+        },
         "check": {
           "clamped": true,
           "for_revision": 4,
+          "overlaps_block": false,
           "overlaps_content": true,
           "overlaps_widget": false,
           "placeholder_uncovered": false
@@ -15570,6 +16364,7 @@
             "page": null,
             "qualification": "AdES",
             "self_check": true,
+            "signatures": 1,
             "signer": null,
             "signing_time": "2026-10-15T10:12:00+02:00"
           }
@@ -15619,6 +16414,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": null,
             "status": {
               "state": "analyzing"
@@ -15635,6 +16431,7 @@
               "kind": "manual",
               "page": 2
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "ready"
@@ -15651,6 +16448,7 @@
               "kind": "field",
               "name": "Unterschrift"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "positioned"
@@ -15666,6 +16464,7 @@
             "position": {
               "kind": "qr"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "error-PDFPwdProtected",
@@ -15682,6 +16481,7 @@
             "position": {
               "kind": "invisible"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "codes": [
@@ -15700,6 +16500,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "queued"
@@ -15715,6 +16516,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "stage": "confirming",
@@ -15731,6 +16533,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "path": "/Users/demo/h_signed.pdf",
@@ -15747,6 +16550,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "backend-document-too-large",
@@ -15766,6 +16570,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": true,
@@ -15782,6 +16587,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": false,
@@ -15798,6 +16604,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "cancelled"
@@ -15969,6 +16776,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": null,
             "status": {
               "state": "analyzing"
@@ -15985,6 +16793,7 @@
               "kind": "manual",
               "page": 2
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "ready"
@@ -16001,6 +16810,7 @@
               "kind": "field",
               "name": "Unterschrift"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "positioned"
@@ -16016,6 +16826,7 @@
             "position": {
               "kind": "qr"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "error-PDFPwdProtected",
@@ -16032,6 +16843,7 @@
             "position": {
               "kind": "invisible"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "codes": [
@@ -16050,6 +16862,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "queued"
@@ -16065,6 +16878,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "stage": "confirming",
@@ -16081,6 +16895,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "path": "/Users/demo/h_signed.pdf",
@@ -16097,6 +16912,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "backend-document-too-large",
@@ -16116,6 +16932,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": true,
@@ -16132,6 +16949,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": false,
@@ -16148,6 +16966,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "cancelled"
@@ -16319,6 +17138,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": null,
             "status": {
               "state": "analyzing"
@@ -16335,6 +17155,7 @@
               "kind": "manual",
               "page": 2
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "ready"
@@ -16351,6 +17172,7 @@
               "kind": "field",
               "name": "Unterschrift"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "positioned"
@@ -16366,6 +17188,7 @@
             "position": {
               "kind": "qr"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "error-PDFPwdProtected",
@@ -16382,6 +17205,7 @@
             "position": {
               "kind": "invisible"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "codes": [
@@ -16400,6 +17224,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "queued"
@@ -16415,6 +17240,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "stage": "confirming",
@@ -16431,6 +17257,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "path": "/Users/demo/h_signed.pdf",
@@ -16447,6 +17274,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "backend-document-too-large",
@@ -16466,6 +17294,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": true,
@@ -16482,6 +17311,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": false,
@@ -16498,6 +17328,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "cancelled"
@@ -16669,6 +17500,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": null,
             "status": {
               "state": "analyzing"
@@ -16685,6 +17517,7 @@
               "kind": "manual",
               "page": 2
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "ready"
@@ -16701,6 +17534,7 @@
               "kind": "field",
               "name": "Unterschrift"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "positioned"
@@ -16716,6 +17550,7 @@
             "position": {
               "kind": "qr"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "error-PDFPwdProtected",
@@ -16732,6 +17567,7 @@
             "position": {
               "kind": "invisible"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "codes": [
@@ -16750,6 +17586,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "queued"
@@ -16765,6 +17602,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "stage": "confirming",
@@ -16781,6 +17619,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "path": "/Users/demo/h_signed.pdf",
@@ -16797,6 +17636,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "backend-document-too-large",
@@ -16816,6 +17656,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": true,
@@ -16832,6 +17673,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": false,
@@ -16848,6 +17690,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "cancelled"
@@ -17091,6 +17934,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": null,
             "status": {
               "state": "analyzing"
@@ -17107,6 +17951,7 @@
               "kind": "manual",
               "page": 2
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "ready"
@@ -17123,6 +17968,7 @@
               "kind": "field",
               "name": "Unterschrift"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "positioned"
@@ -17138,6 +17984,7 @@
             "position": {
               "kind": "qr"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "error-PDFPwdProtected",
@@ -17154,6 +18001,7 @@
             "position": {
               "kind": "invisible"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "codes": [
@@ -17172,6 +18020,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "queued"
@@ -17187,6 +18036,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "stage": "confirming",
@@ -17203,6 +18053,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "path": "/Users/demo/h_signed.pdf",
@@ -17219,6 +18070,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "backend-document-too-large",
@@ -17238,6 +18090,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": true,
@@ -17254,6 +18107,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": false,
@@ -17270,6 +18124,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "cancelled"
@@ -17441,6 +18296,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": null,
             "status": {
               "state": "analyzing"
@@ -17457,6 +18313,7 @@
               "kind": "manual",
               "page": 2
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "ready"
@@ -17473,6 +18330,7 @@
               "kind": "field",
               "name": "Unterschrift"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "positioned"
@@ -17488,6 +18346,7 @@
             "position": {
               "kind": "qr"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "error-PDFPwdProtected",
@@ -17504,6 +18363,7 @@
             "position": {
               "kind": "invisible"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "codes": [
@@ -17522,6 +18382,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "queued"
@@ -17537,6 +18398,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "stage": "confirming",
@@ -17553,6 +18415,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "path": "/Users/demo/h_signed.pdf",
@@ -17569,6 +18432,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "code": "backend-document-too-large",
@@ -17588,6 +18452,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": true,
@@ -17604,6 +18469,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "existing": false,
@@ -17620,6 +18486,7 @@
             "position": {
               "kind": "auto"
             },
+            "signatures": 1,
             "size_bytes": 120000,
             "status": {
               "state": "cancelled"

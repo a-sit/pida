@@ -140,9 +140,28 @@ pub struct BatchItem {
     /// „unsichtbar“); `false` = Plan der Nutzerin (im Arbeitsbereich platziert), der bleibt (K3)
     #[serde(default = "yes")]
     pub auto_plan: bool,
+    /// Mehrfachsignatur: Positionen der weiteren Signaturblöcke in ihrer Reihenfolge, ohne den Block von `plan`
+    /// (leer = ein Block); nur mit einem Plan der Nutzerin
+    #[serde(default)]
+    pub more: Vec<PositionChoice>,
+    /// Mehrfachsignatur: Stelle des Blocks von `plan` in der Reihenfolge aller Blöcke
+    #[serde(default)]
+    pub active: usize,
 }
 
 impl BatchItem {
+    /// Anzahl der Signaturen, die das Dokument im Lauf erhält (von Hand platzierte Blöcke; automatisch eine).
+    pub fn signatures(&self) -> usize {
+        if self.auto_plan || matches!(self.plan, Some(PositionChoice::Invisible)) { 1 } else { 1 + self.more.len() }
+    }
+
+    /// Positionen aller Blöcke in ihrer Reihenfolge; `first` ist die Position des Blocks von `plan`.
+    pub fn positions(&self, first: PositionChoice) -> Vec<PositionChoice> {
+        let mut all = self.more.clone();
+        all.insert(self.active.min(all.len()), first);
+        all
+    }
+
     /// Neuer Eintrag, Voranalyse ausstehend.
     pub fn analyzing(doc: DocId) -> BatchItem {
         BatchItem {
@@ -152,6 +171,8 @@ impl BatchItem {
             status: BatchItemStatus::Analyzing,
             reviewed: false,
             auto_plan: true,
+            more: Vec::new(),
+            active: 0,
         }
     }
 
@@ -367,6 +388,12 @@ pub struct BatchRun {
     /// „Dokument überspringen“ angefordert: wartet auf das Ende des laufenden Schritts (die Sitzung kommt
     /// mit dem abgebrochenen Auftrag zurück in den Kern)
     pub skipping: bool,
+    /// Mehrfachsignatur: Positionen aller Blöcke des aktuellen Dokuments (leer = eine Signatur)
+    #[serde(default)]
+    pub positions: Vec<PositionChoice>,
+    /// Mehrfachsignatur: laufende Runde (0-basiert); `position` ist die Position dieser Runde
+    #[serde(default)]
+    pub round: usize,
 }
 
 impl BatchRun {

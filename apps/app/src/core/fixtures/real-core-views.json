@@ -41,9 +41,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": true,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -327,9 +349,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": false,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -548,6 +592,7 @@
           "page": 0,
           "qualification": "Qes",
           "self_check": true,
+          "signatures": 1,
           "signer": "PIDA Test QES P-256 (NUR TEST)",
           "signing_time": "2026-10-15T10:42:17+02:00"
         }
@@ -598,9 +643,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": true,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -878,9 +945,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": false,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -1165,9 +1254,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": false,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -1424,9 +1535,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": false,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -1710,9 +1843,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": false,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -2008,9 +2163,32 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": true,
+        "free_targets": 2,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 704.0560302734375,
+              "left": 35.654998779296875,
+              "right": 183.23899841308594,
+              "top": 756.6729125976562
+            },
+            "target": {
+              "index": 0,
+              "kind": "field"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 1,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -2563,9 +2741,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": true,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 659.0,
+              "left": 182.5,
+              "right": 412.5,
+              "top": 741.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -2870,9 +3070,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": true,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -3168,9 +3390,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": true,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 675.0,
+              "left": 72.0,
+              "right": 297.0,
+              "top": 720.0
+            },
+            "target": {
+              "kind": "qr"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 1,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -3469,9 +3713,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": false,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -3733,6 +3999,7 @@
           "page": 0,
           "qualification": "AdES",
           "self_check": true,
+          "signatures": 1,
           "signer": "PDF-Over NG Test RSA (NUR TEST)",
           "signing_time": "2026-10-15T10:42:17+02:00"
         }
@@ -3783,9 +4050,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": true,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -4106,9 +4395,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": false,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -4423,9 +4734,31 @@
         "preview_revision": 1,
         "width": 229.99998474121094
       },
+      "blocks": {
+        "can_add": true,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 622.0,
+              "left": 191.0,
+              "right": 421.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 2,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false
@@ -4801,9 +5134,31 @@
         "preview_revision": 2,
         "width": 512.0000610351562
       },
+      "blocks": {
+        "can_add": true,
+        "free_targets": 0,
+        "items": [
+          {
+            "active": true,
+            "index": 0,
+            "page": 0,
+            "rect": {
+              "bottom": 584.0,
+              "left": 99.99993896484375,
+              "right": 612.0,
+              "top": 704.0
+            },
+            "target": {
+              "kind": "free"
+            }
+          }
+        ],
+        "limit": 10
+      },
       "check": {
         "clamped": false,
         "for_revision": 3,
+        "overlaps_block": false,
         "overlaps_content": false,
         "overlaps_widget": false,
         "placeholder_uncovered": false

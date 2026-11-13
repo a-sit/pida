@@ -81,6 +81,12 @@ import {
   startEdit,
   toggleNewPage,
   useTarget,
+  addBlock,
+  selectBlock,
+  removeBlock,
+  fillTargets,
+  targetTaken,
+  blockCount,
   contractSpec,
   blankSpec,
   fieldSpec,
@@ -634,6 +640,7 @@ function startSigning(s: FlowState, ctx: MockCtx, backend: BackendId): void {
       doc: { id: d.id, name: d.name },
       flow: s.opts.signingFlow ?? 'app',
       visible: !edit.invisible,
+      signatures: blockCount(edit),
       fido2Available: s.opts.fido2Available ?? true,
       fido2Default: settings.id_austria.fido2_default,
       mobile: ctx.platform().mobile,
@@ -1221,6 +1228,10 @@ const flowArea: MockArea<FlowState> = {
       case 'change_page':
       case 'auto_place':
       case 'use_target':
+      case 'add_block':
+      case 'select_block':
+      case 'remove_block':
+      case 'fill_targets':
         if (s.edit?.lock === 'locked') return true;
         break;
       case 'unlock_placement':
@@ -1241,7 +1252,26 @@ const flowArea: MockArea<FlowState> = {
         editEvent(s, ctx, (doc, ed) => changePage(doc, ed, e.page));
         return true;
       case 'toggle_new_page':
-        editEvent(s, ctx, (doc, ed) => toggleNewPage(doc, ed), 'placement.notice.new_page_not_allowed');
+        editEvent(s, ctx, (doc, ed) => toggleNewPage(doc, ed), (s.edit?.others?.length ?? 0) > 0 ? 'ng-blocks-new-page' : 'placement.notice.new_page_not_allowed');
+        return true;
+      // Mehrfachsignatur: je Block eine eigene Signatur (Kern: `BlockAdded`, `BlockSelected`, `BlockRemoved`, `TargetsFilled`)
+      case 'add_block': {
+        const d0 = current(s);
+        const refused = d0 && s.edit && s.stage === 'editing' ? addBlock(d0, s.edit, e.page ?? null, blockSize(settings, lang)) : null;
+        if (typeof refused === 'string') ctx.notify(refused);
+        else if (refused) s.edit = refused;
+        return true;
+      }
+      case 'select_block':
+        editEvent(s, ctx, (doc, ed) => selectBlock(doc, ed, e.index));
+        return true;
+      case 'remove_block':
+        editEvent(s, ctx, (doc, ed) => removeBlock(doc, ed, e.index));
+        return true;
+      case 'fill_targets':
+        editEvent(s, ctx, (doc, ed) =>
+          fillTargets(doc, ed, blockSize(settings, lang), (settings.placeholder.search && settings.placeholder.kind === 'marker') || (ed.target.kind === 'qr' && !ed.automatic)),
+        );
         return true;
       case 'auto_place':
         editEvent(s, ctx, (doc, ed) => {
@@ -1256,7 +1286,7 @@ const flowArea: MockArea<FlowState> = {
         editEvent(s, ctx, (_doc, ed) => (ed.invisibleProfile && !e.invisible ? null : { ...ed, invisible: e.invisible, revision: ed.revision + 1 }), 'ng-constraint-invisible-profile');
         return true;
       case 'use_target':
-        editEvent(s, ctx, (doc, ed) => useTarget(doc, ed, e.target, blockSize(settings, lang)), 'ng-document-rejected');
+        editEvent(s, ctx, (doc, ed) => useTarget(doc, ed, e.target, blockSize(settings, lang)), s.edit && targetTaken(s.edit, e.target) ? 'ng-block-target-taken' : 'ng-document-rejected');
         return true;
       case 'inspect_pages': {
         if (!s.edit || !d) return true;

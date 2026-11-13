@@ -619,6 +619,10 @@ ng-document-too-large = The document is larger than 20 MB and cannot be accepted
 ng-pdf-no-sign-rights = The document permissions do not allow signing.
 ng-field-already-signed = The signature field is already signed.
 ng-field-locked = The signature field is locked.
+# Several signature blocks in one document, one signature per block
+ng-blocks-limit = More than 10 signature blocks per document are not possible.
+ng-block-target-taken = Another signature block is already placed here.
+ng-blocks-new-page = “On a new page” is only possible with a single signature block.
 ng-certificate-not-valid = The certificate is not valid at the time of signing.
 ng-clock-skew = This device's clock differs from the signing service by about { $minutes } minutes.
 ng-atrust-login-rejected = The login was rejected. Please enter the password again.

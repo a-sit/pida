@@ -237,6 +237,9 @@ impl SignedDoc for FakeSigned {
     fn len(&self) -> u64 {
         self.bytes.len() as u64
     }
+    fn bytes(&self) -> Vec<u8> {
+        self.bytes.clone()
+    }
 }
 
 /// Prüft eine von der Fake-Engine geschriebene Datei: CMS über den Originalinhalt.

@@ -1078,3 +1078,192 @@
     margin-bottom: var(--sp-2);
   }
 }
+
+/* Mehrfachsignatur: nicht ausgewählte Signaturblöcke (wählbar), Nummern, „×“ am ausgewählten Block */
+.sticker-other {
+  position: absolute;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  background: #ffffff;
+  outline: 1.5px dashed var(--c-border-strong, #9aa1ac);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.04);
+  transition: outline-color var(--dur-1) var(--ease-out);
+}
+/* deckend (ein QR-Platzhalter bzw. Feld schiene sonst durch), das Bild zurückgenommen */
+.sticker-other .sticker-img {
+  opacity: 0.6;
+  transition: opacity var(--dur-1) var(--ease-out);
+}
+.sticker-other[data-hovered] .sticker-img,
+.sticker-other[data-focus-visible] .sticker-img {
+  opacity: 1;
+}
+.sticker-other[data-hovered],
+.sticker-other[data-focus-visible] {
+  outline-color: #c8102e;
+}
+.sticker-other[data-focus-visible] {
+  outline-style: solid;
+  outline-width: 2px;
+}
+.sticker-other[data-disabled] {
+  cursor: default;
+}
+.sticker-number {
+  position: absolute;
+  top: -11px;
+  left: -11px;
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border: 2px solid var(--c-surface, #ffffff);
+  border-radius: var(--r-pill);
+  background: #4a505a;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.sticker-number.is-active {
+  background: #b0102a;
+}
+.sticker-remove {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
+  padding: 0;
+  border: 2px solid var(--c-surface, #ffffff);
+  border-radius: var(--r-pill);
+  background: #4a505a;
+  color: #ffffff;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: var(--shadow-1);
+}
+.sticker-remove[data-hovered],
+.sticker-remove[data-focus-visible] {
+  background: #b0102a;
+}
+.sticker-remove[data-focus-visible] {
+  outline: 2px solid var(--c-focus, #1a6fd6);
+  outline-offset: 2px;
+}
+/* Finger: größere Trefffläche ohne größeren Knopf */
+@media (pointer: coarse) {
+  .sticker-remove::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
+  }
+}
+.thumb-sticker.is-other {
+  background: rgb(90 97 108 / 0.2);
+  outline-color: #5b616c;
+}
+.blocks-list {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.blocks-item {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-4);
+  overflow: hidden;
+}
+.blocks-item.is-active {
+  border-color: #c8102e;
+  box-shadow: 0 0 0 1px #c8102e;
+}
+.blocks-select {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 40px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--fs-13, 13px);
+  text-align: left;
+  cursor: pointer;
+}
+.blocks-select[data-hovered],
+.blocks-remove[data-hovered] {
+  background: var(--c-hover);
+}
+.blocks-select[data-focus-visible],
+.blocks-remove[data-focus-visible] {
+  outline: 2px solid var(--c-focus, #1a6fd6);
+  outline-offset: -2px;
+}
+.blocks-select[data-disabled],
+.blocks-remove[data-disabled] {
+  cursor: default;
+  opacity: 0.6;
+}
+.blocks-number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: #4a505a;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.blocks-item.is-active .blocks-number {
+  background: #b0102a;
+}
+.blocks-where {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.blocks-remove {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  border: 0;
+  border-left: 1px solid var(--c-border);
+  background: transparent;
+  color: var(--c-text-3);
+  cursor: pointer;
+}
+.blocks-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.inspector-count {
+  flex: none;
+  margin: 0 var(--sp-5) var(--sp-2);
+  font-size: var(--fs-12);
+  color: var(--c-text-2);
+}

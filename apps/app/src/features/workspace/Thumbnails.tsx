@@ -12,7 +12,7 @@ import { useApp } from '../../app/context';
 import { tileScale } from '../../core/bridge';
 import { isMobile, type DocumentView } from '../../core/types';
 import { IconPlus, IconSignature } from '../../ui/Icons';
-import { rectToBox } from './placement';
+import { blockItems, rectToBox } from './placement';
 
 const THUMB_W = 104;
 
@@ -59,14 +59,17 @@ export function Thumbnails({
   useEffect(() => setRoot(ref.current), []);
   const near = useNearThumbs(root, sizes.length);
   const stickerPage = doc.invisible ? -1 : doc.placement.page_index;
+  // Mehrfachsignatur: auch die nicht ausgewählten Blöcke in den Miniaturen zeigen
+  const others = blockItems(doc).filter((b) => !b.active && b.rect);
   return (
     <nav className="thumbs" aria-label={t.t('ng-ui-ws-pages')} ref={ref}>
       <ol className="thumbs-list">
         {sizes.map(([w, h], i) => {
           const scale = THUMB_W / w;
-          const hasSticker = stickerPage === i && doc.sticker !== null;
+          const pageOthers = others.filter((b) => b.page === i);
+          const hasSticker = (stickerPage === i && doc.sticker !== null) || pageOthers.length > 0;
           const isNew = i >= doc.doc.page_count;
-          const box = hasSticker && doc.sticker ? rectToBox(doc.sticker, h, scale) : null;
+          const box = stickerPage === i && doc.sticker ? rectToBox(doc.sticker, h, scale) : null;
           return (
             <li key={i} data-thumb={i}>
               <Button
@@ -77,6 +80,10 @@ export function Thumbnails({
               >
                 <span className="thumb-page" style={{ width: THUMB_W, height: h * scale }}>
                   {isNew ? <span className="thumb-new" /> : near.has(i) ? <img className="thumb-img" src={bridge.pageTileUrl(doc.doc.id, i, tileScale(scale * 2))} alt="" draggable={false} /> : null}
+                  {pageOthers.map((b) => {
+                    const ob = b.rect ? rectToBox(b.rect, h, scale) : null;
+                    return ob ? <span key={b.index} className="thumb-sticker is-other" style={{ left: ob.left, top: ob.top, width: ob.width, height: ob.height }} aria-hidden="true" /> : null;
+                  })}
                   {box ? <span className="thumb-sticker" style={{ left: box.left, top: box.top, width: box.width, height: box.height }} aria-hidden="true" /> : null}
                 </span>
                 <span className="thumb-label" aria-hidden="true">

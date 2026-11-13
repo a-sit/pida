@@ -259,7 +259,7 @@ export function documentView(extra: Partial<DocumentView> = {}): DocumentView {
         ],
       },
     ],
-    check: { for_revision: 1, overlaps_content: false, overlaps_widget: false, clamped: false, placeholder_uncovered: false },
+    check: { for_revision: 1, overlaps_content: false, overlaps_widget: false, clamped: false, placeholder_uncovered: false, overlaps_block: false },
     announce: { page: '3', pages: '3', left: '64', top: '106', bottom: '77' },
     placement_locked: false,
     ...extra,

@@ -158,6 +158,38 @@ pub enum PlacementLock {
     Released,
 }
 
+/// Höchstzahl der Signaturblöcke je Dokument (Mehrfachsignatur: je Block eine eigene Signatur, Entscheidung
+/// vom 13.11.2026).
+pub const MAX_BLOCKS: usize = 10;
+
+/// Ein weiterer, gerade nicht ausgewählter Signaturblock desselben Dokuments (Mehrfachsignatur). Der
+/// ausgewählte Block liegt wie bisher in `State::Positioning` (`page`, `placement`) und in
+/// [`WorkspaceEdit::target`]/[`WorkspaceEdit::origin`]; beim Auswählen eines anderen Blocks tauschen beide die
+/// Plätze, damit alle Werkzeuge (Ziehen, Tastatur, Zielwahl, automatische Platzierung) unverändert auf den
+/// ausgewählten Block wirken. Weitere Blöcke liegen nie auf der virtuellen neuen Seite.
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct BlockSlot {
+    /// Ziel
+    pub target: Target,
+    /// Herkunft der Lage
+    pub origin: PlacementOrigin,
+    /// Seite des Blocks
+    pub page: usize,
+    /// freie Lage (`None` = keine Vorschau)
+    pub placement: Option<Placement>,
+}
+
+/// Laufende Mehrfachsignatur: alle Positionen in der Reihenfolge der Blöcke und die gerade bearbeitete.
+/// Jede Runde signiert das Ergebnis der vorigen (`Effect::NextSignature`); bricht eine Runde ab, wird alles
+/// verworfen und „Erneut versuchen“ beginnt wieder bei der ersten.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct Rounds {
+    /// Positionen aller Blöcke (mindestens zwei)
+    pub positions: Vec<PositionChoice>,
+    /// laufende Runde (0-basiert)
+    pub index: usize,
+}
+
 /// Bearbeitungszustand des Dokuments im Arbeitsbereich-Modus (ADR 0004 §3.3, nur mit
 /// [`Context::workspace`]). Wandert durch `Signing`, `ChoosingBackend` (Rückfall/Startargument-
 /// Automatik), `Error` und `Output` mit.
@@ -202,9 +234,34 @@ pub struct WorkspaceEdit {
     /// ([`WorkspaceEdit::follow_auto_position`], ADR 0004 Nachtrag 8)
     #[serde(default)]
     pub lock: PlacementLock,
+    /// weitere Signaturblöcke in Reihenfolge, ohne den ausgewählten (Mehrfachsignatur; leer = ein Block wie
+    /// bisher)
+    #[serde(default)]
+    pub others: Vec<BlockSlot>,
+    /// Stelle des ausgewählten Blocks in der Reihenfolge aller Blöcke (`0..=others.len()`)
+    #[serde(default)]
+    pub active: usize,
+    /// laufende Mehrfachsignatur (nur in `Signing`, `Error` und `Output`)
+    #[serde(default)]
+    pub rounds: Option<Rounds>,
 }
 
 impl WorkspaceEdit {
+    /// Anzahl der Signaturblöcke (unsichtbar: genau eine Signatur, weitere Blöcke ruhen).
+    pub fn block_count(&self) -> usize {
+        if self.invisible { 1 } else { 1 + self.others.len() }
+    }
+
+    /// Ziel schon von einem anderen (nicht ausgewählten) Block belegt?
+    pub fn target_taken(&self, target: Target) -> bool {
+        target != Target::Free && self.others.iter().any(|b| b.target == target)
+    }
+
+    /// Stelle des ausgewählten Blocks, auf die vorhandenen Blöcke begrenzt.
+    pub fn active_index(&self) -> usize {
+        self.active.min(self.others.len())
+    }
+
     /// Start nach der Analyse: frei mit automatischer Platzierung bzw. im QR-Platzhalter (Lage aus der
     /// Automatik). `invisible` = unsichtbares Profil ([`Context::invisible`]).
     pub fn new(fields: Vec<EmptyFieldCandidate>, qr: Option<QrPlaceholder>, invisible: bool) -> WorkspaceEdit {
@@ -223,6 +280,9 @@ impl WorkspaceEdit {
             automatic: true,
             invisible_by_profile: invisible,
             lock: PlacementLock::Off,
+            others: Vec::new(),
+            active: 0,
+            rounds: None,
         }
     }
 
@@ -771,6 +831,12 @@ pub const MSG_CONSTRAINT_CERTIFIED: &str = "ng-constraint-certified";
 pub const MSG_CONSTRAINT_INVISIBLE_PROFILE: &str = "ng-constraint-invisible-profile";
 /// Meldungs-ID: gewähltes Signaturfeld gibt es nicht bzw. ist gesperrt (ADR 0004 §3.3 `TargetChosen`).
 pub const MSG_FIELD_LOCKED: &str = "ng-field-locked";
+/// Meldungs-ID: Höchstzahl der Signaturblöcke erreicht ([`MAX_BLOCKS`]).
+pub const MSG_BLOCKS_LIMIT: &str = "ng-blocks-limit";
+/// Meldungs-ID: Ziel (Signaturfeld bzw. QR-Platzhalter) ist schon von einem anderen Block belegt.
+pub const MSG_BLOCK_TARGET_TAKEN: &str = "ng-block-target-taken";
+/// Meldungs-ID: „Auf neuer Seite“ gibt es nur mit einem einzigen Signaturblock.
+pub const MSG_BLOCKS_NEW_PAGE: &str = "ng-blocks-new-page";
 
 /// Meldungs-ID: Das Signiermittel des fortgesetzten Vorgangs ist nicht mehr verfügbar; die Auswahl
 /// wird gezeigt und das Dokument neu vorbereitet.
@@ -1340,6 +1406,16 @@ pub enum Event {
         /// aktuelle Optionen (Fähigkeiten, Verfügbarkeit)
         options: Vec<BackendOption>,
     },
+    /// „Weiteren Block hinzufügen“ (Mehrfachsignatur): neuer, frei platzierter Block an der von core-api
+    /// gewählten Stelle; er wird der ausgewählte Block
+    BlockAdded(Placement),
+    /// Block auswählen (Stelle in der Reihenfolge aller Blöcke)
+    BlockSelected(usize),
+    /// Block entfernen (Stelle in der Reihenfolge aller Blöcke); der letzte Block bleibt
+    BlockRemoved(usize),
+    /// „Alle Platzhalter belegen“: je noch freiem Ziel (von core-api nach Eignung gewählt) ein Block; ein frei
+    /// platzierter ausgewählter Block wandert in das erste Ziel
+    TargetsFilled(Vec<Target>),
     /// `BackendError::Cancelled`, das core-api **nicht** selbst ausgelöst hat (SL 6000/6001, „Abbrechen“
     /// in einer A-Trust-Meldung; ADR 0004 §3.6)
     SigningDeclined,
@@ -1466,6 +1542,9 @@ pub enum Effect {
         /// `Capabilities::cms_reserve`); gesetzt nach [`Event::CmsTooLarge`]
         min_reserve: Option<usize>,
     },
+    /// Mehrfachsignatur: das eben signierte Ergebnis ist die Quelle der nächsten Runde (vor
+    /// [`Effect::Prepare`]); [`Effect::OpenSession`] beginnt wieder beim Original
+    NextSignature,
     /// Backend `sign`
     Sign,
     /// `finish_*` + Selbstprüfung

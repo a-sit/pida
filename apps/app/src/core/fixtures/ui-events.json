@@ -340,6 +340,21 @@
     "replace_manual": false
   },
   {
+    "type": "add_block",
+    "page": 1
+  },
+  {
+    "type": "select_block",
+    "index": 0
+  },
+  {
+    "type": "remove_block",
+    "index": 1
+  },
+  {
+    "type": "fill_targets"
+  },
+  {
     "type": "check_for_updates",
     "explicit": true
   },

@@ -21,17 +21,17 @@ use pida_placement::{
     page_layout, user_rect_to_visible, widget_overlaps,
 };
 use pida_workflow::{
-    BackendOption, DocFacts, DocId, PlacementOrigin, PositionChoice, SignFlow, SigningPhase, State, Target,
-    WorkspaceEdit,
+    BackendOption, BlockSlot, DocFacts, DocId, MAX_BLOCKS, PlacementOrigin, PositionChoice, SignFlow, SigningPhase,
+    State, Target, WorkspaceEdit,
 };
 
 use crate::docs::DocData;
 use crate::view::{
-    BatchFlowView, BlockView, CertificateSource, ConfirmMethod, DocConstraintsView, DocRefView, DocumentDetectionView,
-    DocumentPhase, DocumentView, ErrorContextView, ErrorOrigin, ExistingSignatureView, FieldTargetView, GuideAxis,
-    GuideKind, GuideView, InteractionView, PageLayoutView, PdfaDecision, PdfaIdView, PlacementCheckView,
-    PlacementTarget, PriorStatusView, QrTargetView, RectPt, SignedSummaryView, SignerView, SignersView,
-    SigningProgressView, SigningStage,
+    BatchFlowView, BlockSlotView, BlockView, BlocksView, CertificateSource, ConfirmMethod, DocConstraintsView,
+    DocRefView, DocumentDetectionView, DocumentPhase, DocumentView, ErrorContextView, ErrorOrigin,
+    ExistingSignatureView, FieldTargetView, GuideAxis, GuideKind, GuideView, InteractionView, PageLayoutView,
+    PdfaDecision, PdfaIdView, PlacementCheckView, PlacementTarget, PriorStatusView, QrTargetView, RectPt,
+    SignedSummaryView, SignerView, SignersView, SigningProgressView, SigningStage,
 };
 
 /// Höchstzahl gecachter Belegungsraster je Dokument (LRU).
@@ -429,7 +429,36 @@ fn qr_width(q: &pida_placement::QrPlaceholder) -> Option<f32> {
 /// in natürlicher Größe und mittig (`field_fit`, so schreibt ihn der Kern – KR-P10), im QR-Platzhalter das
 /// Rechteck des QR-Bildes.
 fn target_rect(data: &DocData, edit: &WorkspaceEdit, block: BlockGeometry) -> Option<(usize, Rect)> {
-    match edit.target {
+    rect_at(data, edit, edit.target, block)
+}
+
+/// Ziel als `PlacementTarget` der Oberfläche.
+fn target_view(target: Target) -> PlacementTarget {
+    match target {
+        Target::Free => PlacementTarget::Free,
+        Target::Field(i) => PlacementTarget::Field { index: u32::try_from(i).unwrap_or(u32::MAX) },
+        Target::Qr => PlacementTarget::Qr,
+    }
+}
+
+/// Seite und Rechteck eines ruhenden Blocks (Mehrfachsignatur): frei aus seiner gemerkten Lage, sonst am Ziel.
+fn slot_rect(data: Option<&DocData>, edit: &WorkspaceEdit, slot: &BlockSlot, pages: usize) -> Option<(usize, Rect)> {
+    let p = slot.placement?;
+    match slot.target {
+        Target::Free => Some((p.page_index.min(pages.saturating_sub(1)), block_rect(&p, p.width, p.height))),
+        target => rect_at(data?, edit, target, BlockGeometry { width: p.width, height: p.height }),
+    }
+}
+
+/// Überschneiden sich zwei Rechtecke (mit echter Fläche)?
+pub(crate) fn rects_intersect(a: Rect, b: Rect) -> bool {
+    let (a, b) = (a.normalized(), b.normalized());
+    a.llx < b.urx && b.llx < a.urx && a.lly < b.ury && b.lly < a.ury
+}
+
+/// Wie [`target_rect`] für ein beliebiges Ziel des Dokuments.
+fn rect_at(data: &DocData, edit: &WorkspaceEdit, target: Target, block: BlockGeometry) -> Option<(usize, Rect)> {
+    match target {
         Target::Field(i) => {
             let f = edit.fields.get(i)?;
             let page = f.page_index.unwrap_or(0);
@@ -559,7 +588,7 @@ impl crate::runtime::CoreTask {
         };
         let sticker_page = sticker_rect.map(|_| placement.page_index);
         let doc_info = self.doc_info(s.doc.id);
-        let fields = edit
+        let fields: Vec<FieldTargetView> = edit
             .fields
             .iter()
             .enumerate()
@@ -621,7 +650,61 @@ impl crate::runtime::CoreTask {
                 Some(layout_view(&self.ws.layouts.layout(s.doc.id, page, &grid, block_geom)))
             })
             .collect();
-        let check = self.placement_check(data.as_deref(), &s, &placement, sticker_rect, block_geom);
+        let mut check = self.placement_check(data.as_deref(), &s, &placement, sticker_rect, block_geom);
+        // Mehrfachsignatur: alle Blöcke in ihrer Reihenfolge (unsichtbar: nur der ausgewählte)
+        let others: Vec<Option<(usize, Rect)>> = if edit.invisible {
+            Vec::new()
+        } else {
+            edit.others.iter().map(|b| slot_rect(data.as_deref(), edit, b, n)).collect()
+        };
+        if let Some(mine) = sticker_rect {
+            check.overlaps_block =
+                others.iter().flatten().any(|(page, r)| *page == placement.page_index && rects_intersect(mine, *r));
+        }
+        let blocks = {
+            let at = if edit.invisible { 0 } else { edit.active_index() };
+            let active = BlockSlotView {
+                index: 0,
+                active: true,
+                page: placement.page_index,
+                rect: sticker_rect.map(rect_pt),
+                target: target_view(edit.target),
+            };
+            let mut items = Vec::with_capacity(others.len() + 1);
+            for (k, rect) in others.iter().enumerate() {
+                if k == at {
+                    items.push(active.clone());
+                }
+                let slot = &edit.others[k];
+                items.push(BlockSlotView {
+                    index: 0,
+                    active: false,
+                    page: rect.map_or(slot.page, |(page, _)| page),
+                    rect: rect.map(|(_, r)| rect_pt(r)),
+                    target: target_view(slot.target),
+                });
+            }
+            if at >= others.len() {
+                items.push(active);
+            }
+            for (i, item) in items.iter_mut().enumerate() {
+                item.index = u32::try_from(i).unwrap_or(u32::MAX);
+            }
+            let used = |t: Target| edit.target == t || edit.target_taken(t);
+            let free_fields = fields
+                .iter()
+                .filter(|f: &&FieldTargetView| f.suitable && !used(Target::Field(f.index as usize)))
+                .count();
+            let free_qr = usize::from(qr.is_some() && !used(Target::Qr));
+            let editing = s.phase == DocumentPhase::Editing;
+            let open = editing && !edit.invisible && !edit.placement_locked() && s.placement.is_some();
+            BlocksView {
+                limit: u32::try_from(MAX_BLOCKS).unwrap_or(u32::MAX),
+                can_add: open && !s.new_page && items.len() < MAX_BLOCKS && s.doc.new_visible_field_allowed,
+                free_targets: if open { u32::try_from(free_fields + free_qr).unwrap_or(u32::MAX) } else { 0 },
+                items,
+            }
+        };
         let mut announce = std::collections::BTreeMap::new();
         let mm = |pt: f32| format!("{:.0}", pt * 25.4 / 72.0);
         announce.insert("page".into(), (placement.page_index + 1).to_string());
@@ -655,11 +738,7 @@ impl crate::runtime::CoreTask {
             },
             placement,
             origin: edit.origin,
-            target: match edit.target {
-                Target::Free => PlacementTarget::Free,
-                Target::Field(i) => PlacementTarget::Field { index: u32::try_from(i).unwrap_or(u32::MAX) },
-                Target::Qr => PlacementTarget::Qr,
-            },
+            target: target_view(edit.target),
             invisible: edit.invisible,
             new_page: s.new_page,
             sticker: sticker_rect.map(rect_pt),
@@ -673,6 +752,7 @@ impl crate::runtime::CoreTask {
             detection: Some(self.detection(data.as_deref(), edit)),
             placement_locked: edit.placement_locked(),
             new_page_size: data.as_deref().and_then(|d| page_info(d, n)).map(|p| p.visible_size()),
+            blocks: Some(blocks),
         })
     }
 
@@ -784,6 +864,7 @@ impl crate::runtime::CoreTask {
             overlaps_widget: false,
             clamped: self.ws.clamped && s.edit.origin == PlacementOrigin::User,
             placeholder_uncovered: false,
+            overlaps_block: false,
         };
         let (Some(data), Some(rect)) = (data, sticker) else {
             // unsichtbar: nichts kann überdecken
@@ -1014,7 +1095,19 @@ impl crate::runtime::CoreTask {
             .filter(|d| d.id == doc.id)
             .map(|d| d.display_name.clone())
             .unwrap_or_default();
-        let done = u32::from(matches!(phase, Some(SigningPhase::Finishing | SigningPhase::Writing)));
+        // Mehrfachsignatur: je Block eine Bestätigung („Bestätigen k/n“)
+        let rounds = match &self.state {
+            State::Signing { edit: Some(e), doc: d, .. } | State::Output { edit: Some(e), doc: d, .. }
+                if d.id == doc.id =>
+            {
+                e.rounds.as_ref().map(|r| (r.index, r.positions.len()))
+            }
+            _ => None,
+        };
+        let (round, total) = rounds.unwrap_or((0, 1));
+        let finished = matches!(phase, Some(SigningPhase::Finishing | SigningPhase::Writing));
+        let done = u32::try_from(round).unwrap_or(u32::MAX).saturating_add(u32::from(finished));
+        let confirmations_total = u32::try_from(total).unwrap_or(u32::MAX);
         SigningProgressView {
             backend: Some(backend),
             stage,
@@ -1024,7 +1117,7 @@ impl crate::runtime::CoreTask {
             total: 1,
             login_done: self.ws.login_done,
             confirmations_done: done,
-            confirmations_total: 1,
+            confirmations_total,
             certificate,
             batch: false,
             pause: None,
@@ -1087,7 +1180,13 @@ impl crate::runtime::CoreTask {
             }
             q => q,
         };
+        // Mehrfachsignatur: je Block eine Signatur
+        let signatures = match &self.state {
+            State::Output { edit: Some(e), .. } => e.rounds.as_ref().map_or(1, |r| r.positions.len().max(1)),
+            _ => 1,
+        };
         Some(SignedSummaryView {
+            signatures: Some(u32::try_from(signatures).unwrap_or(u32::MAX)),
             file_name,
             folder_display,
             signer: info.signer,

@@ -31,6 +31,12 @@ freie Software unter der EUPL-1.2 und ein Open-Source-Projekt von A-SIT, kein of
   Fläche. Verschieben mit Maus, Finger oder Pfeiltasten, oder per Doppelklick bzw. Doppeltippen direkt an eine Stelle
   setzen; der Block rastet an Rändern, unter dem Text und in leere Signaturfelder ein. Signatur auch auf einer neuen Seite oder unsichtbar (ohne Signaturbild).
 - **Signaturfelder und QR-Platzhalter** im Dokument werden erkannt und als Ziel angeboten.
+- **Mehrere Signaturblöcke:** Für Dokumente mit mehreren Unterschriftsstellen fügt „Weiteren Block hinzufügen“
+  (unter „Signaturblöcke“) einen weiteren Block ein, höchstens zehn je Dokument. Die Blöcke sind nummeriert; ein Klick
+  wählt einen Block aus, verschoben und platziert wird immer der ausgewählte. „Alle Platzhalter belegen“ setzt in
+  jedes leere Signaturfeld einen Block. Jeder Block erhält eine eigene Signatur, in der Reihenfolge der Nummern –
+  der Knopf heißt dann zum Beispiel „3-mal signieren“. Mit ID Austria kann für jede Signatur eine eigene Bestätigung
+  nötig sein. Bricht der Vorgang ab, wird nichts gespeichert. „Auf neuer Seite“ gibt es nur mit einem einzigen Block.
 - **Demo:** „Demo starten“ öffnet ein mitgeliefertes Demodokument mit QR-Platzhalter – zum gefahrlosen Ausprobieren.
   Kürzel ⌘D bzw. Strg+D, im Browser ⌥⇧D bzw. Alt+Umschalt+D; auch in der Befehlspalette und auf Mobilgeräten über
   „Mit Demodokument ausprobieren“ auf der Startseite. Signiert wird echt, das Dokument hat aber keinen rechtlich

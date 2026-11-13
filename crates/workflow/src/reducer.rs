@@ -28,12 +28,13 @@ use pida_placement::{EmptyFieldCandidate, Placement};
 use crate::output::{ExitCode, OutputDecision, save_dialog};
 use crate::queue::{DocResult, Queue};
 use crate::state::{
-    BackendOption, Context, DocFacts, Effect, Event, MSG_BACKEND_CHOICE_REQUIRED, MSG_CONSTRAINT_CERTIFIED,
+    BackendOption, BlockSlot, Context, DocFacts, Effect, Event, MAX_BLOCKS, MSG_BACKEND_CHOICE_REQUIRED,
+    MSG_BLOCK_TARGET_TAKEN, MSG_BLOCKS_LIMIT, MSG_BLOCKS_NEW_PAGE, MSG_CONSTRAINT_CERTIFIED,
     MSG_CONSTRAINT_INVISIBLE_PROFILE, MSG_DEFAULT_BACKEND_UNAVAILABLE, MSG_DOCUMENT_LEAVES_DEVICE, MSG_FIELD_LOCKED,
     MSG_NO_BACKEND, MSG_POSITIONING_NOT_POSSIBLE, MSG_RESUME_BACKEND_UNAVAILABLE, MSG_SIGNER_UNAVAILABLE,
     MSG_SIGNING_CANCELLED, MSG_SIGNING_DECLINED, ParkedPlacement, PlaceholderAnswer, PlaceholderFound, PlacementLock,
-    PlacementOrigin, PositionChoice, ResumePlan, RetryTarget, SignFlow, SigningPhase, State, Step, Target, Transition,
-    WorkflowError, WorkspaceEdit, backend_for_choice,
+    PlacementOrigin, PositionChoice, ResumePlan, RetryTarget, Rounds, SignFlow, SigningPhase, State, Step, Target,
+    Transition, WorkflowError, WorkspaceEdit, backend_for_choice,
 };
 
 /// Meldungs-ID des Platzierungshinweises „neue Seite nicht erlaubt“ (`PlacementNotice::code`).
@@ -377,6 +378,18 @@ fn start_signing(
     edit: Option<WorkspaceEdit>,
     mut effects: Vec<Effect>,
 ) -> Transition {
+    // Mehrfachsignatur: jeder Start (auch „Erneut versuchen“) beginnt wieder bei der ersten Runde – ein
+    // Teilergebnis wird verworfen (`Effect::OpenSession` setzt die Quelle auf das Original zurück)
+    let (position, edit) = match edit {
+        Some(mut e) => {
+            let first = e.rounds.as_mut().and_then(|r| {
+                r.index = 0;
+                r.positions.first().cloned()
+            });
+            (first.unwrap_or(position), Some(e))
+        }
+        None => (position, None),
+    };
     effects.push(Effect::OpenSession(backend));
     Transition::with(
         State::Signing { queue, position, backend, phase: SigningPhase::OpeningSession, doc, flow, edit },
@@ -412,6 +425,7 @@ fn to_workspace(
         },
     };
     edit.parked = None;
+    edit.rounds = None;
     match placement {
         None => {
             if parked.is_none() {
@@ -479,6 +493,7 @@ fn workspace_after_analysis(
     {
         edit.return_to_batch = true;
         let parked = if automatic { None } else { batch_run::apply_plan(&mut edit, plan.as_ref(), &doc) };
+        batch_run::apply_more(&mut edit, &queue, &doc);
         let auto = edit.auto_free() && !edit.invisible;
         return to_workspace(queue, doc, parked, edit, auto, ctx, Vec::new());
     }
@@ -528,6 +543,75 @@ fn workspace_position(
             None => PositionChoice::Auto,
         }),
     }
+}
+
+/// Position eines ruhenden Blocks (Mehrfachsignatur) wie [`workspace_position`]; `None`, wenn sein Ziel fehlt.
+fn slot_position(edit: &WorkspaceEdit, slot: &BlockSlot, doc: &DocFacts) -> Option<PositionChoice> {
+    match slot.target {
+        Target::Qr => edit.qr.clone().map(PositionChoice::Placeholder),
+        Target::Field(i) => edit.fields.get(i).cloned().map(PositionChoice::Field),
+        Target::Free => slot.placement.map(|mut p| {
+            p.page_index = p.page_index.min(doc.page_count.saturating_sub(1));
+            PositionChoice::Manual(p)
+        }),
+    }
+}
+
+/// Positionen aller Blöcke in ihrer Reihenfolge (`active` = Position des ausgewählten Blocks); leer bei genau
+/// einem Block bzw. unsichtbar. `None`, wenn einem Block das Ziel fehlt.
+fn all_positions(edit: &WorkspaceEdit, active: &PositionChoice, doc: &DocFacts) -> Option<Vec<PositionChoice>> {
+    if edit.invisible || edit.others.is_empty() {
+        return Some(Vec::new());
+    }
+    let at = edit.active_index();
+    let mut all = Vec::with_capacity(edit.others.len() + 1);
+    for (k, slot) in edit.others.iter().enumerate() {
+        if k == at {
+            all.push(active.clone());
+        }
+        all.push(slot_position(edit, slot, doc)?);
+    }
+    if at == edit.others.len() {
+        all.push(active.clone());
+    }
+    Some(all)
+}
+
+/// Ausgewählten Block als ruhenden Block ablegen (nie auf der virtuellen neuen Seite).
+fn park_block(edit: &WorkspaceEdit, page: usize, placement: Option<Placement>, doc: &DocFacts) -> BlockSlot {
+    let last = doc.page_count.saturating_sub(1);
+    BlockSlot {
+        target: edit.target,
+        origin: edit.origin,
+        page: page.min(last),
+        placement: placement.map(|p| Placement { page_index: p.page_index.min(last), ..p }),
+    }
+}
+
+/// Seite eines Ziels (Feld bzw. QR-Platzhalter).
+fn target_page(edit: &WorkspaceEdit, target: Target) -> Option<usize> {
+    match target {
+        Target::Free => None,
+        Target::Qr => edit.qr.as_ref().map(|q| q.page_index),
+        Target::Field(i) => edit.fields.get(i).and_then(|f| f.page_index),
+    }
+}
+
+/// Herkunft zur Zielart.
+fn origin_of(target: Target) -> PlacementOrigin {
+    match target {
+        Target::Free => PlacementOrigin::User,
+        Target::Field(_) => PlacementOrigin::Field,
+        Target::Qr => PlacementOrigin::Qr,
+    }
+}
+
+/// Mehrfachsignatur: nächste Runde beginnen (Position der nächsten Signatur) bzw. `None` nach der letzten.
+fn next_round(edit: &mut Option<WorkspaceEdit>) -> Option<PositionChoice> {
+    let rounds = edit.as_mut()?.rounds.as_mut()?;
+    let next = rounds.positions.get(rounds.index + 1)?.clone();
+    rounds.index += 1;
+    Some(next)
 }
 
 /// Fehler im Signieren (Arbeitsbereich): bei wiederholbaren Fehlern bleibt die Sitzung offen
@@ -1022,8 +1106,137 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
     // „Neu platzieren“); „Unsichtbar“, „Auf neuer Seite“ und „Signieren mit“ wirken weiter
     let locked = edit.as_ref().is_some_and(WorkspaceEdit::placement_locked);
     match event {
-        Event::PlacementChanged(_) | Event::PageChanged(_) | Event::TargetChosen(_) if locked => {
+        Event::PlacementChanged(_)
+        | Event::PageChanged(_)
+        | Event::TargetChosen(_)
+        | Event::BlockAdded(_)
+        | Event::BlockSelected(_)
+        | Event::BlockRemoved(_)
+        | Event::TargetsFilled(_)
+            if locked =>
+        {
             stay(queue, page, placement, new_page, doc, edit, Vec::new())
+        }
+        // --- Mehrfachsignatur: je Block eine eigene Signatur ---------------------------------------
+        Event::BlockAdded(p) => {
+            let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
+            let usable = placement.is_some() && !e.invisible && doc.new_visible_field_allowed;
+            if !usable || p.page_index >= n || !(p.x.is_finite() && p.y.is_finite()) {
+                return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
+            }
+            let refused = if new_page {
+                Some(MSG_BLOCKS_NEW_PAGE)
+            } else if e.others.len() + 1 >= MAX_BLOCKS {
+                Some(MSG_BLOCKS_LIMIT)
+            } else {
+                None
+            };
+            if let Some(code) = refused {
+                return stay(queue, page, placement, new_page, doc, Some(e), vec![Effect::Notify(code.into())]);
+            }
+            let slot = park_block(&e, page, placement, &doc);
+            let at = e.active_index();
+            e.others.insert(at, slot);
+            e.active = e.others.len();
+            e.target = Target::Free;
+            e.origin = PlacementOrigin::User;
+            e.automatic = false;
+            let mut effects = Vec::new();
+            if p.page_index != page {
+                effects.push(Effect::RenderPage { doc: doc.id, page: p.page_index });
+            }
+            effects.push(Effect::BuildBlockPreview(doc.id));
+            stay(queue, p.page_index, Some(p), false, doc, Some(e), effects)
+        }
+        Event::BlockSelected(i) => {
+            let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
+            let at = e.active_index();
+            if i > e.others.len() || i == at {
+                return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
+            }
+            let slot = park_block(&e, page, placement, &doc);
+            let next = e.others.remove(if i < at { i } else { i - 1 });
+            e.others.insert(if at < i { at } else { at - 1 }, slot);
+            e.active = i;
+            e.target = next.target;
+            e.origin = next.origin;
+            let mut effects = Vec::new();
+            if next.page != page && next.page < n {
+                effects.push(Effect::RenderPage { doc: doc.id, page: next.page });
+            }
+            effects.push(Effect::BuildBlockPreview(doc.id));
+            stay(queue, next.page, next.placement, false, doc, Some(e), effects)
+        }
+        Event::BlockRemoved(i) => {
+            let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
+            let at = e.active_index();
+            if e.others.is_empty() || i > e.others.len() {
+                return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
+            }
+            if i != at {
+                e.others.remove(if i < at { i } else { i - 1 });
+                e.active = if i < at { at - 1 } else { at };
+                return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
+            }
+            // der ausgewählte Block: der vorige (sonst der nächste) wird ausgewählt
+            let j = at.saturating_sub(1);
+            let next = e.others.remove(j);
+            e.active = j;
+            e.target = next.target;
+            e.origin = next.origin;
+            let mut effects = Vec::new();
+            if next.page != page && next.page < n {
+                effects.push(Effect::RenderPage { doc: doc.id, page: next.page });
+            }
+            effects.push(Effect::BuildBlockPreview(doc.id));
+            stay(queue, next.page, next.placement, false, doc, Some(e), effects)
+        }
+        Event::TargetsFilled(targets) => {
+            let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
+            if e.invisible || placement.is_none() {
+                return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
+            }
+            let mut free: Vec<Target> = Vec::new();
+            for t in targets {
+                let known = match t {
+                    Target::Free => false,
+                    Target::Field(i) => i < e.fields.len(),
+                    Target::Qr => e.qr.is_some(),
+                };
+                if known && t != e.target && !e.target_taken(t) && !free.contains(&t) {
+                    free.push(t);
+                }
+            }
+            if free.is_empty() {
+                return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
+            }
+            let mut effects = Vec::new();
+            let (mut page, mut placement, mut new_page) = (page, placement, new_page);
+            let mut rest = free.into_iter();
+            if e.target == Target::Free {
+                // der frei platzierte ausgewählte Block wandert in das erste Ziel
+                if let Some(t) = rest.next() {
+                    e.target = t;
+                    e.origin = origin_of(t);
+                    (page, placement, new_page) = settle_on_target(&e, page, placement, new_page, &doc, &mut effects);
+                }
+            }
+            let last = n.saturating_sub(1);
+            let mut limited = false;
+            for t in rest {
+                if e.others.len() + 1 >= MAX_BLOCKS {
+                    limited = true;
+                    break;
+                }
+                let at = target_page(&e, t).unwrap_or(page).min(last);
+                let memory = placement.map(|p| Placement { page_index: at, ..p });
+                e.others.push(BlockSlot { target: t, origin: origin_of(t), page: at, placement: memory });
+            }
+            e.automatic = false;
+            if limited {
+                effects.push(Effect::Notify(MSG_BLOCKS_LIMIT.into()));
+            }
+            stay(queue, page, placement, new_page, doc, Some(e), effects)
         }
         Event::PlacementUnlocked => {
             // „Diesmal selbst platzieren“: nur dieses Dokument, Lage unverändert
@@ -1089,6 +1302,12 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
             effects.push(Effect::BuildBlockPreview(doc.id));
             stay(queue, target, placement, new_page, doc, by_user(edit), effects)
         }
+        Event::NewPageToggled if !new_page && edit.as_ref().is_some_and(|e| !e.others.is_empty()) => {
+            // „Auf neuer Seite“ nur mit einem einzigen Block: eine neue Seite nach der ersten Signatur
+            // veränderte das bereits signierte Dokument
+            let effects = vec![Effect::Notify(MSG_BLOCKS_NEW_PAGE.into())];
+            stay(queue, page, placement, new_page, doc, edit, effects)
+        }
         Event::NewPageToggled => {
             if new_page {
                 let last = n.saturating_sub(1);
@@ -1146,6 +1365,11 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
         },
         Event::TargetChosen(target) => {
             let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
+            if e.target_taken(target) {
+                // Mehrfachsignatur: jedes Feld bzw. der QR-Platzhalter nur für einen Block
+                let effects = vec![Effect::Notify(MSG_BLOCK_TARGET_TAKEN.into())];
+                return stay(queue, page, placement, new_page, doc, Some(e), effects);
+            }
             let mut effects = Vec::new();
             match target {
                 Target::Free => {
@@ -1199,14 +1423,20 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
             let Some(position) = workspace_position(&e, placement, new_page, &doc) else {
                 return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
             };
+            // Mehrfachsignatur: Positionen aller Blöcke in ihrer Reihenfolge
+            let Some(all) = all_positions(&e, &position, &doc) else {
+                return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
+            };
             // DocMDP-zertifiziert: kein neues sichtbares Feld (nur vorhandene Felder oder unsichtbar)
-            let new_visible =
-                matches!(position, PositionChoice::Manual(_) | PositionChoice::Auto | PositionChoice::Placeholder(_));
-            if new_visible && !doc.new_visible_field_allowed {
+            let new_visible = |p: &PositionChoice| {
+                matches!(p, PositionChoice::Manual(_) | PositionChoice::Auto | PositionChoice::Placeholder(_))
+            };
+            if (new_visible(&position) || all.iter().any(new_visible)) && !doc.new_visible_field_allowed {
                 let effects = vec![Effect::Notify(MSG_CONSTRAINT_CERTIFIED.into())];
                 return stay(queue, page, placement, new_page, doc, Some(e), effects);
             }
             e.parked = Some(ParkedPlacement { page, placement, new_page });
+            e.rounds = (all.len() > 1).then_some(Rounds { positions: all, index: 0 });
             choose_backend(queue, doc, position, options, backend, Some(e), ctx, Vec::new())
         }
         Event::PreviewUnavailable { doc: d } if d == doc.id && edit.is_some() => {
@@ -1340,6 +1570,19 @@ fn signing(state: State, event: Event, ctx: &Context) -> Transition {
                 SigningPhase::Signing => (SigningPhase::Finishing, vec![Effect::CloseSession, Effect::Finish]),
                 SigningPhase::Finishing | SigningPhase::Writing => {
                     let id = doc.id;
+                    let mut edit = edit;
+                    if ws && let Some(next) = next_round(&mut edit) {
+                        // Mehrfachsignatur: das Ergebnis ist die Quelle der nächsten Signatur (dieselbe Sitzung)
+                        let effects = vec![
+                            Effect::NextSignature,
+                            Effect::Prepare { doc: id, position: next.clone(), min_reserve: flow.min_reserve },
+                        ];
+                        let phase = SigningPhase::Preparing;
+                        return Transition::with(
+                            State::Signing { queue, position: next, backend, phase, doc, flow, edit },
+                            effects,
+                        );
+                    }
                     let mut effects = if ws { vec![Effect::CloseSession] } else { Vec::new() };
                     effects.extend([Effect::DeletePersisted, Effect::DecideOutput(id)]);
                     return Transition::with(

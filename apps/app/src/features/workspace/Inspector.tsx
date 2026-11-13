@@ -18,6 +18,11 @@
  * iOS: nach dem Empfang über „Teilen“ der Hinweis, dass nur das erste geteilte PDF ankommt (`ShareHint`,
  * `ViewState::share_hint`, ADR 0004 Nachtrag 12).
  *
+ * Mehrfachsignatur (`document.blocks`, je Block eine eigene Signatur): Abschnitt „Signaturblöcke“ nach der
+ * Platzierung – „Weiteren Block hinzufügen“ (`add_block` auf der gerade sichtbaren Seite), „Alle Platzhalter
+ * belegen“ (`fill_targets`), ab zwei Blöcken die nummerierte Liste (auswählen `select_block`, entfernen
+ * `remove_block`). Der Knopf heißt dann „n-mal signieren“, darunter steht, wie viele Signaturen das Dokument erhält.
+ *
  * Einstellung „Automatische Positionierung“ (`placement_locked`, ADR 0004 Nachtrag 8): Platzierung „Automatisch
  * (laut Einstellung)“ mit „Diesmal selbst platzieren“ (`unlock_placement`) statt „Neu platzieren“/„Frei
  * platzieren“; nach dem Öffnen liegt der Fokus auf „Signieren“ (das Dokument ist bereit). Optionen bleiben
@@ -28,14 +33,14 @@ import { Button as AriaButton } from 'react-aria-components';
 import { useApp } from '../../app/context';
 import { tileScale } from '../../core/bridge';
 import { defaultDocumentDetection } from '../../core/defaults';
-import { isMobile, type DocumentView, type Lang, type StepView } from '../../core/types';
+import { isMobile, type BlockSlotView, type DocumentView, type Lang, type StepView } from '../../core/types';
 import { AccessButton, Badge, Button, Keys, Segmented, SwitchField, useModKey } from '../../ui/controls';
 import { useFitScale, useNarrow } from '../../ui/hooks';
-import { IconAlert, IconChevronDown, IconFileText, IconGrip, IconInfo, IconLock, IconPen, IconQr, IconShieldCheck, IconSignature, IconTarget, IconWand } from '../../ui/Icons';
+import { IconAlert, IconChevronDown, IconClose, IconFileText, IconGrip, IconInfo, IconLock, IconPen, IconPlus, IconQr, IconShieldCheck, IconSignature, IconTarget, IconWand } from '../../ui/Icons';
 import { accessibilityOf } from '../accessibility';
 import { PrivacyNote } from '../settings';
 import { PlacementPanel } from './PlacementPanel';
-import { displayPages, overlapState, placeholderUncovered, zoneText } from './placement';
+import { blockItems, blockTotal, displayPages, overlapState, placeholderUncovered, zoneText } from './placement';
 import { ShareHint } from './ShareHint';
 import { SignerChip } from './SignerChip';
 import { signerChoice } from './signers';
@@ -53,7 +58,10 @@ export function Inspector({
   onChipOpenChange,
   signMode,
   onSign,
+  visiblePage,
 }: {
+  /** gerade sichtbare Seite (0-basiert): dort erscheint ein weiterer Signaturblock */
+  visiblePage?: number;
   doc: DocumentView;
   chipOpen: boolean;
   onChipOpenChange: (open: boolean, signMode?: boolean) => void;
@@ -101,6 +109,24 @@ export function Inspector({
   // unter „Platzierung“; nicht bei gesperrter Platzierung („Automatische Positionierung“) und unsichtbarer Signatur
   const panelShown = !warning && !doc.invisible && !!doc.sticker && !locked;
   const panelOnTop = panelShown && a11y.mode;
+  // Mehrfachsignatur: je Block eine eigene Signatur
+  const blocks = doc.blocks ?? null;
+  const items = blockItems(doc);
+  const signatures = blockTotal(doc);
+  const blocksShown = !warning && !doc.invisible && !!doc.sticker && !!blocks && !locked;
+  const fillCount = blocks?.free_targets ?? 0;
+  // „Alle Platzhalter belegen“ erst, wenn es mehr bringt als „Ins Feld setzen“ für den einen Block
+  const fillShown = editable && (fillCount >= 2 || (fillCount >= 1 && doc.target.kind !== 'free'));
+  const addReason = !blocks || blocks.can_add ? null : doc.new_page ? t.t('ng-ui-insp-blocks-new-page') : items.length >= blocks.limit ? t.t('ng-ui-insp-blocks-limit', { n: blocks.limit }) : null;
+  const where = (b: BlockSlotView): string => {
+    if (b.target.kind === 'field') {
+      const index = b.target.index;
+      return t.t('ng-ui-insp-blocks-item-field', { name: doc.fields.find((f) => f.index === index)?.name ?? String(index + 1) });
+    }
+    if (b.target.kind === 'qr') return t.t('ng-ui-insp-blocks-item-qr');
+    const [bw, bh] = sizes[b.page] ?? sizes[sizes.length - 1] ?? [595.28, 841.89];
+    return t.t('ng-ui-insp-blocks-item-free', { page: b.page + 1, zone: b.rect ? zoneText(t, b.rect, bw, bh) : '' });
+  };
   const chip = (compact: boolean) => (
     <SignerChip compact={compact} isOpen={chipOpen} onOpenChange={(open) => onChipOpenChange(open, false)} signMode={signMode} />
   );
@@ -249,9 +275,9 @@ export function Inspector({
             />
             <SwitchField
               label={t.t('ng-ui-insp-new-page')}
-              hint={newPageReason ?? t.t('ng-ui-insp-new-page-hint')}
+              hint={newPageReason ?? (signatures > 1 ? t.t('ng-ui-insp-new-page-blocks') : t.t('ng-ui-insp-new-page-hint'))}
               isSelected={doc.new_page}
-              isDisabled={!editable || doc.invisible || (!c.new_page_allowed && !doc.new_page)}
+              isDisabled={!editable || doc.invisible || (!c.new_page_allowed && !doc.new_page) || (signatures > 1 && !doc.new_page)}
               onChange={() => void dispatch({ type: 'toggle_new_page' })}
             />
             {pdfaNote ? (
@@ -318,6 +344,69 @@ export function Inspector({
           </section>
         ) : null}
 
+        {blocksShown && blocks ? (
+          <section className="insp-section" aria-labelledby={`${bodyId}-blocks`} data-testid="blocks-section">
+            <div className="insp-heading-row">
+              <h2 className="insp-heading" id={`${bodyId}-blocks`}>
+                {t.t('ng-ui-insp-blocks')}
+              </h2>
+              {signatures > 1 ? <Badge tone="neutral">{signatures}</Badge> : null}
+            </div>
+            {signatures > 1 ? (
+              <>
+                <ol className="blocks-list" aria-label={t.t('ng-ui-insp-blocks')}>
+                  {items.map((b) => (
+                    <li key={b.index} className={`blocks-item${b.active ? ' is-active' : ''}`}>
+                      <AriaButton
+                        className="blocks-select"
+                        aria-current={b.active ? 'true' : undefined}
+                        aria-label={t.t('ng-ui-insp-blocks-select', { n: b.index + 1, where: where(b) })}
+                        isDisabled={!editable}
+                        onPress={() => void dispatch({ type: 'select_block', index: b.index })}
+                      >
+                        <span className="blocks-number" aria-hidden="true">
+                          {b.index + 1}
+                        </span>
+                        <span className="blocks-where">{where(b)}</span>
+                      </AriaButton>
+                      <AriaButton
+                        className="blocks-remove"
+                        aria-label={t.t('ng-ui-insp-blocks-remove', { n: b.index + 1 })}
+                        isDisabled={!editable}
+                        onPress={() => void dispatch({ type: 'remove_block', index: b.index })}
+                      >
+                        <IconClose size={14} />
+                      </AriaButton>
+                    </li>
+                  ))}
+                </ol>
+                <p className="insp-hint">{t.t('ng-ui-insp-blocks-hint')}</p>
+              </>
+            ) : (
+              <p className="insp-hint">{t.t('ng-ui-insp-blocks-add-hint')}</p>
+            )}
+            <div className="blocks-actions">
+              <Button
+                variant="secondary"
+                size="sm"
+                isDisabled={!editable || !blocks.can_add}
+                onPress={() => void dispatch({ type: 'add_block', page: visiblePage ?? null })}
+                data-testid="blocks-add"
+              >
+                <IconPlus size={15} />
+                {t.t('ng-ui-insp-blocks-add')}
+              </Button>
+              {fillShown ? (
+                <Button variant="secondary" size="sm" onPress={() => void dispatch({ type: 'fill_targets' })} data-testid="blocks-fill">
+                  <IconPen size={15} />
+                  {doc.target.kind === 'free' ? t.t('ng-ui-insp-blocks-fill', { n: fillCount }) : t.t('ng-ui-insp-blocks-fill-more', { n: fillCount })}
+                </Button>
+              ) : null}
+            </div>
+            {addReason ? <p className="insp-hint" data-testid="blocks-add-reason">{addReason}</p> : null}
+          </section>
+        ) : null}
+
         {doc.existing.length > 0 ? (
           <section className="insp-section" aria-labelledby={`${bodyId}-existing`}>
             <h2 className="insp-heading" id={`${bodyId}-existing`}>
@@ -349,8 +438,8 @@ export function Inspector({
         <div className="callout callout-warning inspector-warn" data-testid="overlap-warning">
           <IconAlert size={18} />
           <div>
-            <p>{t.t(overlap === 'widget' ? 'ng-ui-insp-overlap-widget' : 'ng-ui-insp-overlap')}</p>
-            {locked ? (
+            <p>{t.t(overlap === 'block' ? 'ng-ui-insp-overlap-block' : overlap === 'widget' ? 'ng-ui-insp-overlap-widget' : 'ng-ui-insp-overlap')}</p>
+            {overlap === 'block' ? null : locked ? (
               <Button variant="secondary" size="sm" onPress={unlock}>
                 {t.t('ng-ui-insp-placement-unlock')}
               </Button>
@@ -386,11 +475,20 @@ export function Inspector({
         </div>
       ) : null}
 
+      {/* Mehrfachsignatur: vor dem Start sagen, wie viele Signaturen entstehen (mit ID Austria evtl. je eine Bestätigung) */}
+      {!warning && signatures > 1 && doc.phase === 'editing' ? (
+        <p className="inspector-count" data-testid="sign-count">
+          {t.t('ng-ui-insp-sign-count', { n: signatures })}
+          {leaves ? ` ${t.t('ng-ui-insp-sign-count-confirm')}` : ''}
+        </p>
+      ) : null}
+
       {!warning ? (
         <div className={`inspector-footer${choice ? '' : ' is-single'}`}>
           {narrow && choice ? <div className="inspector-footer-chip">{chip(true)}</div> : null}
           <AccessButton
-            msg="ng-ui-insp-sign"
+            msg={signatures > 1 ? 'ng-ui-insp-sign-times' : 'ng-ui-insp-sign'}
+            args={signatures > 1 ? { n: signatures } : undefined}
             variant="primary"
             size="lg"
             className="sign-button"

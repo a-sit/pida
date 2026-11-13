@@ -338,6 +338,37 @@ ng-ui-ws-share-hint = Shared several PDFs? iOS only passes on the first one. For
 ng-ui-ws-share-hint-dismiss = Hide hint
 ng-ui-insp-sign = Sign
     .accesskey = S
+# Several signature blocks in one document, one signature per block (core: `DocumentView::blocks`)
+ng-ui-insp-blocks = Signature blocks
+ng-ui-insp-blocks-hint = Each block gets its own signature – in this order.
+ng-ui-insp-blocks-add = Add another block
+ng-ui-insp-blocks-add-hint = For several signing places: each block gets its own signature.
+ng-ui-insp-blocks-limit = More than { $n } signature blocks per document are not possible.
+ng-ui-insp-blocks-new-page = With “On a new page” only one signature block is possible.
+ng-ui-insp-blocks-fill = Fill all { $n } placeholders
+ng-ui-insp-blocks-fill-more =
+    { $n ->
+        [one] Fill one more placeholder
+       *[other] Fill { $n } more placeholders
+    }
+ng-ui-insp-blocks-item-free = Page { $page } · { $zone }
+ng-ui-insp-blocks-item-field = Signature field “{ $name }”
+ng-ui-insp-blocks-item-qr = QR code placeholder
+ng-ui-insp-blocks-select = Select block { $n }: { $where }
+ng-ui-insp-blocks-remove = Remove block { $n }
+ng-ui-insp-new-page-blocks = Only possible with a single signature block.
+ng-ui-insp-sign-times = Sign { $n } times
+    .accesskey = S
+ng-ui-insp-sign-count = This document gets { $n } signatures.
+ng-ui-insp-sign-count-confirm = With ID Austria, each signature may need its own confirmation.
+ng-ui-insp-overlap-block = The signature block covers another signature block.
+ng-ui-ws-sticker-block = Covers a block
+ng-ui-ws-sticker-label-n = Signature block { $n } of { $total }
+ng-ui-ws-sticker-help-remove = Delete removes this block.
+ng-ui-ws-block-select = Select signature block { $n } of { $total }
+ng-ui-ws-block-remove = Remove signature block { $n }
+ng-ui-ws-announce-block = Warning: covers another signature block.
+ng-ui-ws-announce-blocks = Signature block { $n } of { $total }.
 ng-ui-insp-sheet-expand = Show options
 ng-ui-insp-sheet-collapse = Hide options
 ng-ui-insp-warning = Note on the document
@@ -430,6 +461,8 @@ ng-ui-sc-single-unavailable = { $signer } is currently not available.
 ng-ui-fin-title = Signed
 ng-ui-fin-seal = Signature created and checked (self-check)
 ng-ui-fin-text = PIDA checked the new signature itself before saving. signaturpruefung.gv.at also checks the chain of trust and revocation status.
+ng-ui-fin-seal-n = { $n } signatures created and checked (self-check)
+ng-ui-fin-text-n = PIDA checked each new signature itself before saving. signaturpruefung.gv.at also checks the chain of trust and revocation status.
 ng-ui-fin-qes = Qualified according to the certificate
 ng-ui-fin-ades = Advanced according to the certificate
 ng-ui-fin-saving = Saving the signed document …
@@ -550,6 +583,7 @@ ng-ui-batch-detail-signed = as { $file }
 ng-ui-batch-detail-skipped = skipped by you
 ng-ui-batch-detail-skipped-existing = target file already existed
 ng-ui-batch-detail-cancelled = not signed
+ng-ui-batch-detail-signatures = { $n } signatures
 ng-ui-batch-detail-exists = “{ $file }” already exists
 ng-ui-batch-detail-waiting = waiting for confirmation
 ng-ui-batch-stage-connecting = connecting

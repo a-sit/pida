@@ -131,16 +131,16 @@ describe('Live-Region und Überdeckung', () => {
     expect(announceText(t, documentView(), ['content_right', 'below_content'])).toBe(
       'Seite 3 von 3, linke obere Ecke 64 mm von links, 106 mm von unten. Rastet ein: rechts unten. Freie Fläche.',
     );
-    const overlap = documentView({ check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false } });
+    const overlap = documentView({ check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false, overlaps_block: false } });
     expect(announceText(t, overlap)).toBe('Seite 3 von 3, linke obere Ecke 64 mm von links, 106 mm von unten. Achtung: überdeckt Inhalt.');
     expect(overlapState(overlap)).toBe('content');
   });
 
   it('Prüfergebnis einer älteren Revision zählt nicht; unbekannt = keine Aussage', () => {
-    const stale = documentView({ revision: 2, check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false } });
+    const stale = documentView({ revision: 2, check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false, overlaps_block: false } });
     expect(overlapState(stale)).toBeNull();
     expect(announceText(t, stale)).toBe('Seite 3 von 3, linke obere Ecke 64 mm von links, 106 mm von unten.');
-    const unknown = documentView({ check: { for_revision: 1, overlaps_content: null, overlaps_widget: false, clamped: false, placeholder_uncovered: false } });
+    const unknown = documentView({ check: { for_revision: 1, overlaps_content: null, overlaps_widget: false, clamped: false, placeholder_uncovered: false, overlaps_block: false } });
     expect(announceText(t, unknown)).not.toContain('Fläche');
   });
 

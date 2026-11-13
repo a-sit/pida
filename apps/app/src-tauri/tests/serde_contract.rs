@@ -20,15 +20,16 @@ use pida_backend_api::{
 use pida_config::{NoteSetting, Settings};
 use pida_core_api::{
     AboutView, ActionsView, BackendOptionView, BatchEstimateView, BatchFlowView, BatchItemStatusView, BatchItemView,
-    BatchOutputView, BatchPauseView, BatchSummaryView, BatchView, BlockView, CertificateSource, ConfirmMethod,
-    DocConstraintsView, DocInfo, DocRefView, DocumentDetectionView, DocumentPhase, DocumentView, DoneItemView,
-    ErrorContextView, ErrorOrigin, ExistingSignatureView, FieldInfo, FieldTargetView, FirstRunView, GuideAxis,
-    GuideKind, GuideView, InteractionView, KeystoreEntryView, KeystoreFormatView, KeystoreImportView, MainBarView,
-    MigrationItemView, MigrationOfferView, NoticeView, OutputModeView, OutputView, PageLayoutView, ParkedWorkView,
-    PauseScope, PdfaDecision, PdfaIdView, PlacementCheckView, PlacementTarget, PlatformOs, PlatformView,
-    PositionSummaryView, PriorStatusView, QrInfo, QrTargetView, QueueItemView, RecentItemView, RectPt, ResumeOfferView,
-    SaveDialogView, SettingsView, ShareHintView, SignedSummaryView, SignerView, SignersView, SigningProgressView,
-    SigningStage, StepView, UiEvent, UpdateCheckState, UpdateCheckView, ViewState,
+    BatchOutputView, BatchPauseView, BatchSummaryView, BatchView, BlockSlotView, BlockView, BlocksView,
+    CertificateSource, ConfirmMethod, DocConstraintsView, DocInfo, DocRefView, DocumentDetectionView, DocumentPhase,
+    DocumentView, DoneItemView, ErrorContextView, ErrorOrigin, ExistingSignatureView, FieldInfo, FieldTargetView,
+    FirstRunView, GuideAxis, GuideKind, GuideView, InteractionView, KeystoreEntryView, KeystoreFormatView,
+    KeystoreImportView, MainBarView, MigrationItemView, MigrationOfferView, NoticeView, OutputModeView, OutputView,
+    PageLayoutView, ParkedWorkView, PauseScope, PdfaDecision, PdfaIdView, PlacementCheckView, PlacementTarget,
+    PlatformOs, PlatformView, PositionSummaryView, PriorStatusView, QrInfo, QrTargetView, QueueItemView,
+    RecentItemView, RectPt, ResumeOfferView, SaveDialogView, SettingsView, ShareHintView, SignedSummaryView,
+    SignerView, SignersView, SigningProgressView, SigningStage, StepView, UiEvent, UpdateCheckState, UpdateCheckView,
+    ViewState,
 };
 use pida_i18n::Lang;
 use pida_pades::{AcceptanceClass, OutputInfo};
@@ -907,6 +908,7 @@ fn document(phase: DocumentPhase, origin: PlacementOrigin, target: PlacementTarg
             overlaps_widget: false,
             clamped: true,
             placeholder_uncovered: false,
+            overlaps_block: false,
         },
         announce,
         // Nachtrag K3 (Einstellungen › Dokument)
@@ -918,6 +920,22 @@ fn document(phase: DocumentPhase, origin: PlacementOrigin, target: PlacementTarg
         placement_locked: false,
         // Nachtrag 16: Größe einer neuen Seite (MediaBox der letzten Seite)
         new_page_size: Some((595.28, 841.89)),
+        // Mehrfachsignatur: zwei Blöcke, der zweite ist ausgewählt
+        blocks: Some(BlocksView {
+            items: vec![
+                BlockSlotView {
+                    index: 0,
+                    active: false,
+                    page: 0,
+                    rect: Some(rect(36.0, 36.0, 236.0, 96.0)),
+                    target: PlacementTarget::Free,
+                },
+                BlockSlotView { index: 1, active: true, page: 1, rect: Some(rect(297.5, 36.0, 559.5, 120.0)), target },
+            ],
+            limit: 10,
+            can_add: true,
+            free_targets: 1,
+        }),
     }
 }
 
@@ -948,6 +966,7 @@ fn signed_summary() -> SignedSummaryView {
         qualification: Qualification::Qes,
         self_check: true,
         page: Some(1),
+        signatures: Some(1),
     }
 }
 
@@ -962,6 +981,7 @@ fn batch_item(doc: u64, name: &str, status: BatchItemStatusView, position: Posit
         target_name: Some(name.replace(".pdf", "_signed.pdf")),
         target_exists: false,
         thumbnail: true,
+        signatures: Some(1),
     }
 }
 
@@ -1085,6 +1105,7 @@ fn workspace_samples() -> Vec<(&'static str, ViewState)> {
         overlaps_widget: false,
         clamped: false,
         placeholder_uncovered: false,
+        overlaps_block: false,
     };
     locked.document = Some(d);
     locked.signers = signers();
@@ -1099,6 +1120,7 @@ fn workspace_samples() -> Vec<(&'static str, ViewState)> {
         overlaps_widget: true,
         clamped: false,
         placeholder_uncovered: false,
+        overlaps_block: false,
     };
     // Platzhaltersuche „Leere Signaturfelder“: automatisch im ersten Feld; PDF/A erzwungen (ohne Kennung)
     d.detection = Some(DocumentDetectionView { pdfa: None, pdfa_decision: PdfaDecision::Forced, auto_placed: true });
@@ -1477,7 +1499,7 @@ fn typescript_events_deserialize_into_ui_event() {
 
 /// Anzahl der `UiEvent`-Varianten in den TypeScript-Typen (die TS-Beispiele müssen jede abdecken);
 /// ohne das veraltete `acknowledge_privacy` (`#[ts(skip)]`, ADR 0003).
-const UI_EVENT_VARIANTS: usize = 72;
+const UI_EVENT_VARIANTS: usize = 76;
 
 /// Das veraltete `acknowledge_privacy` (früherer Datenschutzdialog) wird weiter gelesen – ältere Aufrufer
 /// scheitern nicht –, steht aber nicht mehr in den TypeScript-Typen (ADR 0003).

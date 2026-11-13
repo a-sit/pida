@@ -203,7 +203,7 @@ describe('Ansage und Prüfung vor dem Signieren', () => {
   });
 
   it('„Vor dem Signieren prüfen“: erst die Zusammenfassung, „Signieren“ darin signiert, „Zurück“ nicht', async () => {
-    const doc = documentView({ check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false } });
+    const doc = documentView({ check: { for_revision: 1, overlaps_content: true, overlaps_widget: false, clamped: false, placeholder_uncovered: false, overlaps_block: false } });
     const { mock, user } = renderApp({ view: a11yView({ check_before_sign: true }, doc) });
     const before = mock.dispatched.length;
     await user.click(await screen.findByRole('button', { name: /^Signieren/ }));

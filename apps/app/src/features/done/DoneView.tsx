@@ -158,10 +158,15 @@ export function DoneView({ step }: { step: Extract<StepView, { step: 'output' }>
         {summary?.self_check !== false ? (
           <p className="seal-badge">
             <IconShieldCheck size={18} />
-            {t.t('ng-ui-fin-seal')}
+            {/* Mehrfachsignatur: je Block eine Signatur */}
+            {(summary?.signatures ?? 1) > 1 ? t.t('ng-ui-fin-seal-n', { n: summary?.signatures ?? 1 }) : t.t('ng-ui-fin-seal')}
           </p>
         ) : null}
-        <p className="done-text">{saved ? t.t('ng-ui-fin-text') : t.t(result.save_pending ? 'ng-ui-fin-not-saved' : 'ng-ui-fin-saving')}</p>
+        <p className="done-text">
+          {saved
+            ? t.t((summary?.signatures ?? 1) > 1 ? 'ng-ui-fin-text-n' : 'ng-ui-fin-text')
+            : t.t(result.save_pending ? 'ng-ui-fin-not-saved' : 'ng-ui-fin-saving')}
+        </p>
         {qualification ? (
           <p className="done-qual">
             {qualification}

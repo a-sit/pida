@@ -107,6 +107,11 @@ export const UI_EVENT_SAMPLES: UiEvent[] = [
   // Nachtrag 8: „Diesmal selbst platzieren“, „Für diesen Stapel automatisch positionieren“
   { type: 'unlock_placement' },
   { type: 'set_batch_auto_position', enabled: true, replace_manual: false },
+  // Mehrfachsignatur: je Block eine eigene Signatur
+  { type: 'add_block', page: 1 },
+  { type: 'select_block', index: 0 },
+  { type: 'remove_block', index: 1 },
+  { type: 'fill_targets' },
   // Nachtrag 21: „Über PIDA“ – „Jetzt prüfen“ bzw. „Erneut prüfen“
   { type: 'check_for_updates', explicit: true },
 ];

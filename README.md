@@ -31,6 +31,9 @@ PIDA ist freie Software unter der **EUPL-1.2**.
   in leere Signaturfelder ein. Seitenminiaturen, Zoom, Signatur auf einer neuen Seite oder unsichtbar.
 - **Signaturfelder und QR-Platzhalter** im Dokument werden erkannt und als Ziel angeboten; auf Wunsch
   positioniert PIDA immer automatisch (Einstellungen › Dokument).
+- **Mehrere Signaturblöcke:** Dokumente mit mehreren Unterschriftsstellen bekommen bis zu zehn Blöcke – jeder
+  Block erhält eine eigene Signatur („3-mal signieren“); „Alle Platzhalter belegen“ setzt in jedes leere
+  Signaturfeld einen Block.
 - **Stapel:** mehrere PDFs auf einmal – einmal bei ID Austria anmelden, jedes Dokument einzeln bestätigen.
   Geschützte oder fehlerhafte Dateien werden übersprungen, einzelne Dokumente lassen sich entfernen.
 - **Signieren mit ID Austria:** Statuskarte mit Fortschritt und Vergleichswert zum Abgleich mit der App
