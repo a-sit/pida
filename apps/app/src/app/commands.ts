@@ -259,8 +259,11 @@ export function buildShortcuts(t: Translator, isMac: boolean): ShortcutEntry[] {
     { id: 'move-coarse', group: 'workspace', label: t.t('ng-ui-shell-key-move-coarse'), keys: [alt, '←↑→↓'] },
     { id: 'page', group: 'workspace', label: t.t('ng-ui-shell-key-page'), keys: ['Bild ↑', 'Bild ↓'].map((k) => (de ? k : k.replace('Bild', 'Page'))) },
     { id: 'place', group: 'workspace', label: t.t('ng-ui-shell-key-place'), keys: [t.t('ng-ui-shell-key-dblclick')] },
-    { id: 'zoom', group: 'workspace', label: t.t('ng-ui-shell-key-zoom'), keys: [mod, '+', '−'] },
-    { id: 'fit', group: 'workspace', label: t.t('ng-ui-shell-key-fit'), keys: [mod, '0'] },
   ];
+  // im Browser zoomen diese Kürzel die ganze Seite (Sache des Browsers), nicht das Dokument
+  if (webProfile() === null) {
+    workspace.push({ id: 'zoom', group: 'workspace', label: t.t('ng-ui-shell-key-zoom'), keys: [mod, '+', '−'] });
+    workspace.push({ id: 'fit', group: 'workspace', label: t.t('ng-ui-shell-key-fit'), keys: [mod, '0'] });
+  }
   return [...general, ...workspace];
 }

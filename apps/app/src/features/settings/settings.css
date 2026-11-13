@@ -669,6 +669,14 @@
   margin-bottom: -1px;
   cursor: default;
 }
+@media (pointer: coarse) {
+  /* Fingerbedienung: Zielgröße ≥ 44 px wie die übrigen Reiter */
+  .licenses-tab {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
 .licenses-tab[data-selected] {
   color: var(--c-text);
   border-bottom-color: var(--c-accent);

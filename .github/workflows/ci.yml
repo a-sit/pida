@@ -28,7 +28,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # PRs: ein Lauf je Zweig, neuere brechen ältere ab. Push auf main/Tags: ein Lauf je Commit – sonst verdrängt ein
+  # zweiter Merge den noch wartenden Lauf des ersten (GitHub hält je Gruppe nur einen wartenden Lauf).
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -55,6 +57,7 @@ jobs:
   fmt:
     name: rustfmt
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -72,6 +75,7 @@ jobs:
   build:
     name: Build/Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -217,6 +221,7 @@ jobs:
   deny:
     name: cargo-deny (Lizenzen, Advisories, Duplikate, Quellen)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -236,6 +241,7 @@ jobs:
   notices:
     name: THIRD-PARTY-NOTICES
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -283,6 +289,7 @@ jobs:
   mobile:
     name: Mobile-Ziele (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     env:
       # Wie die App (tauri.conf.json, minimumSystemVersion): ohne Angabe übersetzt swift-rs das
       # Swift-Paket des Plugins für eine alte iOS-Version (UTType & Co. erst ab iOS 14).
@@ -353,6 +360,7 @@ jobs:
   app:
     name: apps/app (Frontend)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -398,6 +406,7 @@ jobs:
   bundle:
     name: Tauri-Debug-Bundle (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
     needs: app
     strategy:
       fail-fast: false

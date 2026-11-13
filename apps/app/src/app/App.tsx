@@ -24,7 +24,7 @@ import { I18nProvider } from 'react-aria-components';
 import type { Bridge, FileDragEvent } from '../core/bridge';
 import { mainBar, workspaceDefaults } from '../core/defaults';
 import { isMobile, type OpenFilesMode, type UiEvent, type ViewState } from '../core/types';
-import { webProfile } from '../core/web-profile';
+import { hintOs, webProfile } from '../core/web-profile';
 import { accessibilityOf } from '../features/accessibility';
 import { BatchView } from '../features/batch';
 import { DoneView, OutputDialogs } from '../features/done';
@@ -141,6 +141,7 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
   }, []);
   const [theme, setThemeState] = useState<Theme>(() => readTheme());
   const toastId = useRef(0);
+  const [initialFailed, setInitialFailed] = useState(false);
   const signHandler = useRef<(() => void) | null>(null);
   const isMac = isMacProp ?? (typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent));
 
@@ -153,12 +154,23 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
   useEffect(() => {
     let alive = true;
     const off = bridge.onState((v) => alive && setView(v));
-    bridge
-      .view()
-      .then((v) => alive && setView((cur) => cur ?? v))
-      .catch(() => undefined);
+    // Erster Stand: scheitert die Abfrage (Kern noch nicht bereit), einige Male wiederholen – sonst bliebe die
+    // Oberfläche ohne jede Meldung im Startzustand stehen; danach den Fehler zeigen
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const load = (attempt: number) => {
+      bridge
+        .view()
+        .then((v) => alive && setView((cur) => cur ?? v))
+        .catch(() => {
+          if (!alive) return;
+          if (attempt < 3) timer = setTimeout(() => load(attempt + 1), 400 * (attempt + 1));
+          else setInitialFailed(true);
+        });
+    };
+    load(0);
     return () => {
       alive = false;
+      if (timer) clearTimeout(timer);
       off();
     };
   }, [bridge]);
@@ -191,6 +203,11 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
     setToasts((list) => [...list.slice(-3), { id, kind, text, detail }]);
   }, []);
   const dismiss = useCallback((id: number) => setToasts((list) => list.filter((x) => x.id !== id)), []);
+  // Kern beim Start nicht erreichbar (und auch kein Stand über `onState` gekommen): sagen statt schweigen
+  const hasView = view !== null;
+  useEffect(() => {
+    if (initialFailed && !hasView) toast(translator(STARTING.language).t('ng-ui-bridge-error'), 'error');
+  }, [initialFailed, hasView, toast]);
 
   // Leeren und kurz danach setzen, damit derselbe Text erneut angesagt wird; eine noch ausstehende Ansage verfällt
   // (sonst landete nach `announce('')` – z. B. beim Dokumentwechsel – noch der Text des vorigen Dokuments)
@@ -238,7 +255,7 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
   // `mode` aus „+ PDF“ (ADR 0004 Nachtrag 9): „Anderes PDF öffnen“ wählt eine Datei, sonst Mehrfachauswahl;
   // was daraus folgt (Stapel, Schließen), entscheidet der Kern. Alle gewählten Pfade gehen in der Reihenfolge der
   // Auswahl an den Kern; Duplikate und fehlende Dateien meldet der Kern (ADR 0004 Nachtrag 17)
-  const os = current.platform.os;
+  const os = hintOs(current.platform.os, isMac);
   const browse = useCallback(
     async (mode?: OpenFilesMode) => {
       const multiple = mode !== 'replace';
@@ -340,7 +357,7 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
     const onKey = (e: KeyboardEvent) => {
       const { current: v, browse: b, startDemo: demo, openSettings: settings, requestSign: sign, overlay: o, dispatch: d } = keyState.current;
       const mod = isMac ? e.metaKey : e.ctrlKey;
-      const k = e.key.toLowerCase();
+      const k = (e.key ?? '').toLowerCase(); // Autofill löst `keydown` ohne `key` aus
       // F1 = Hilfe, auch über dem Signierdialog (z. B. „Was ist der Vergleichswert?“)
       if (e.key === 'F1' && HELP_AVAILABLE) {
         e.preventDefault();

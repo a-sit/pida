@@ -26,6 +26,7 @@ import { useNarrow } from '../../ui/hooks';
 import { IconEyeOff, IconFitWidth, IconQr, IconSidebar, IconSignature, IconZoomIn, IconZoomOut } from '../../ui/Icons';
 import { accessibilityOf } from '../accessibility';
 import { Inspector } from './Inspector';
+import { webProfile } from '../../core/web-profile';
 import { SignCheck } from './SignCheck';
 import { signerChoice } from './signers';
 import { Pages } from './Pages';
@@ -38,13 +39,19 @@ import './workspace.css';
  * mit, in WKWebView den Inhaltsbereich `.app-main` des Arbeitsbereichs (`overflow: hidden`) – dann stand alles
  * verschoben, ohne dass man zurückrollen konnte (macOS-Testbuild 30.10.2026).
  */
+/** Weicher Bildlauf nur ohne „Bewegung reduzieren“ (Systemeinstellung) – sonst springt die Ansicht direkt. */
+function scrollBehavior(smooth: boolean): ScrollBehavior {
+  if (!smooth) return 'auto';
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+}
+
 function centerInCanvas(el: HTMLElement | null, scroller: HTMLElement | null, smooth = false): void {
   if (!el || !scroller) return;
   const e = el.getBoundingClientRect();
   const s = scroller.getBoundingClientRect();
   const top = Math.max(0, scroller.scrollTop + (e.top - s.top) - (s.height - e.height) / 2);
   const left = Math.max(0, scroller.scrollLeft + (e.left - s.left) - (s.width - e.width) / 2);
-  if (typeof scroller.scrollTo === 'function') scroller.scrollTo({ top, left, behavior: smooth ? 'smooth' : 'auto' });
+  if (typeof scroller.scrollTo === 'function') scroller.scrollTo({ top, left, behavior: scrollBehavior(smooth) });
   else {
     scroller.scrollTop = top;
     scroller.scrollLeft = left;
@@ -126,6 +133,20 @@ function WorkspaceView({ doc }: { doc: DocumentView }) {
     el.scrollTop = Math.max(0, el.scrollTop + h - before);
   }, [banner]);
 
+  // Zoomen behält die Lesestelle: die Mitte des sichtbaren Ausschnitts bleibt in der Mitte (sonst stünde nach
+  // „Vergrößern“ ein anderer Teil der Seite bzw. eine andere Seite im Bild). Vor dem Effekt, der beim Öffnen den
+  // Block in den Blick holt – der gewinnt in der ersten Sekunde.
+  const lastScale = useRef(scale);
+  useLayoutEffect(() => {
+    const before = lastScale.current;
+    lastScale.current = scale;
+    const el = scrollRef.current;
+    if (!el || !fitReady || before === scale || before <= 0) return;
+    const ratio = scale / before;
+    el.scrollTop = Math.max(0, (el.scrollTop + el.clientHeight / 2) * ratio - el.clientHeight / 2);
+    el.scrollLeft = Math.max(0, (el.scrollLeft + el.clientWidth / 2) * ratio - el.clientWidth / 2);
+  }, [scale, fitReady]);
+
   // Beim Öffnen zum Signaturblock scrollen (er steht meist auf der letzten Seite)
   const mountedAt = useRef(Date.now());
   const didScroll = useRef(false);
@@ -193,7 +214,7 @@ function WorkspaceView({ doc }: { doc: DocumentView }) {
   const scrollToPage = (i: number, pointerType: PressEvent['pointerType']) => {
     const el = scrollRef.current;
     const top = layout.tops[i];
-    if (el && top !== undefined) el.scrollTo?.({ top: top - 12, behavior: 'smooth' });
+    if (el && top !== undefined) el.scrollTo?.({ top: top - 12, behavior: scrollBehavior(true) });
     setCurrent(i);
     // Schmal liegen die Miniaturen über der Seite – nach der Auswahl schließen, Fokus auf den Umschalter (die
     // gewählte Miniatur verschwindet mit der Leiste). Nur nach Tastatur mit sichtbarem Fokus; nach Finger, Maus bzw.
@@ -285,12 +306,15 @@ function WorkspaceView({ doc }: { doc: DocumentView }) {
     [zoomPct],
   );
 
-  // Zoom-Kürzel (Strg/⌘ + Plus/Minus/0) – nur ohne offenes Overlay
+  // Zoom-Kürzel (Strg/⌘ + Plus/Minus/0) – nur ohne offenes Overlay bzw. offenen Dialog (Hilfe, Kurzbefehle, Rückfragen)
   const zoomState = useRef({ zoomBy, blocked: false });
   zoomState.current = { zoomBy, blocked: !!overlay || view.settings !== null || view.step.step === 'signing' };
   useEffect(() => {
+    // Im Browser gehören diese Kürzel dem Seitenzoom des Browsers (Barrierefreiheit) – das Dokument zoomt man
+    // dort über die Knöpfe der Werkzeugleiste
+    if (webProfile() !== null) return undefined;
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey) || e.altKey || zoomState.current.blocked) return;
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || zoomState.current.blocked || document.querySelector('[data-modal-layer]') !== null) return;
       if (e.key === '+' || e.key === '=') {
         e.preventDefault();
         zoomState.current.zoomBy(1);
@@ -319,8 +343,16 @@ function WorkspaceView({ doc }: { doc: DocumentView }) {
           <IconButton label={t.t('ng-ui-ws-toggle-pages')} onPress={() => setPagesOpen((v) => !v)} aria-pressed={pagesOpen}>
             <IconSidebar size={18} />
           </IconButton>
+          {/* Telefonbreite: der Dateiname steht hier, in der Kopfzeile fehlt ihm der Platz (shell.css) */}
+          <span className="toolbar-doc-name" aria-hidden="true">
+            {doc.doc.name}
+          </span>
           <span className="page-indicator" aria-live="off">
-            {t.t('ng-ui-ws-page-indicator', { n: current + 1, total: sizes.length })}
+            <span className="page-indicator-long">{t.t('ng-ui-ws-page-indicator', { n: current + 1, total: sizes.length })}</span>
+            {/* Telefonbreite: nur die Zahlen, der Platz gehört dem Dateinamen */}
+            <span className="page-indicator-short" aria-hidden="true">
+              {current + 1} / {sizes.length}
+            </span>
           </span>
           <span className="toolbar-spacer" />
           <IconButton label={t.t('ng-ui-ws-zoom-out')} onPress={() => zoomBy(-1)} isDisabled={zoomPct <= 50}>

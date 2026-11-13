@@ -1043,7 +1043,8 @@ async fn empty_fields_are_offered_and_used_only_on_request() {
     let d = v.document.unwrap();
     assert_eq!(d.origin, PlacementOrigin::Field);
     // Nachtrag 16: der Block steht proportional und mittig im Feld (nicht auf das Feld gestreckt)
-    assert_eq!(d.sticker, f0.block, "Sticker = Lage des Blocks im Feld");
+    // gegen dieselbe Sicht vergleichen: die Blocklage im Feld kann sich bis hierher noch ändern (Blockmaß kommt nach)
+    assert_eq!(d.sticker, d.fields[0].block, "Sticker = Lage des Blocks im Feld");
     assert_eq!(d.check.overlaps_content, Some(false), "das Zielfeld ist kein Inhalt");
     assert_eq!(Some(d.placement.page_index), f0.page);
     core.dispatch(UiEvent::SignWith { backend: BackendId::Keystore });

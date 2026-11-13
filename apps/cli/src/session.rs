@@ -145,7 +145,11 @@ fn spawn_ctrl_c(core: Arc<Core>) {
             match count {
                 1 => core.dispatch(UiEvent::Cancel),
                 2 => core.dispatch(UiEvent::Quit),
-                _ => std::process::exit(ExitCode::Cancelled.code()),
+                _ => {
+                    // mitten in einer Passwortabfrage ist das Echo aus – vor dem harten Ende wieder einschalten
+                    restore_echo();
+                    std::process::exit(ExitCode::Cancelled.code());
+                }
             }
         }
     });

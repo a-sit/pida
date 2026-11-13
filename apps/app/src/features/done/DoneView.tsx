@@ -22,9 +22,13 @@ import { webProfile } from '../../core/web-profile';
 import { Button } from '../../ui/controls';
 import { useNarrow } from '../../ui/hooks';
 import { ConfirmDialog } from '../../ui/Dialog';
-import { IconCheck, IconDownload, IconExternal, IconFileText, IconFolder, IconLayers, IconShare, IconShieldCheck, IconUpload } from '../../ui/Icons';
+import { IconCheck, IconDownload, IconExternal, IconFileText, IconFolder, IconHelp, IconLayers, IconShare, IconShieldCheck, IconUpload } from '../../ui/Icons';
+import { HELP_AVAILABLE } from '../help';
 import { displayPages, rectToBox } from '../workspace/placement';
 import './done.css';
+
+/** Hilfe-Artikel zu den Signaturarten (`02-signaturarten-recht.md` der Hilfe, in beiden Sprachen dieselbe Kennung). */
+export const QUALIFICATION_HELP = 'recht:drei-arten-elektronischer-signaturen-eidas';
 
 const PREVIEW_W = 170;
 /** schmal (Telefon): kleinere Vorschau, damit Aktionen und „Nächstes Dokument“ ohne Scrollen erreichbar bleiben */
@@ -108,7 +112,7 @@ export function OutputDialogs({ result }: { result: OutputView }) {
 }
 
 export function DoneView({ step }: { step: Extract<StepView, { step: 'output' }> }) {
-  const { t, view, dispatch, bridge, toast } = useApp();
+  const { t, view, dispatch, bridge, toast, openHelp } = useApp();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const mobile = isMobile(view);
   const askSave = useAskSave();
@@ -158,7 +162,18 @@ export function DoneView({ step }: { step: Extract<StepView, { step: 'output' }>
           </p>
         ) : null}
         <p className="done-text">{saved ? t.t('ng-ui-fin-text') : t.t(result.save_pending ? 'ng-ui-fin-not-saved' : 'ng-ui-fin-saving')}</p>
-        {qualification ? <p className="done-qual">{qualification}</p> : null}
+        {qualification ? (
+          <p className="done-qual">
+            {qualification}
+            {/* „qualifiziert“/„fortgeschritten“ erklärt die Offline-Hilfe (Abschnitt zu den Signaturarten) */}
+            {HELP_AVAILABLE ? (
+              <AriaButton className="link help-what" onPress={() => openHelp(QUALIFICATION_HELP)}>
+                <IconHelp size={15} />
+                {t.t('ng-ui-shell-help-what')}
+              </AriaButton>
+            ) : null}
+          </p>
+        ) : null}
 
         <div className="done-file">
           {size && doc && pageIndex !== null ? (

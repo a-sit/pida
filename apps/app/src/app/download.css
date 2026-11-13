@@ -55,9 +55,24 @@
 .dl-banner-close {
   flex: none;
 }
+.dl-banner-short {
+  display: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* schmal (Telefon): kurze Zeile und Knopf – die Symbolreihe und der lange Satz hätten keinen Platz */
 @media (max-width: 560px) {
-  .dl-banner-text {
+  .dl-banner-text,
+  .dl-banner-icons {
     display: none;
+  }
+  .dl-banner-short {
+    display: block;
+  }
+  .dl-banner-main {
+    justify-content: space-between;
+    gap: var(--sp-2);
   }
 }
 
@@ -140,16 +155,6 @@
   margin: 0;
   font-size: var(--fs-13);
   color: var(--c-text-3);
-}
-.dl-qr {
-  display: grid;
-  place-items: center;
-  width: 112px;
-  height: 112px;
-  border: 1px dashed var(--c-border-strong);
-  border-radius: var(--r-3);
-  color: var(--c-text-3);
-  margin-bottom: var(--sp-2);
 }
 .dl-github {
   margin: 0;

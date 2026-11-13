@@ -19,7 +19,7 @@ mod mock;
 mod relay;
 
 use std::convert::Infallible;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -27,11 +27,11 @@ use std::time::Duration;
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full, Limited};
 use hyper::body::Incoming;
-use hyper::header::{AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE};
+use hyper::header::{AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE, ETAG, IF_NONE_MATCH};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
-use hyper_util::rt::TokioIo;
+use hyper_util::rt::{TokioIo, TokioTimer};
 
 use crate::relay::{Relay, RelayError, Reply};
 
@@ -42,11 +42,19 @@ const MAX_DATA_URL_BODY: usize = 4 << 20;
 /// Höchstgröße eines Befehls der Seite (Dokument als Base64): A-Trust nimmt höchstens 20 MB an (der Kern lehnt
 /// größere PDFs schon beim Laden ab, `MAX_DOCUMENT_BYTES`), Base64 macht daraus knapp 27 MB.
 const MAX_COMMAND_BODY: usize = 28 << 20;
+/// So lange darf der Kopf einer Anfrage brauchen (sonst hält eine stumme Verbindung den Platz beliebig lange).
+const HEADER_TIMEOUT: Duration = Duration::from_secs(20);
+/// So lange darf der Rumpf einer Anfrage brauchen (Dokument als Base64 über eine langsame Leitung).
+const BODY_TIMEOUT: Duration = Duration::from_secs(120);
+/// Pause nach einem Fehler beim Annehmen einer Verbindung (z. B. keine freien Dateideskriptoren).
+const ACCEPT_BACKOFF: Duration = Duration::from_millis(100);
 
 struct App {
     dir: PathBuf,
     relay: Relay,
     sl_endpoint: String,
+    /// `Content-Security-Policy` der Oberfläche ([`page_csp`])
+    page_csp: String,
     mock: Option<mock::MockAtrust>,
 }
 
@@ -75,9 +83,10 @@ fn no_store(mut r: Resp) -> Resp {
 
 async fn read_body(req: Request<Incoming>, limit: usize) -> Result<(String, Vec<u8>), StatusCode> {
     let content_type = req.headers().get(CONTENT_TYPE).and_then(|v| v.to_str().ok()).unwrap_or("").to_owned();
-    match Limited::new(req.into_body(), limit).collect().await {
-        Ok(b) => Ok((content_type, b.to_bytes().to_vec())),
-        Err(_) => Err(StatusCode::PAYLOAD_TOO_LARGE),
+    match tokio::time::timeout(BODY_TIMEOUT, Limited::new(req.into_body(), limit).collect()).await {
+        Ok(Ok(b)) => Ok((content_type, b.to_bytes().to_vec())),
+        Ok(Err(_)) => Err(StatusCode::PAYLOAD_TOO_LARGE),
+        Err(_) => Err(StatusCode::REQUEST_TIMEOUT),
     }
 }
 
@@ -94,6 +103,7 @@ fn relay_status(e: RelayError) -> Resp {
     match e {
         RelayError::NotFound => status(StatusCode::GONE),
         RelayError::Busy => status(StatusCode::SERVICE_UNAVAILABLE),
+        RelayError::TooMany => status(StatusCode::TOO_MANY_REQUESTS),
         RelayError::NotWaiting => status(StatusCode::CONFLICT),
         RelayError::Invalid => status(StatusCode::BAD_REQUEST),
     }
@@ -131,25 +141,101 @@ fn content_type_for(path: &Path) -> &'static str {
     }
 }
 
-async fn static_file(dir: &Path, uri_path: &str) -> Resp {
+/// Kennung des Dateistands (Größe und Änderungszeit) für bedingte Anfragen.
+fn etag_for(meta: &std::fs::Metadata) -> Option<String> {
+    let modified = meta.modified().ok()?.duration_since(std::time::UNIX_EPOCH).ok()?;
+    Some(format!("\"{:x}-{:x}\"", meta.len(), modified.as_nanos()))
+}
+
+/// Herkunft (`scheme://host[:port]`) einer absoluten `http(s)`-Adresse; relative Adressen (Testgegenstelle) → `None`.
+fn origin_of(url: &str) -> Option<&str> {
+    let rest = url.strip_prefix("https://").or_else(|| url.strip_prefix("http://"))?;
+    let host = rest.split(['/', '?', '#']).next().filter(|h| !h.is_empty() && !h.contains(['@', ' ', ';', ',']))?;
+    Some(&url[..url.len() - rest.len() + host.len()])
+}
+
+/// `Content-Security-Policy` der Oberfläche: Skripte und WebAssembly nur von der eigenen Herkunft, Rahmen und
+/// Formularziele nur A-Trust (bzw. der eingestellte SL-Endpunkt und die eigene Testgegenstelle), keine Einbettung
+/// in fremde Seiten.
+///
+/// - `'wasm-unsafe-eval'`: Kern und PDFium sind WebAssembly; `'unsafe-inline'` nur für Stile (Positionen und Größen
+///   setzt die Oberfläche als `style`-Attribut).
+/// - `img-src … data: blob:`: Seitenbilder und Bildmarke entstehen im Browser.
+/// - `connect-src`: eigener Rückkanal und die Release-Liste auf GitHub (Download-Dialog).
+/// - `frame-src`/`form-action`: Die SL-Befehle gehen als Formular in das A-Trust-Overlay; dort leitet A-Trust
+///   innerhalb seiner Domains weiter (`a-trust.at`, `handy-signatur.at` – dieselben wie in der App).
+fn page_csp(sl_endpoint: &str) -> String {
+    let mut sl = String::from("'self' https://*.a-trust.at https://*.handy-signatur.at");
+    if let Some(origin) = origin_of(sl_endpoint) {
+        sl.push(' ');
+        sl.push_str(origin);
+    }
+    format!(
+        "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; \
+         img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.github.com; \
+         frame-src {sl}; form-action {sl}; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+    )
+}
+
+/// Kopfzeilen der Oberfläche: Inhaltsrichtlinie ([`page_csp`]) und keine Einbettung in fremde Seiten (Clickjacking).
+fn page_headers(mut r: Resp, csp: &str) -> Resp {
+    let h = r.headers_mut();
+    h.insert("X-Frame-Options", "DENY".parse().expect("konstant"));
+    h.insert("X-Content-Type-Options", "nosniff".parse().expect("konstant"));
+    h.insert("Referrer-Policy", "no-referrer".parse().expect("konstant"));
+    if let Ok(v) = csp.parse() {
+        h.insert("Content-Security-Policy", v);
+    }
+    r
+}
+
+/// Adresse des Clients für die Grenzen je Client. Hinter dem TLS-Proxy (Verbindung von der eigenen Maschine) steht
+/// sie im letzten Eintrag von `X-Forwarded-For` – den hängt der Proxy selbst an, frühere Einträge kann der Client
+/// frei erfinden. Direkte Verbindungen zählen mit ihrer eigenen Adresse; der Kopf wird dann nicht beachtet.
+fn client_ip(peer: IpAddr, forwarded_for: Option<&str>) -> IpAddr {
+    if !peer.is_loopback() {
+        return peer;
+    }
+    forwarded_for.and_then(|v| v.rsplit(',').next()).and_then(|last| last.trim().parse().ok()).unwrap_or(peer)
+}
+
+async fn static_file(dir: &Path, uri_path: &str, if_none_match: Option<&str>, csp: &str) -> Resp {
     let rel = uri_path.trim_start_matches('/');
     let rel = if rel.is_empty() { "index.html" } else { rel };
+    // Dateien unter assets/ tragen einen Hash im Namen (Vite) und ändern sich nie; alles andere wird beim Server
+    // nachgefragt und kommt bei unverändertem Stand ohne Inhalt zurück (WebAssembly-Kern, PDFium: mehrere MB).
+    let cache = if rel.starts_with("assets/") { "public, max-age=31536000, immutable" } else { "no-cache" };
     let rel = Path::new(rel);
     if rel.components().any(|c| !matches!(c, Component::Normal(_))) {
         return status(StatusCode::NOT_FOUND);
     }
     let path = dir.join(rel);
-    match tokio::fs::read(&path).await {
-        Ok(data) => {
-            let mut r = respond(StatusCode::OK, content_type_for(&path), data);
-            r.headers_mut().insert(CACHE_CONTROL, "no-cache".parse().expect("konstant"));
-            r
+    let etag = match tokio::fs::metadata(&path).await {
+        Ok(meta) if meta.is_file() => etag_for(&meta),
+        _ => return status(StatusCode::NOT_FOUND),
+    };
+    let unchanged = match (&etag, if_none_match) {
+        (Some(tag), Some(sent)) => sent.split(',').any(|s| s.trim().trim_start_matches("W/") == tag),
+        _ => false,
+    };
+    let mut r = if unchanged {
+        let mut r = Response::new(Full::new(Bytes::new()));
+        *r.status_mut() = StatusCode::NOT_MODIFIED;
+        r
+    } else {
+        match tokio::fs::read(&path).await {
+            Ok(data) => respond(StatusCode::OK, content_type_for(&path), data),
+            Err(_) => return status(StatusCode::NOT_FOUND),
         }
-        Err(_) => status(StatusCode::NOT_FOUND),
+    };
+    r.headers_mut().insert(CACHE_CONTROL, cache.parse().expect("konstant"));
+    if let Some(tag) = etag.and_then(|t| t.parse().ok()) {
+        r.headers_mut().insert(ETAG, tag);
     }
+    page_headers(r, csp)
 }
 
-async fn handle(app: Arc<App>, req: Request<Incoming>) -> Result<Resp, Infallible> {
+async fn handle(app: Arc<App>, peer: IpAddr, req: Request<Incoming>) -> Result<Resp, Infallible> {
     let path = req.uri().path().to_owned();
     let method = req.method().clone();
     let parts: Vec<&str> = path.trim_start_matches('/').split('/').collect();
@@ -159,20 +245,25 @@ async fn handle(app: Arc<App>, req: Request<Incoming>) -> Result<Resp, Infallibl
             "application/json",
             serde_json::json!({ "sl_endpoint": app.sl_endpoint }).to_string(),
         )),
-        (&Method::POST, ["api", "sl", "sessions"]) => match app.relay.create() {
-            Ok((id, token)) => no_store(respond(
-                StatusCode::OK,
-                "application/json",
-                serde_json::json!({ "id": id, "token": token }).to_string(),
-            )),
-            Err(e) => relay_status(e),
-        },
+        (&Method::POST, ["api", "sl", "sessions"]) => {
+            let forwarded = req.headers().get("x-forwarded-for").and_then(|v| v.to_str().ok());
+            match app.relay.create(client_ip(peer, forwarded)) {
+                Ok((id, token)) => no_store(respond(
+                    StatusCode::OK,
+                    "application/json",
+                    serde_json::json!({ "id": id, "token": token }).to_string(),
+                )),
+                Err(e) => relay_status(e),
+            }
+        }
         // DataURL: A-Trust schickt die SL-Antwort und wartet auf den nächsten Befehl
         (&Method::POST, ["api", "sl", "data", id]) => {
             let id = (*id).to_owned();
-            match read_body(req, MAX_DATA_URL_BODY).await {
+            // unbekannte Sitzung: gleich die Abschlussseite, ohne den Rumpf anzunehmen
+            match if app.relay.exists(&id) { read_body(req, MAX_DATA_URL_BODY).await.map(Some) } else { Ok(None) } {
                 Err(code) => status(code),
-                Ok((ct, body)) => {
+                Ok(None) => no_store(final_page(false)),
+                Ok(Some((ct, body))) => {
                     let fields = form::fields(&ct, &body);
                     match form::field(&fields, "XMLResponse") {
                         None => status(StatusCode::BAD_REQUEST),
@@ -196,6 +287,10 @@ async fn handle(app: Arc<App>, req: Request<Incoming>) -> Result<Resp, Infallibl
         (&Method::POST, ["api", "sl", "sessions", id, "command"]) => {
             let id = (*id).to_owned();
             let token = bearer(&req);
+            // erst prüfen, dann lesen: ohne gültige Sitzung nimmt der Server keine 28 MB an
+            if !app.relay.is_authorized(&id, &token) {
+                return Ok(api_response(relay_status(RelayError::NotFound)));
+            }
             match read_body(req, MAX_COMMAND_BODY).await {
                 Err(code) => status(code),
                 Ok((_, body)) => match String::from_utf8(body) {
@@ -231,15 +326,19 @@ async fn handle(app: Arc<App>, req: Request<Incoming>) -> Result<Resp, Infallibl
             let m = app.mock.as_ref().expect("geprüft");
             no_store(respond(StatusCode::OK, "text/html; charset=utf-8", m.answer(id, *action == "confirm").await.0))
         }
-        (&Method::GET | &Method::HEAD, _) if !path.starts_with("/api/") => static_file(&app.dir, &path).await,
+        (&Method::GET | &Method::HEAD, _) if !path.starts_with("/api/") => {
+            let if_none_match = req.headers().get(IF_NONE_MATCH).and_then(|v| v.to_str().ok());
+            static_file(&app.dir, &path, if_none_match, &app.page_csp).await
+        }
         _ => status(StatusCode::NOT_FOUND),
     };
-    // API-Antworten (SL-XML, Abschlussseiten) dürfen im Browser nie als Dokument dieser Herkunft laufen
-    let mut resp = resp;
-    if path.starts_with("/api/") {
-        resp.headers_mut().insert("Content-Security-Policy", "sandbox; default-src 'none'".parse().expect("konstant"));
-    }
-    Ok(resp)
+    Ok(if path.starts_with("/api/") { api_response(resp) } else { resp })
+}
+
+/// API-Antworten (SL-XML, Abschlussseiten) dürfen im Browser nie als Dokument dieser Herkunft laufen.
+fn api_response(mut resp: Resp) -> Resp {
+    resp.headers_mut().insert("Content-Security-Policy", "sandbox; default-src 'none'".parse().expect("konstant"));
+    resp
 }
 
 struct Args {
@@ -311,7 +410,8 @@ async fn main() {
         (None, Some(_)) => "/mock-atrust/sl".to_owned(),
         (None, None) => ATRUST_ENDPOINT.to_owned(),
     };
-    let app = Arc::new(App { dir: args.dir, relay: Relay::default(), sl_endpoint, mock });
+    let page_csp = page_csp(&sl_endpoint);
+    let app = Arc::new(App { dir: args.dir, relay: Relay::default(), sl_endpoint, page_csp, mock });
     let sweeper = app.relay.clone();
     tokio::spawn(async move {
         loop {
@@ -325,11 +425,67 @@ async fn main() {
     });
     println!("PIDA (Web) auf http://{}/", args.bind);
     loop {
-        let Ok((stream, _)) = listener.accept().await else { continue };
+        let (stream, peer) = match listener.accept().await {
+            Ok((stream, peer)) => (stream, peer.ip()),
+            Err(e) => {
+                // z. B. keine freien Dateideskriptoren: nicht in einer engen Schleife drehen
+                tracing::warn!("Verbindung nicht angenommen: {e}");
+                tokio::time::sleep(ACCEPT_BACKOFF).await;
+                continue;
+            }
+        };
         let app = Arc::clone(&app);
         tokio::spawn(async move {
-            let service = service_fn(move |req| handle(Arc::clone(&app), req));
-            let _ = http1::Builder::new().serve_connection(TokioIo::new(stream), service).await;
+            let service = service_fn(move |req| handle(Arc::clone(&app), peer, req));
+            let _ = http1::Builder::new()
+                .timer(TokioTimer::new())
+                .header_read_timeout(HEADER_TIMEOUT)
+                .serve_connection(TokioIo::new(stream), service)
+                .await;
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn client_address_comes_from_the_proxy_only() {
+        let local: IpAddr = "127.0.0.1".parse().unwrap();
+        let direct: IpAddr = "203.0.113.7".parse().unwrap();
+        let client: IpAddr = "198.51.100.4".parse().unwrap();
+        // hinter dem Proxy: letzter Eintrag (vom Proxy angehängt), erfundene Einträge davor zählen nicht
+        assert_eq!(client_ip(local, Some("198.51.100.4")), client);
+        assert_eq!(client_ip(local, Some("10.0.0.1, 198.51.100.4")), client);
+        assert_eq!(client_ip("::1".parse().unwrap(), Some("2001:db8::1")), "2001:db8::1".parse::<IpAddr>().unwrap());
+        // ohne bzw. mit unlesbarem Kopf: die Verbindung selbst
+        assert_eq!(client_ip(local, None), local);
+        assert_eq!(client_ip(local, Some("unbekannt")), local);
+        // direkte Verbindung: der Kopf kommt vom Client und wird nicht beachtet
+        assert_eq!(client_ip(direct, Some("198.51.100.4")), direct);
+    }
+
+    #[test]
+    fn page_policy_allows_only_own_code_and_atrust_frames() {
+        let csp = page_csp(ATRUST_ENDPOINT);
+        assert!(csp.contains("script-src 'self' 'wasm-unsafe-eval';"));
+        assert!(!csp.contains("script-src 'self' 'unsafe-inline'") && !csp.contains("'unsafe-eval'"));
+        assert!(
+            csp.contains(
+                "frame-src 'self' https://*.a-trust.at https://*.handy-signatur.at https://service.a-trust.at;"
+            )
+        );
+        assert!(csp.contains("form-action 'self' https://*.a-trust.at"));
+        assert!(csp.contains("frame-ancestors 'none'"));
+        // Testgegenstelle (relative Adresse): nur die eigene Herkunft kommt dazu
+        assert!(
+            page_csp("/mock-atrust/sl").contains("frame-src 'self' https://*.a-trust.at https://*.handy-signatur.at;")
+        );
+        // eigener Endpunkt: genau dessen Herkunft, nichts aus Pfad oder Abfrage
+        assert_eq!(origin_of("https://sl.example.at:8443/pfad?x=1"), Some("https://sl.example.at:8443"));
+        assert_eq!(origin_of("https://sl.example.at"), Some("https://sl.example.at"));
+        assert_eq!(origin_of("https://a; script-src *"), None);
+        assert_eq!(origin_of("/mock-atrust/sl"), None);
     }
 }

@@ -359,7 +359,7 @@ pub(crate) fn build(src: &SourcePdf, plan: &SignPlan, reserve: usize) -> Result<
                     _ => return Err(PadesError::InvalidPlan("/Pages ohne /Kids".into())),
                 }
                 let count = int_key(src, &root, b"Count").unwrap_or(src.page_count() as i64);
-                root.set("Count", Object::Integer(count + 1));
+                root.set("Count", Object::Integer(count.saturating_add(1)));
                 ed.put(pages_root, Object::Dictionary(root));
             } else {
                 let page = &src.pages()[page_index];

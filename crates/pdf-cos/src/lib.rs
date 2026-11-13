@@ -1003,8 +1003,9 @@ impl SourcePdf {
                 Object::Dictionary(d) => (Some(d.clone()), None),
                 Object::Reference(id) => {
                     let dict = match merged.get(&id.0) {
-                        Some(xref::Entry::InUse { offset, .. }) => usize::try_from(offset + base)
-                            .ok()
+                        Some(xref::Entry::InUse { offset, .. }) => offset
+                            .checked_add(base)
+                            .and_then(|abs| usize::try_from(abs).ok())
                             .and_then(|abs| lexer::parse_indirect_object(data, abs, &|_| None, &index))
                             .and_then(|io| match io.object {
                                 Object::Dictionary(d) => Some(d),

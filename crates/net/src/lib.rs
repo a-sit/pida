@@ -491,8 +491,13 @@ impl HttpClient {
     /// einem App-Wechsel auf iOS/Android ist die Keep-Alive-Verbindung im Pool oft tot, ohne dass der
     /// Client es weiß. POST wird nie wiederholt (der Server könnte ihn schon verarbeitet haben).
     pub async fn execute(&self, request: Request) -> Result<Response> {
+        // nur ein GET wird für die Wiederholung kopiert – ein POST (Dokument, Zugangsdaten) bleibt ein einziges Mal im
+        // Speicher
+        if request.method != Method::Get {
+            return self.execute_once(request).await;
+        }
         match self.execute_once(request.clone()).await {
-            Err(NetError::ConnectionLost(reason)) if request.method == Method::Get => {
+            Err(NetError::ConnectionLost(reason)) => {
                 tracing::info!(%reason, "Verbindung abgerissen – GET wird einmal auf neuer Verbindung wiederholt");
                 self.execute_once(request).await
             }

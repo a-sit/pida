@@ -8,8 +8,12 @@ package at.asit.pida.mobile
 import java.io.File
 
 object Documents {
-    /** Höchstgröße einer übernommenen Datei (wie `MAX_DOCUMENT_BYTES` der Shell, Plan §7.7). */
-    const val MAX_BYTES: Long = 512L * 1024 * 1024
+    /**
+     * Höchstgröße einer übernommenen Datei: die Grenze des Kerns (20 MB wie bei A-Trust, `MAX_DOCUMENT_BYTES`).
+     * Von einer größeren Datei kommen nur [MAX_BYTES] + 1 Bytes in die Sandbox – genug, damit der Kern sie wie
+     * überall als „größer als 20 MB“ ablehnt, ohne dass hunderte MB kopiert werden.
+     */
+    const val MAX_BYTES: Long = 20_000_000L
 
     /** Dateiname ohne Pfadanteile und Steuerzeichen; leer → `fallback`. */
     fun safeName(name: String?, fallback: String = "Dokument.pdf"): String {

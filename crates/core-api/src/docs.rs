@@ -300,6 +300,10 @@ impl DocStore {
         let image = if page == doc.pages.len() && page > 0 {
             let (w, h) = doc.pages[page - 1].visible_size();
             let (w, h) = ((w * scale).round().max(1.0) as u32, (h * scale).round().max(1.0) as u32);
+            // dieselbe Grenze wie für gerenderte Seiten: eine riesige Seitengröße darf keinen Speicher erzwingen
+            if u64::from(w) * u64::from(h) > pida_render::MAX_PIXELS {
+                return Err(RenderError::Render(format!("Raster {w}×{h} zu groß")));
+            }
             RgbaImage::filled(w, h, [255, 255, 255, 255])
         } else {
             doc.with_renderer(backend, |r| r.render_page(page, scale))??

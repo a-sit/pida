@@ -74,7 +74,18 @@ sudo systemctl reload apache2
 In der Vorlage die Domain eintragen. RHEL & Co.: die Vorlage aus `/usr/share/doc/pida-web/` nach
 `/etc/httpd/conf.d/pida-web.conf` kopieren und den Proxy unter SELinux erlauben
 (`sudo setsebool -P httpd_can_network_connect 1`). Wichtig in der Vorlage: `LimitRequestBody` ≥ 28 MB (Befehle
-mit dem Dokument als Base64, Grenze des Servers 28 MB; PDFs höchstens 20 MB wie bei A-Trust), `ProxyTimeout 120`, Komprimierung für `application/wasm`.
+mit dem Dokument als Base64, Grenze des Servers 28 MB; PDFs höchstens 20 MB wie bei A-Trust), `ProxyTimeout 630`,
+Komprimierung für `application/wasm`.
+
+**`ProxyTimeout`:** Der Server hält die DataURL-Anfrage von A-Trust, bis die Seite den nächsten Befehl schickt –
+höchstens 10 Minuten. Wartet Apache kürzer (ältere Vorlage: 120 s), bricht er die Kette vorher mit einem 504 an
+A-Trust ab, etwa wenn jemand zwischen Anmeldung und Signatur länger braucht. Bestehende Installationen: in
+`pida-web.conf` die Zeile auf `ProxyTimeout 630` ändern und Apache neu laden (`apachectl configtest`, dann
+`systemctl reload apache2` bzw. `httpd`); ein Paket-Update überschreibt eine angepasste Konfiguration nicht.
+
+Apache hängt die Adresse des Clients selbst an `X-Forwarded-For` an (`mod_proxy_http`); der Server nimmt daraus den
+letzten Eintrag für die Grenzen je Client. Dafür muss der Proxy auf derselben Maschine laufen (Verbindung über
+`127.0.0.1`) – sonst zählt die Adresse des Proxys.
 
 ### Was der Server tut
 
@@ -87,9 +98,13 @@ mit dem Dokument als Base64, Grenze des Servers 28 MB; PDFs höchstens 20 MB wie
 | `GET /api/sl/sessions/<id>/response` | Long-Poll der Seite (25 s) |
 | `POST /api/sl/sessions/<id>/command`, `…/finish`, `…/abort` | nächster Befehl bzw. Ende der Kette |
 
-Sitzungen leben höchstens 30 Minuten, höchstens 2000 gleichzeitig; weitergegeben werden nur
+Sitzungen leben höchstens 30 Minuten, höchstens 2000 gleichzeitig; je Client (IP-Adresse) höchstens 200 offene
+und 60 neue pro Minute (sonst `429`). Weitergegeben werden nur
 `InfoboxReadRequest` und `CreateCMSSignatureRequest` im SL-Namespace; alle `/api/`-Antworten tragen
-`Content-Security-Policy: sandbox`. Sitzungen liegen im Speicher: **eine Instanz** je Domain (kein Load-Balancing
+`Content-Security-Policy: sandbox`. Die Oberfläche selbst kommt mit einer Inhaltsrichtlinie: Skripte und
+WebAssembly nur von der eigenen Adresse, Rahmen und Formularziele nur A-Trust (`*.a-trust.at`,
+`*.handy-signatur.at`, der eingestellte SL-Endpunkt), Verbindungen nur zum eigenen Server und zur Release-Liste
+auf GitHub, keine Einbettung in fremde Seiten. Sitzungen liegen im Speicher: **eine Instanz** je Domain (kein Load-Balancing
 ohne Sticky Sessions).
 
 ## Entwicklung

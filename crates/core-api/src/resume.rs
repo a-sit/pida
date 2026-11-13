@@ -229,7 +229,10 @@ pub(crate) fn load(dir: &Path, now: SystemTime) -> Loaded {
     if record.format != FORMAT {
         return Loaded::Invalid("Format".into());
     }
-    let created = UNIX_EPOCH + Duration::from_secs(record.created_unix);
+    // ein unsinniger Zeitpunkt (beschädigte Datei) darf nicht zum Absturz bei jedem Start führen
+    let Some(created) = UNIX_EPOCH.checked_add(Duration::from_secs(record.created_unix)) else {
+        return Loaded::Invalid("Zeitpunkt".into());
+    };
     // Uhr zurückgestellt (Zeitpunkt in der Zukunft) gilt wie „zu alt“: nicht plausibel
     let age = now.duration_since(created).unwrap_or(Duration::MAX);
     if age > MAX_AGE {

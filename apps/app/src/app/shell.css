@@ -338,3 +338,11 @@
   gap: 5px;
   margin-top: var(--sp-2);
 }
+
+/* Telefonbreite: Für den Dateinamen bleibt in der Kopfzeile kein Platz (es bliebe ein Buchstabe) – im Arbeitsbereich
+   steht er in der Leiste über den Seiten (workspace.css), in den übrigen Schritten auf der Karte */
+@media (max-width: 560px) {
+  .header-context:has(.header-add) .header-doc {
+    display: none;
+  }
+}

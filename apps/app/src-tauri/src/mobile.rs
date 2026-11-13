@@ -40,8 +40,9 @@ pub const ANDROID_OUTPUT_DIR: &str = "files/Documents";
 pub const STALE_COPY_AGE: Duration = Duration::from_secs(60 * 60);
 /// Frist für Aufrufe des sicheren Speichers (die native Seite antwortet sonst sofort).
 pub const SECURE_STORE_TIMEOUT: Duration = Duration::from_secs(5);
-/// Höchstgröße eines eingehenden Dokuments (Schutz vor Speicherüberlauf; Plan §7.7).
-pub const MAX_DOCUMENT_BYTES: u64 = 512 * 1024 * 1024;
+/// Höchstgröße eines eingehenden Dokuments: die Grenze des Kerns (20 MB, wie bei A-Trust). Größere Dateien
+/// kopiert die Shell nicht erst in die Sandbox – der Kern lehnt sie ohnehin ab („größer als 20 MB“).
+pub const MAX_DOCUMENT_BYTES: u64 = pida_core_api::MAX_DOCUMENT_BYTES;
 /// MIME-Typ der Ausgabe.
 pub const PDF_MIME: &str = "application/pdf";
 
@@ -82,23 +83,28 @@ pub fn unique_target(dir: &Path, name: &str) -> PathBuf {
 }
 
 /// Liest die **Bytes** eingehender Dokumente und legt Kopien in `inbox` ab (nur `file:`-URLs mit
-/// regulärer Datei bis [`MAX_DOCUMENT_BYTES`]); andere bzw. nicht lesbare URLs gehen an die native Seite.
+/// regulärer Datei); andere bzw. nicht lesbare URLs gehen an die native Seite. Eine Datei über
+/// [`MAX_DOCUMENT_BYTES`] wird nicht kopiert: Der Kern bekommt den ursprünglichen Pfad und meldet sie wie überall
+/// als zu groß (er prüft die Größe, bevor er liest).
 pub fn ingest_urls(urls: &[url::Url], inbox: &Path) -> Ingested {
     let mut out = Ingested::default();
     for url in urls {
         let readable = (url.scheme() == "file")
             .then(|| url.to_file_path().ok())
             .flatten()
-            .filter(|p| std::fs::metadata(p).is_ok_and(|m| m.is_file() && m.len() <= MAX_DOCUMENT_BYTES));
-        let copied = readable.and_then(|path| {
-            let bytes = std::fs::read(&path).ok()?;
+            .and_then(|p| std::fs::metadata(&p).ok().filter(std::fs::Metadata::is_file).map(|m| (p, m.len())));
+        let taken = readable.and_then(|(path, len)| {
+            if len > MAX_DOCUMENT_BYTES {
+                return Some(path);
+            }
             let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
             let target = unique_target(inbox, &name);
             std::fs::create_dir_all(target.parent()?).ok()?;
-            std::fs::write(&target, bytes).ok()?;
+            // kopieren statt lesen und schreiben: das Dokument muss dafür nicht in den Speicher
+            std::fs::copy(&path, &target).ok()?;
             Some(target)
         });
-        match copied {
+        match taken {
             Some(target) => out.files.push(target),
             // Regel 9: keine URL im Log
             None => out.unresolved.push(url.as_str().to_owned()),
@@ -239,6 +245,23 @@ mod tests {
         assert_eq!(std::fs::read(&got.files[0]).unwrap(), b"%PDF-1.7 a");
         assert_eq!(got.unresolved.len(), 2, "content:// und Unlesbares an die native Seite");
         assert!(got.unresolved[0].starts_with("content://"));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn oversized_documents_are_not_copied_but_handed_to_the_core() {
+        let root = tmp("ingest-big");
+        let src = root.join("Documents/Inbox");
+        std::fs::create_dir_all(&src).unwrap();
+        let big = src.join("Gross.pdf");
+        std::fs::File::create(&big).unwrap().set_len(MAX_DOCUMENT_BYTES + 1).unwrap();
+        let edge = src.join("Grenze.pdf");
+        std::fs::File::create(&edge).unwrap().set_len(MAX_DOCUMENT_BYTES).unwrap();
+        let inbox = root.join("cache/inbox");
+        let urls = vec![url::Url::from_file_path(&big).unwrap(), url::Url::from_file_path(&edge).unwrap()];
+        let got = ingest_urls(&urls, &inbox);
+        assert_eq!(got.files, vec![big, inbox.join("1/Grenze.pdf")], "zu groß: Original statt Kopie");
+        assert!(got.unresolved.is_empty());
         let _ = std::fs::remove_dir_all(root);
     }
 

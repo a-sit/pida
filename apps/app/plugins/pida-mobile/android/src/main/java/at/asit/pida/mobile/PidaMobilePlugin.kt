@@ -387,20 +387,16 @@ class PidaMobilePlugin(private val activity: Activity) : Plugin(activity) {
     private fun copyIn(uri: Uri, dest: File, pdf: Boolean): File {
         val resolver = app.contentResolver
         var name: String? = null
-        var size = -1L
         try {
-            resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { c ->
+            resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
                 if (c.moveToFirst()) {
                     val n = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    val s = c.getColumnIndex(OpenableColumns.SIZE)
                     if (n >= 0 && !c.isNull(n)) name = c.getString(n)
-                    if (s >= 0 && !c.isNull(s)) size = c.getLong(s)
                 }
             }
         } catch (_: Exception) {
             // Anbieter ohne OpenableColumns: Name aus der URI
         }
-        if (size > Documents.MAX_BYTES) throw CodedException("too-large")
         var safe = Documents.safeName(name ?: uri.lastPathSegment, if (pdf) "Dokument.pdf" else "Datei")
         if (pdf) safe = Documents.withPdfExtension(safe)
         val target = Documents.uniqueTarget(dest, safe)
@@ -417,15 +413,15 @@ class PidaMobilePlugin(private val activity: Activity) : Plugin(activity) {
         return target
     }
 
+    /** Kopiert höchstens [Documents.MAX_BYTES] + 1 Bytes: Den Rest einer zu großen Datei braucht niemand. */
     private fun copyLimited(input: InputStream, output: OutputStream) {
         val buf = ByteArray(64 * 1024)
-        var total = 0L
-        while (true) {
-            val n = input.read(buf)
+        var left = Documents.MAX_BYTES + 1
+        while (left > 0) {
+            val n = input.read(buf, 0, minOf(buf.size.toLong(), left).toInt())
             if (n < 0) break
-            total += n
-            if (total > Documents.MAX_BYTES) throw CodedException("too-large")
             output.write(buf, 0, n)
+            left -= n
         }
         output.flush()
     }

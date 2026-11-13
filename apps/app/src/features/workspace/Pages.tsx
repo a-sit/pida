@@ -62,10 +62,14 @@ function haptic(): void {
   }
 }
 
+/** Je Adresse eine eigene Kachel: der Ladezustand gehört zum Bild, nicht zur Seite (kein „geladen“ vom vorigen Maßstab). */
+function KeyedPageTile({ url }: { url: string }) {
+  return <PageTile key={url} url={url} alt="" />;
+}
+
 function PageTile({ url, alt }: { url: string; alt: string }) {
   const [state, setState] = useState<'loading' | 'ok' | 'failed'>('loading');
   const { t } = useApp();
-  useEffect(() => setState('loading'), [url]);
   return (
     <>
       <img className="page-tile" src={url} alt={alt} draggable={false} onLoad={() => setState('ok')} onError={() => setState('failed')} data-state={state} />
@@ -343,7 +347,7 @@ export function Pages({
                 {t.t('ng-ui-ws-new-page')}
               </div>
             ) : loadPages.has(i) ? (
-              <PageTile url={bridge.pageTileUrl(doc.doc.id, i, tile)} alt="" />
+              <KeyedPageTile url={bridge.pageTileUrl(doc.doc.id, i, tile)} />
             ) : null}
           </div>
         );

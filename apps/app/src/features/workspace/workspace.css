@@ -167,6 +167,36 @@
 .toolbar-spacer {
   flex: 1;
 }
+/* Dateiname in der Leiste: nur auf Telefonbreite (dort blendet die Kopfzeile ihn aus) */
+.toolbar-doc-name {
+  display: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding-left: var(--sp-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-13);
+  font-weight: var(--fw-semibold);
+}
+.page-indicator-short {
+  display: none;
+}
+@media (max-width: 560px) {
+  .toolbar-doc-name {
+    display: block;
+  }
+  .page-indicator {
+    padding: 0 var(--sp-1) 0 var(--sp-2);
+    font-weight: var(--fw-regular, 400);
+  }
+  .page-indicator-long {
+    display: none;
+  }
+  .page-indicator-short {
+    display: inline;
+  }
+}
 .zoom-value {
   min-width: 52px;
   text-align: center;
@@ -747,7 +777,7 @@
   user-select: none;
   -webkit-user-select: none;
 }
-.page-frame.is-loading::after {
+.page-frame:has(> .page-tile[data-state='loading'])::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -759,7 +789,10 @@
     background-position: -200% 0;
   }
 }
-.page-frame.is-failed .page-failed {
+.page-tile[data-state='failed'] {
+  visibility: hidden;
+}
+.page-frame .page-failed {
   position: absolute;
   inset: 0;
   display: grid;
@@ -921,6 +954,10 @@
   /* wie `.switch` (Gewicht und Zeilenhöhe der Schalter darunter) */
   min-height: 32px;
   font-weight: var(--fw-medium);
+}
+/* DE/EN bleibt nebeneinander: Bei schmalem Inspektor bricht die Beschriftung um, nicht die Segmente. */
+.insp-block-lang-row .segmented-group {
+  flex: none;
 }
 .insp-block-lang.is-disabled .switch-label {
   color: var(--c-text-3);

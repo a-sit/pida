@@ -2,7 +2,7 @@
  * Web-Variante: Banner ganz oben „PIDA gibt es auch als App“ mit den Plattformen (Windows, macOS, Linux, iOS,
  * Android). Ein Klick öffnet den Dialog mit den Downloads: Desktop direkt mit den Installern der neuesten Release
  * (beim Öffnen von GitHub abgefragt, `releases.ts`; sonst die Release-Seite), iOS und Android
- * mit QR-Code zum Store – vorerst Platzhalter (keine Store-Veröffentlichung geplant). Nur sichtbar, wenn
+ * vorerst nur als Hinweis „noch nicht verfügbar“ (keine Store-Veröffentlichung geplant). Nur sichtbar, wenn
  * `webProfile()` gesetzt ist; ausblendbar bis zum Neuladen (nichts wird gespeichert).
  */
 import { useEffect, useState } from 'react';
@@ -72,29 +72,6 @@ function PlatformIcon({ platform, size = 18, colored = false }: { platform: Plat
         </svg>
       );
   }
-}
-
-/** Platzhalter für den QR-Code zum Store (bis zur Veröffentlichung). */
-function QrPlaceholder({ label }: { label: string }) {
-  return (
-    <div className="dl-qr" role="img" aria-label={label}>
-      <svg viewBox="0 0 21 21" width="96" height="96" aria-hidden="true" focusable="false">
-        {/* nur die drei Ortungsmuster eines QR-Codes, kein echter Code */}
-        {(
-          [
-            [0, 0],
-            [14, 0],
-            [0, 14],
-          ] as const
-        ).map(([x, y]) => (
-          <g key={`${x}-${y}`} fill="currentColor">
-            <path d={`M${x} ${y}h7v7h-7z M${x + 1} ${y + 1}v5h5v-5z`} fillRule="evenodd" />
-            <rect x={x + 2} y={y + 2} width="3" height="3" />
-          </g>
-        ))}
-      </svg>
-    </div>
-  );
 }
 
 /** Stand der Abfrage: `undefined` = läuft, `null` = gescheitert. */
@@ -176,11 +153,8 @@ function DownloadsDialog({ onClose }: { onClose: () => void }) {
           <ul className="dl-mobile">
             {MOBILE.map((p) => (
               <li key={p} className="dl-store">
-                <QrPlaceholder label={t.t('ng-ui-shell-dl-qr', { platform: NAME[p] })} />
-                <p className="dl-platform-name">
-                  <PlatformIcon platform={p} size={20} colored />
-                  {NAME[p]}
-                </p>
+                <PlatformIcon platform={p} size={32} colored />
+                <p className="dl-platform-name">{NAME[p]}</p>
                 <p className="dl-platform-hint">{t.t(p === 'ios' ? 'ng-ui-shell-dl-appstore' : 'ng-ui-shell-dl-play')}</p>
               </li>
             ))}
@@ -213,6 +187,8 @@ export function DownloadBanner() {
           ))}
         </span>
         <span className="dl-banner-text">{t.t('ng-ui-shell-dl-banner')}</span>
+        {/* schmale Fenster: kurze Zeile statt der Symbolreihe (download.css) */}
+        <span className="dl-banner-short">{t.t('ng-ui-shell-dl-banner-short')}</span>
         <span className="dl-banner-cta">{t.t('ng-ui-shell-dl-cta')}</span>
       </AriaButton>
       <IconButton label={t.t('ng-ui-shell-dl-hide')} onPress={() => setHidden(true)} className="dl-banner-close" tooltip={false}>

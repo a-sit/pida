@@ -8,6 +8,9 @@
  * Mobile: keine Ablagefläche und keine Tastenkürzel, Knopf „Dokument auswählen“ (Dokument-Picker bzw.
  * SAF) und der Hinweis auf „Teilen“/„Öffnen in“; statt des Kürzels ⌘/Strg+D der Link „Mit Demodokument ausprobieren“.
  *
+ * Web-Variante im Browser eines Telefons/Tablets (kein Hover, grober Zeiger): Titel und Demo-Link wie mobil, kein
+ * Kürzel- und kein Mehrfachauswahl-Hinweis (die Kürzel-Tasten blendet `base.css` dort ohnehin aus).
+ *
  * Unter dem Knopf steht je Plattform, wie die Dateiauswahl mehrere PDFs auf einmal übernimmt (ADR 0004 Nachtrag 17).
  *
  * Neue Version (Backlog Nr. 33): der Hinweis `UpdateHint` unter der Einleitung (nur, wenn der Kern ihn liefert).
@@ -24,8 +27,9 @@
 import { Link } from 'react-aria-components';
 import { useApp } from '../../app/context';
 import { isMobile } from '../../core/types';
-import { webProfile } from '../../core/web-profile';
+import { hintOs, webProfile } from '../../core/web-profile';
 import { AccessButton, Button, Keys, useModKey } from '../../ui/controls';
+import { useMediaQuery } from '../../ui/hooks';
 import { IconLock, IconQr, IconUpload } from '../../ui/Icons';
 import { batchFlow, dropHintMsg } from '../batch/flow';
 import { RECENT_AVAILABLE, RecentPanel } from '../recent';
@@ -35,8 +39,10 @@ import './start.css';
 
 export function StartView() {
   const { t, view, dragActive, browse, startDemo, setOverlay } = useApp();
-  const { mod } = useModKey();
+  const { mod, isMac } = useModKey();
   const mobile = isMobile(view);
+  // Browser am Telefon/Tablet (Web-Variante): nichts zu ziehen, keine Kürzel, die Dateiauswahl gehört dem Browser
+  const touchOnly = useMediaQuery('(hover: none) and (pointer: coarse)') && !mobile;
   const showRecent = RECENT_AVAILABLE && view.recent !== null;
   const single = !showRecent;
   return (
@@ -53,25 +59,26 @@ export function StartView() {
             <span className="drop-icon" aria-hidden="true">
               <IconUpload size={30} />
             </span>
-            {mobile ? (
+            {mobile || touchOnly ? (
               <p className="drop-title">{t.t('ng-ui-start-drop-title-mobile')}</p>
             ) : (
               <p className="drop-title" aria-live="polite">
                 {dragActive ? t.t('ng-ui-start-drop-release') : t.t('ng-ui-start-drop-title')}
               </p>
             )}
-            {/* mehrere Dateien = Stapel: Wortlaut je Standard-Signiermittel (Kern: `batch_flow`), sonst neutral */}
-            <p className="drop-hint">{t.t(mobile ? 'ng-ui-start-drop-hint-mobile' : dropHintMsg(batchFlow(view, view.signers.selected ?? view.signers.default)))}</p>
             <AccessButton msg={mobile ? 'ng-ui-start-pick-mobile' : 'ng-ui-start-pick'} variant="primary" size="lg" onPress={() => void browse()} isDisabled={!view.actions.open_files} />
+            {/* mehrere Dateien = Stapel: Wortlaut je Standard-Signiermittel (Kern: `batch_flow`), sonst neutral;
+                unter dem Knopf und klein – erst die Handlung, dann der Hinweis */}
+            <p className="drop-hint drop-hint-below">{t.t(mobile ? 'ng-ui-start-drop-hint-mobile' : dropHintMsg(batchFlow(view, view.signers.selected ?? view.signers.default)))}</p>
             {/* wie die System-Dateiauswahl mehrere PDFs übernimmt (macOS: Doppelklick nimmt nur eines; Android: Antippen
                 nimmt sofort eines; ADR 0004 Nachtrag 17) */}
-            <p className="drop-multi">{t.t('ng-ui-start-multi-hint', { os: view.platform.os })}</p>
+            {touchOnly ? null : <p className="drop-multi">{t.t('ng-ui-start-multi-hint', { os: hintOs(view.platform.os, isMac) })}</p>}
             <p className="drop-foot">
               <span className="drop-foot-item">
                 <IconLock size={14} />
                 {t.t('ng-ui-start-local')}
               </span>
-              {mobile ? (
+              {mobile || touchOnly ? (
                 view.actions.open_files ? (
                   <span className="drop-foot-item">
                     <Link className="link" onPress={() => void startDemo()}>
