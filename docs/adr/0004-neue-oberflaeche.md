@@ -3778,10 +3778,18 @@ Umsetzung:
   Stelle des ausgewählten in der Reihenfolge. Beim Auswählen tauschen beide die Plätze – alle Werkzeuge (Ziehen,
   Tastatur, Zielwahl, Millimeter, automatische Platzierung) wirken unverändert auf den ausgewählten Block. Ereignisse
   `BlockAdded`, `BlockSelected`, `BlockRemoved`, `TargetsFilled`.
-- **Regeln:** Ein Signaturfeld bzw. der QR-Platzhalter nur für einen Block (`ng-block-target-taken`); „Auf neuer
-  Seite“ nur mit einem Block (`ng-blocks-new-page` – eine neue Seite nach der ersten Signatur veränderte das bereits
-  signierte Dokument); unsichtbar: genau eine Signatur, die weiteren Blöcke ruhen; gesperrte Platzierung
-  („Automatische Positionierung“): keine weiteren Blöcke.
+- **Regeln:** Ein Signaturfeld bzw. der QR-Platzhalter nur für einen Block (`ng-block-target-taken`); unsichtbar:
+  genau eine Signatur, die weiteren Blöcke ruhen; gesperrte Platzierung („Automatische Positionierung“): keine
+  weiteren Blöcke.
+- **„Auf neuer Seite“ mit mehreren Blöcken (0.8.1, 13.11.2026):** In 0.8.0 war die Kombination gesperrt. Eine neue
+  Seite nach der ersten Signatur veränderte das bereits signierte Dokument – die Seite kann also nur mit der ersten
+  Signatur entstehen. Seit 0.8.1 dürfen Blöcke auf der virtuellen neuen Seite liegen (`BlockSlot::page ==
+  Seitenzahl`); `order_blocks` stellt sie in der Reihenfolge automatisch nach vorn (**automatisches Umnummerieren**,
+  Entscheidung des Auftraggebers; innerhalb der beiden Gruppen bleibt die Reihenfolge). Die erste Position hängt die
+  Seite an, für alle weiteren ist sie eine vorhandene Seite. Schaltet die Nutzerin „Auf neuer Seite“ aus, rücken alle
+  Blöcke der neuen Seite auf die letzte vorhandene. Tests: `workflow/tests/blocks.rs`
+  `blocks_on_the_new_page_are_numbered_first`, `core-api/tests/workspace.rs`
+  `blocks_on_the_new_page_are_signed_first` (echte Engine: genau eine neue Seite, drei Signaturen).
 - **Signieren:** `SignRequested` sammelt die Positionen aller Blöcke in ihrer Reihenfolge (`WorkspaceEdit::rounds`).
   Nach `Finishing` einer Runde folgt `Effect::NextSignature` + `Effect::Prepare` der nächsten – dieselbe Sitzung, je
   Runde ein `sign_one`. Im Kern (`pida-core-api`) ist ab der zweiten Runde das eben signierte Zwischenergebnis die

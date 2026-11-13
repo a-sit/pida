@@ -2103,8 +2103,9 @@ items: Array<BlockSlotView>,
  */
 limit: number, 
 /**
- * „Weiteren Block hinzufügen“ möglich (nicht unsichtbar, nicht auf neuer Seite, nicht gesperrt, Höchstzahl
- * nicht erreicht, neues sichtbares Feld erlaubt, Vorschau vorhanden)
+ * „Weiteren Block hinzufügen“ möglich (nicht unsichtbar, nicht gesperrt, Höchstzahl nicht erreicht, neues
+ * sichtbares Feld erlaubt, Vorschau vorhanden). Mit „Auf neuer Seite“ stehen die Blöcke auf der neuen Seite in
+ * `items` zuerst (nur die erste Signatur kann die Seite anhängen).
  */
 can_add: boolean, 
 /**

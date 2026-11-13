@@ -166,7 +166,8 @@ pub const MAX_BLOCKS: usize = 10;
 /// ausgewählte Block liegt wie bisher in `State::Positioning` (`page`, `placement`) und in
 /// [`WorkspaceEdit::target`]/[`WorkspaceEdit::origin`]; beim Auswählen eines anderen Blocks tauschen beide die
 /// Plätze, damit alle Werkzeuge (Ziehen, Tastatur, Zielwahl, automatische Platzierung) unverändert auf den
-/// ausgewählten Block wirken. Weitere Blöcke liegen nie auf der virtuellen neuen Seite.
+/// ausgewählten Block wirken. Mit „Auf neuer Seite“ dürfen Blöcke auf der virtuellen neuen Seite liegen
+/// (`page == Seitenzahl`); sie stehen dann in der Reihenfolge zuerst, weil nur die erste Signatur die Seite anhängt.
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BlockSlot {
     /// Ziel
@@ -835,8 +836,6 @@ pub const MSG_FIELD_LOCKED: &str = "ng-field-locked";
 pub const MSG_BLOCKS_LIMIT: &str = "ng-blocks-limit";
 /// Meldungs-ID: Ziel (Signaturfeld bzw. QR-Platzhalter) ist schon von einem anderen Block belegt.
 pub const MSG_BLOCK_TARGET_TAKEN: &str = "ng-block-target-taken";
-/// Meldungs-ID: „Auf neuer Seite“ gibt es nur mit einem einzigen Signaturblock.
-pub const MSG_BLOCKS_NEW_PAGE: &str = "ng-blocks-new-page";
 
 /// Meldungs-ID: Das Signiermittel des fortgesetzten Vorgangs ist nicht mehr verfügbar; die Auswahl
 /// wird gezeigt und das Dokument neu vorbereitet.

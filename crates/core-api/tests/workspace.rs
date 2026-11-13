@@ -2492,3 +2492,62 @@ async fn several_blocks_sign_the_document_once_per_block() {
         assert!(o.status.success(), "qpdf: {}", String::from_utf8_lossy(&o.stdout));
     }
 }
+
+/// Mehrfachsignatur mit „Auf neuer Seite“ (echte Engine, Keystore): ein Block auf einer vorhandenen Seite, dann „Auf
+/// neuer Seite“ mit einem zweiten Block dort. Der Block auf der neuen Seite wird automatisch Nummer 1 – nur die erste
+/// Signatur kann die Seite anhängen. Ergebnis: eine Seite mehr, zwei Signaturen, eine davon auf der neuen Seite.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn blocks_on_the_new_page_are_signed_first() {
+    let fx = Fixture::new();
+    let out = fx.dir("out");
+    let a = copy_pdf(TEXT_PDF, &fx.dir("in"), "doc.pdf");
+    let Some(core) = start(&fx, keystore_overlay(vec![a.clone()], &out), None, None, true) else {
+        eprintln!("PIDA_PDFIUM_DIR nicht gesetzt – übersprungen");
+        return;
+    };
+    let v = wait_for(&core, "Arbeitsbereich mit Block", |v| {
+        editing(v) && v.document.as_ref().is_some_and(|d| d.sticker.is_some()) && blocks(v).is_some_and(|b| b.can_add)
+    })
+    .await;
+    let n = v.document.as_ref().unwrap().doc.page_count;
+    // Block 1 von Hand auf Seite 1, Block 2 dazu, dann „Auf neuer Seite“: der ausgewählte (zweite) wandert dorthin
+    core.dispatch(UiEvent::MoveBlock { page: 0, x: 60.0, y: 400.0 });
+    wait_for(&core, "verschoben", |v| v.document.as_ref().is_some_and(|d| d.placement.x == 60.0)).await;
+    core.dispatch(UiEvent::AddBlock { page: Some(0) });
+    wait_for(&core, "zwei Blöcke", |v| blocks(v).is_some_and(|b| b.items.len() == 2)).await;
+    core.dispatch(UiEvent::ToggleNewPage);
+    let v = wait_for(&core, "auf neuer Seite", |v| v.document.as_ref().is_some_and(|d| d.new_page)).await;
+    let b = blocks(&v).unwrap();
+    assert!(b.can_add, "weitere Blöcke bleiben möglich");
+    assert_eq!(
+        b.items.iter().map(|x| (x.active, x.page)).collect::<Vec<_>>(),
+        vec![(true, n), (false, 0)],
+        "der Block auf der neuen Seite ist Nummer 1"
+    );
+    // ein dritter Block direkt auf der neuen Seite: Nummer 2, ohne Überdeckung
+    core.dispatch(UiEvent::AddBlock { page: Some(n) });
+    let v = wait_for(&core, "drei Blöcke", |v| blocks(v).is_some_and(|b| b.items.len() == 3)).await;
+    let b = blocks(&v).unwrap();
+    assert_eq!(b.items.iter().map(|x| (x.active, x.page)).collect::<Vec<_>>(), vec![(false, n), (true, n), (false, 0)]);
+    assert!(!v.document.as_ref().unwrap().check.overlaps_block);
+
+    core.dispatch(UiEvent::SignWith { backend: BackendId::Keystore });
+    wait_for(&core, "gespeichert", saved).await;
+    let signed = out.join("doc_signed.pdf");
+    let pdf = pida_pdf_cos::SourcePdf::open(std::fs::read(&signed).unwrap(), &pida_pdf_cos::Limits::default()).unwrap();
+    assert_eq!(pdf.pages().len(), n + 1, "genau eine neue Seite");
+    let fields: Vec<_> = pdf.signature_fields().unwrap().into_iter().filter(|f| f.signed).collect();
+    assert_eq!(fields.len(), 3);
+    let mut pages: Vec<usize> = fields.iter().map(|f| written_block(&pdf, &f.qualified_name).0).collect();
+    pages.sort_unstable();
+    assert_eq!(pages, vec![0, n, n], "zwei Signaturen auf der neuen Seite, eine auf Seite 1");
+    if tool("pyhanko") {
+        let o = Command::new("pyhanko").args(["sign", "validate", "--no-strict-syntax"]).arg(&signed).output().unwrap();
+        let text = String::from_utf8_lossy(&o.stdout);
+        assert_eq!(text.matches("INTACT").count() + text.matches("intact").count(), 3, "pyHanko: {text}");
+    }
+    if tool("qpdf") {
+        let o = Command::new("qpdf").arg("--check").arg(&signed).output().unwrap();
+        assert!(o.status.success(), "qpdf: {}", String::from_utf8_lossy(&o.stdout));
+    }
+}

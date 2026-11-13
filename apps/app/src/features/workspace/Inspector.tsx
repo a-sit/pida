@@ -117,7 +117,7 @@ export function Inspector({
   const fillCount = blocks?.free_targets ?? 0;
   // „Alle Platzhalter belegen“ erst, wenn es mehr bringt als „Ins Feld setzen“ für den einen Block
   const fillShown = editable && (fillCount >= 2 || (fillCount >= 1 && doc.target.kind !== 'free'));
-  const addReason = !blocks || blocks.can_add ? null : doc.new_page ? t.t('ng-ui-insp-blocks-new-page') : items.length >= blocks.limit ? t.t('ng-ui-insp-blocks-limit', { n: blocks.limit }) : null;
+  const addReason = !blocks || blocks.can_add ? null : items.length >= blocks.limit ? t.t('ng-ui-insp-blocks-limit', { n: blocks.limit }) : null;
   const where = (b: BlockSlotView): string => {
     if (b.target.kind === 'field') {
       const index = b.target.index;
@@ -275,9 +275,9 @@ export function Inspector({
             />
             <SwitchField
               label={t.t('ng-ui-insp-new-page')}
-              hint={newPageReason ?? (signatures > 1 ? t.t('ng-ui-insp-new-page-blocks') : t.t('ng-ui-insp-new-page-hint'))}
+              hint={newPageReason ?? t.t('ng-ui-insp-new-page-hint')}
               isSelected={doc.new_page}
-              isDisabled={!editable || doc.invisible || (!c.new_page_allowed && !doc.new_page) || (signatures > 1 && !doc.new_page)}
+              isDisabled={!editable || doc.invisible || (!c.new_page_allowed && !doc.new_page)}
               onChange={() => void dispatch({ type: 'toggle_new_page' })}
             />
             {pdfaNote ? (
@@ -380,7 +380,11 @@ export function Inspector({
                     </li>
                   ))}
                 </ol>
-                <p className="insp-hint">{t.t('ng-ui-insp-blocks-hint')}</p>
+                <p className="insp-hint">
+                  {t.t('ng-ui-insp-blocks-hint')}
+                  {/* „Auf neuer Seite“: nur die erste Signatur kann die Seite anhängen */}
+                  {doc.new_page ? ` ${t.t('ng-ui-insp-blocks-new-page-first')}` : ''}
+                </p>
               </>
             ) : (
               <p className="insp-hint">{t.t('ng-ui-insp-blocks-add-hint')}</p>

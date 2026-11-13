@@ -344,7 +344,7 @@ ng-ui-insp-blocks-hint = Jeder Block erhält eine eigene Signatur – in dieser 
 ng-ui-insp-blocks-add = Weiteren Block hinzufügen
 ng-ui-insp-blocks-add-hint = Für mehrere Unterschriftsstellen: Jeder Block erhält eine eigene Signatur.
 ng-ui-insp-blocks-limit = Mehr als { $n } Signaturblöcke je Dokument sind nicht möglich.
-ng-ui-insp-blocks-new-page = Mit „Auf neuer Seite“ ist nur ein Signaturblock möglich.
+ng-ui-insp-blocks-new-page-first = Blöcke auf der neuen Seite werden zuerst signiert und stehen deshalb vorn.
 ng-ui-insp-blocks-fill = Alle { $n } Platzhalter belegen
 ng-ui-insp-blocks-fill-more =
     { $n ->
@@ -356,7 +356,6 @@ ng-ui-insp-blocks-item-field = Signaturfeld „{ $name }“
 ng-ui-insp-blocks-item-qr = QR-Code-Platzhalter
 ng-ui-insp-blocks-select = Block { $n } auswählen: { $where }
 ng-ui-insp-blocks-remove = Block { $n } entfernen
-ng-ui-insp-new-page-blocks = Nur mit einem einzigen Signaturblock möglich.
 ng-ui-insp-sign-times = { $n }-mal signieren
     .accesskey = S
 ng-ui-insp-sign-count = Dieses Dokument erhält { $n } Signaturen.

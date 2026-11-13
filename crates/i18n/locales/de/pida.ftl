@@ -622,7 +622,6 @@ ng-field-locked = Das Signaturfeld ist gesperrt.
 # Mehrfachsignatur (mehrere Signaturblöcke in einem Dokument, je Block eine eigene Signatur)
 ng-blocks-limit = Mehr als 10 Signaturblöcke je Dokument sind nicht möglich.
 ng-block-target-taken = An dieser Stelle steht schon ein anderer Signaturblock.
-ng-blocks-new-page = „Auf neuer Seite“ ist nur mit einem einzigen Signaturblock möglich.
 ng-certificate-not-valid = Das Zertifikat ist zum Signierzeitpunkt nicht gültig.
 ng-clock-skew = Die Uhr dieses Geräts weicht um etwa { $minutes } Minuten von der Zeit des Signaturdienstes ab.
 ng-atrust-login-rejected = Die Anmeldung wurde abgelehnt. Bitte das Passwort erneut eingeben.

@@ -55,12 +55,15 @@ pub(super) fn opened_plan(queue: &Queue, doc: DocId) -> Option<(Option<PositionC
 /// Bearbeitungszustand legen (nach [`apply_plan`]; nur mit einem Plan der Nutzerin). Freie Blöcke kommen an ihre
 /// Lage, Blöcke in einem Feld bzw. im QR-Platzhalter an ihr Ziel; die gemerkte freie Lage solcher Blöcke ist die
 /// Startlage des Dokuments.
+/// Liegt einer dieser Blöcke auf der virtuellen neuen Seite, bleibt „Auf neuer Seite“ an (`to_workspace`).
 pub(super) fn apply_more(edit: &mut WorkspaceEdit, queue: &Queue, doc: &DocFacts) {
     let Some(item) = queue.batch.as_ref().and_then(|b| b.item(doc.id)) else { return };
     if item.auto_plan || item.more.is_empty() {
         return;
     }
     let last = doc.page_count.saturating_sub(1);
+    // freie Blöcke dürfen auf der neuen Seite liegen (nur, wo das Dokument eine neue Seite erlaubt)
+    let free_last = if doc.new_page_allowed() { doc.page_count } else { last };
     let memory = |page: usize| doc.start.map(|p| Placement { page_index: page.min(last), ..p });
     let mut others = Vec::with_capacity(item.more.len());
     for position in &item.more {
@@ -68,8 +71,8 @@ pub(super) fn apply_more(edit: &mut WorkspaceEdit, queue: &Queue, doc: &DocFacts
             PositionChoice::Manual(p) => Some(BlockSlot {
                 target: Target::Free,
                 origin: PlacementOrigin::User,
-                page: p.page_index.min(last),
-                placement: Some(Placement { page_index: p.page_index.min(last), ..*p }),
+                page: p.page_index.min(free_last),
+                placement: Some(Placement { page_index: p.page_index.min(free_last), ..*p }),
             }),
             PositionChoice::Field(f) => {
                 edit.fields.iter().position(|c| c.qualified_name == f.qualified_name).map(|i| {
@@ -264,7 +267,8 @@ fn back_with_plan(
     let mut automatic = edit.automatic && !(edit.invisible && !edit.invisible_by_profile);
     // Mehrfachsignatur: die weiteren Blöcke gehören zum Plan; der ausgewählte Block bekommt dann immer seine
     // gezeigte Lage (Vorschau = Ergebnis), auch wenn sie aus „Freie Fläche suchen“ stammt
-    let more: Vec<PositionChoice> = edit.others.iter().filter_map(|b| super::slot_position(edit, b, doc)).collect();
+    let more: Vec<PositionChoice> =
+        edit.others.iter().filter_map(|b| super::slot_position(edit, b, doc, new_page)).collect();
     if !more.is_empty() {
         automatic = false;
         if plan.is_none() && !edit.invisible {

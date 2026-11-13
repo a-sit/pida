@@ -36,7 +36,8 @@ Republic of Austria or of A-Trust GmbH.
   and placing always applies to the selected one. “Fill all placeholders” puts a block into every empty signature
   field. Each block gets its own signature, in the order of the numbers – the button then reads, for example, “Sign
   3 times”. With ID Austria, each signature may need its own confirmation. If the process is interrupted, nothing is
-  saved. “On a new page” is only available with a single block.
+  saved. With “On a new page”, several blocks may sit on the new page; they are signed first and therefore get the
+  first numbers automatically.
 - **Demo:** “Start demo” opens a bundled demo document with a QR placeholder – to try PIDA without risk. Shortcut ⌘D
   or Ctrl+D, in the browser ⌥⇧D or Alt+Shift+D; also in the command palette and, on mobile devices, via “Try it with
   the demo document” on the start page. The signature is genuine, but the document has no legally relevant content.

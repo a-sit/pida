@@ -1459,8 +1459,9 @@ pub struct BlocksView {
     pub items: Vec<BlockSlotView>,
     /// Höchstzahl der Blöcke je Dokument
     pub limit: u32,
-    /// „Weiteren Block hinzufügen“ möglich (nicht unsichtbar, nicht auf neuer Seite, nicht gesperrt, Höchstzahl
-    /// nicht erreicht, neues sichtbares Feld erlaubt, Vorschau vorhanden)
+    /// „Weiteren Block hinzufügen“ möglich (nicht unsichtbar, nicht gesperrt, Höchstzahl nicht erreicht, neues
+    /// sichtbares Feld erlaubt, Vorschau vorhanden). Mit „Auf neuer Seite“ stehen die Blöcke auf der neuen Seite in
+    /// `items` zuerst (nur die erste Signatur kann die Seite anhängen).
     pub can_add: bool,
     /// Anzahl der Ziele, die „Alle Platzhalter belegen“ noch belegen würde (geeignete leere Signaturfelder und
     /// der QR-Platzhalter, die noch kein Block benutzt)

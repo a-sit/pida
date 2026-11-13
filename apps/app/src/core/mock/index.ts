@@ -87,6 +87,7 @@ import {
   fillTargets,
   targetTaken,
   blockCount,
+  orderBlocks,
   contractSpec,
   blankSpec,
   fieldSpec,
@@ -919,8 +920,8 @@ function editEvent(s: FlowState, ctx: MockCtx, fn: (d: MockDoc, e: EditState) =>
     if (rejected) ctx.notify(rejected);
     return;
   }
-  // Prüfung liest das Raster nur, wenn es für die Seite schon berechnet ist
-  s.edit = next;
+  // Prüfung liest das Raster nur, wenn es für die Seite schon berechnet ist; Blöcke auf der neuen Seite zuerst
+  s.edit = orderBlocks(d, next);
 }
 
 function scenarioDocs(o: MockOptions): { path: string; spec: MockDocSpec }[] {
@@ -1252,14 +1253,14 @@ const flowArea: MockArea<FlowState> = {
         editEvent(s, ctx, (doc, ed) => changePage(doc, ed, e.page));
         return true;
       case 'toggle_new_page':
-        editEvent(s, ctx, (doc, ed) => toggleNewPage(doc, ed), (s.edit?.others?.length ?? 0) > 0 ? 'ng-blocks-new-page' : 'placement.notice.new_page_not_allowed');
+        editEvent(s, ctx, (doc, ed) => toggleNewPage(doc, ed), 'placement.notice.new_page_not_allowed');
         return true;
       // Mehrfachsignatur: je Block eine eigene Signatur (Kern: `BlockAdded`, `BlockSelected`, `BlockRemoved`, `TargetsFilled`)
       case 'add_block': {
         const d0 = current(s);
         const refused = d0 && s.edit && s.stage === 'editing' ? addBlock(d0, s.edit, e.page ?? null, blockSize(settings, lang)) : null;
         if (typeof refused === 'string') ctx.notify(refused);
-        else if (refused) s.edit = refused;
+        else if (refused && d0) s.edit = orderBlocks(d0, refused);
         return true;
       }
       case 'select_block':

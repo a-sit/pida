@@ -425,7 +425,7 @@ function WorkspaceView({ doc }: { doc: DocumentView }) {
 
       <Inspector
         doc={doc}
-        visiblePage={Math.min(current, Math.max(0, doc.doc.page_count - 1))}
+        visiblePage={Math.min(current, Math.max(0, doc.doc.page_count - (doc.new_page ? 0 : 1)))}
         chipOpen={chip.open}
         signMode={chip.sign}
         onChipOpenChange={(open) => setChip({ open, sign: open ? chip.sign : false })}
