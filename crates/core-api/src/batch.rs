@@ -359,6 +359,7 @@ impl crate::runtime::CoreTask {
                     target_name,
                     target_exists,
                     thumbnail: thumbs.contains_key(&item.doc),
+                    signatures: Some(self.item_signatures(item)),
                 }
             })
             .collect();
@@ -419,6 +420,11 @@ impl crate::runtime::CoreTask {
         }
     }
 
+    /// Mehrfachsignatur: Signaturen dieses Eintrags im Lauf (unsichtbares Profil: immer eine).
+    fn item_signatures(&self, item: &BatchItem) -> u32 {
+        if self.ctx.invisible { 1 } else { u32::try_from(item.signatures()).unwrap_or(u32::MAX) }
+    }
+
     fn position_summary(&self, item: &BatchItem) -> PositionSummaryView {
         if self.ctx.invisible {
             // unsichtbares Profil: der Lauf signiert jeden Eintrag unsichtbar (auch mit Plan)
@@ -443,10 +449,12 @@ impl crate::runtime::CoreTask {
         let logins = self
             .probe
             .get_for(format!("logins:{}", backend.as_str()), ttl, || self.registry.expected_logins(backend) > 0);
+        // je Dokument eine Bestätigung; Mehrfachsignatur: je Block eine
+        let signatures: u32 = batch.items.iter().filter(|i| i.status.signable()).map(|i| self.item_signatures(i)).sum();
         let confirmations = match &caps {
-            Some(c) if c.max_batch == 1 => documents,
+            Some(c) if c.max_batch == 1 => signatures,
             Some(_) => 0,
-            None => documents,
+            None => signatures,
         };
         let visible = !self.ctx.invisible
             && batch
@@ -518,6 +526,10 @@ impl crate::runtime::CoreTask {
         };
         let total = u32::try_from(run.order.len()).unwrap_or(u32::MAX);
         let index = u32::try_from(run.index + 1).unwrap_or(u32::MAX).min(total.max(1));
+        // Bestätigungen: je Dokument eine, in der Mehrfachsignatur je Block eine
+        let batch_items = queue.batch.as_ref();
+        let confirmations_total: u32 =
+            run.order.iter().map(|d| batch_items.and_then(|b| b.item(*d)).map_or(1, |i| self.item_signatures(i))).sum();
         let pause = run.pause.as_ref().map(|p| {
             let (scope, new_session) = match p {
                 BatchPause::Document { .. } => (PauseScope::Document, false),
@@ -545,8 +557,8 @@ impl crate::runtime::CoreTask {
             index,
             total,
             login_done: self.ws.login_done,
-            confirmations_done: run.confirmations_done,
-            confirmations_total: total,
+            confirmations_done: run.confirmations_done.min(confirmations_total),
+            confirmations_total,
             certificate,
             batch: true,
             pause,

@@ -1551,3 +1551,107 @@ fn invisible_chosen_in_an_untouched_item_is_a_user_plan() {
     let State::Positioning { edit: Some(edit), .. } = &s else { panic!("{:?}", s.name()) };
     assert!(edit.invisible && !edit.automatic, "{edit:?}");
 }
+
+// ------------------------------------------------------------------------------------------------
+// Mehrfachsignatur im Stapel: mehrere Blöcke je Dokument, je Block eine eigene Signatur
+// ------------------------------------------------------------------------------------------------
+
+/// Übersicht mit zwei Dokumenten; Dokument 2 im Arbeitsbereich mit drei Blöcken (Seite 1 frei, Seite 0 frei,
+/// Seite 2 frei – der zweite ist ausgewählt), zurück in die Übersicht.
+fn overview_with_three_blocks() -> (State, [Placement; 3]) {
+    let at = |page: usize, x: f32| Placement { page_index: page, x, y: 300.0, width: 230.0, height: 49.0 };
+    let (a, b, c) = (at(1, 40.0), at(0, 60.0), at(2, 80.0));
+    let t = step(overview(&[1, 2]), Event::BatchItemOpened(DocId(2)), &ctx());
+    let s = step(t.state, analyzed(2, 3, None, false), &ctx()).state;
+    let s = step(s, Event::PlacementChanged(a), &ctx()).state;
+    let s = step(s, Event::BlockAdded(b), &ctx()).state;
+    let s = step(s, Event::BlockAdded(c), &ctx()).state;
+    let s = step(s, Event::BlockSelected(1), &ctx()).state;
+    let t = step(s, Event::BackToBatch, &ctx());
+    assert!(matches!(t.state, State::BatchOverview { .. }), "{:?}", t.state);
+    (t.state, [a, b, c])
+}
+
+#[test]
+fn blocks_of_an_opened_item_are_kept_as_its_plan() {
+    let (s, [a, b, c]) = overview_with_three_blocks();
+    let item = batch_of(&s).item(DocId(2)).unwrap().clone();
+    assert_eq!(item.plan, Some(PositionChoice::Manual(b)), "Plan = der ausgewählte Block");
+    assert_eq!(item.more, vec![PositionChoice::Manual(a), PositionChoice::Manual(c)]);
+    assert_eq!((item.active, item.auto_plan, item.signatures()), (1, false, 3));
+    assert_eq!(status(&s, 2), BatchItemStatus::Positioned);
+    assert_eq!(batch_of(&s).item(DocId(1)).unwrap().signatures(), 1);
+    // erneut öffnen: alle Blöcke wieder da, derselbe ausgewählt
+    let t = step(s.clone(), Event::BatchItemOpened(DocId(2)), &ctx());
+    let t = step(t.state, analyzed(2, 3, None, false), &ctx());
+    let State::Positioning { placement: Some(q), edit: Some(edit), .. } = &t.state else { panic!("{:?}", t.state) };
+    assert_eq!(*q, b);
+    assert_eq!(edit.active, 1);
+    assert_eq!(edit.others.iter().map(|o| o.placement).collect::<Vec<_>>(), vec![Some(a), Some(c)]);
+    // zurück ohne Änderung: derselbe Plan
+    let again = step(t.state.clone(), Event::BackToBatch, &ctx());
+    assert_eq!(batch_of(&again.state).item(DocId(2)).unwrap(), &item);
+    // ein Block entfernt: der Plan folgt
+    let s2 = step(t.state, Event::BlockRemoved(0), &ctx()).state;
+    let back = step(s2, Event::BackToBatch, &ctx());
+    let item = batch_of(&back.state).item(DocId(2)).unwrap();
+    assert_eq!((item.more.clone(), item.active), (vec![PositionChoice::Manual(c)], 0));
+    // „Für diesen Stapel automatisch positionieren“ mit Neusetzen: wieder ein automatischer Block
+    let auto = step(s, Event::BatchAutoPositionSet { enabled: true, replace_manual: true }, &ctx());
+    let item = batch_of(&auto.state).item(DocId(2)).unwrap();
+    assert_eq!((item.more.len(), item.signatures(), item.auto_plan), (0, 1, true));
+}
+
+#[test]
+fn the_run_signs_once_per_block_in_the_same_session() {
+    let (s, [a, b, c]) = overview_with_three_blocks();
+    let mut d = Driver::new(started(s, BackendId::Keystore, &[1, 2], ExistingPolicy::KeepBoth));
+    d.until(2, BatchPhase::Preparing);
+    let run = |d: &Driver| match &d.state {
+        State::BatchSigning { run, .. } => (run.round, run.position.clone(), run.positions.len()),
+        other => panic!("{}", other.name()),
+    };
+    assert_eq!(run(&d), (0, Some(PositionChoice::Manual(a)), 3), "Reihenfolge der Blöcke, nicht der Auswahl");
+    for (round, position) in [(1, b), (2, c)] {
+        d.ok(); // Preparing
+        d.ok(); // Confirming
+        let effects = d.ok(); // Finishing → nächste Runde
+        assert!(
+            matches!(&effects[..], [Effect::NextSignature, Effect::Prepare { position: p, .. }] if *p == PositionChoice::Manual(position)),
+            "{effects:?}"
+        );
+        assert_eq!(run(&d), (round, Some(PositionChoice::Manual(position)), 3));
+        assert_eq!(d.phase(), BatchPhase::Preparing);
+    }
+    d.finish();
+    assert_eq!(opens(&d.effects), 1, "eine Sitzung");
+    assert_eq!(count(&d.effects, |e| *e == Effect::SignDocument), 4, "Dokument 1 einmal, Dokument 2 dreimal");
+    assert_eq!(count(&d.effects, |e| *e == Effect::NextSignature), 2);
+    assert_eq!(count(&d.effects, |e| matches!(e, Effect::Write(_))), 2, "je Dokument eine Datei");
+    assert!(matches!(status(&d.state, 2), BatchItemStatus::Signed { .. }));
+}
+
+/// Ein Fehler in einer späteren Runde verwirft das Teilergebnis: „Erneut versuchen“ beginnt wieder bei der ersten
+/// Signatur des Dokuments.
+#[test]
+fn a_failure_in_a_later_round_restarts_the_document() {
+    let (s, [a, _, _]) = overview_with_three_blocks();
+    let mut d = Driver::new(started(s, BackendId::Keystore, &[2], ExistingPolicy::KeepBoth));
+    d.until(2, BatchPhase::Preparing);
+    d.ok();
+    d.ok();
+    d.ok(); // zweite Runde vorbereitet
+    d.ok(); // Confirming der zweiten Runde
+    assert_eq!(d.phase(), BatchPhase::Confirming);
+    d.send(Event::SigningDeclined);
+    assert!(matches!(d.pause(), Some(BatchPause::Document { .. })), "{:?}", d.pause());
+    let State::BatchSigning { run, .. } = &d.state else { panic!() };
+    assert_eq!((run.round, run.position.clone()), (0, Some(PositionChoice::Manual(a))));
+    let effects = d.send(Event::Retry);
+    assert!(
+        matches!(&effects[..], [Effect::Prepare { position, .. }] if *position == PositionChoice::Manual(a)),
+        "{effects:?}"
+    );
+    d.finish();
+    assert!(matches!(status(&d.state, 2), BatchItemStatus::Signed { .. }));
+}

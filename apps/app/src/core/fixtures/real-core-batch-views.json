@@ -43,6 +43,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "ready"
@@ -58,6 +59,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": null,
           "status": {
             "code": "error-PDFPwdProtected",
@@ -74,6 +76,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6232,
           "status": {
             "state": "ready"
@@ -89,6 +92,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "ready"
@@ -253,6 +257,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "stage": "confirming",
@@ -269,6 +274,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": null,
           "status": {
             "code": "error-PDFPwdProtected",
@@ -285,6 +291,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6232,
           "status": {
             "state": "queued"
@@ -300,6 +307,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "queued"
@@ -520,6 +528,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "path": "/Users/test/Dokumente/Vertrag_signed.pdf",
@@ -536,6 +545,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": null,
           "status": {
             "code": "error-PDFPwdProtected",
@@ -552,6 +562,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6232,
           "status": {
             "stage": "confirming",
@@ -568,6 +579,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "queued"
@@ -957,6 +969,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "ready"
@@ -972,6 +985,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "ready"
@@ -1148,6 +1162,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "stage": "login",
@@ -1164,6 +1179,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": null,
           "status": {
             "code": "error-PDFPwdProtected",
@@ -1180,6 +1196,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6232,
           "status": {
             "state": "queued"
@@ -1195,6 +1212,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "queued"
@@ -1416,6 +1434,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "ready"
@@ -1431,6 +1450,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": null,
           "status": {
             "code": "error-PDFPwdProtected",
@@ -1447,6 +1467,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6232,
           "status": {
             "state": "ready"
@@ -1462,6 +1483,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "ready"
@@ -1633,6 +1655,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "ready"
@@ -1648,6 +1671,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": null,
           "status": {
             "code": "error-PDFPwdProtected",
@@ -1664,6 +1688,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6232,
           "status": {
             "state": "ready"
@@ -1679,6 +1704,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "ready"
@@ -1983,6 +2009,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "path": "/Users/test/Dokumente/Vertrag_signed.pdf",
@@ -1999,6 +2026,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": null,
           "status": {
             "code": "error-PDFPwdProtected",
@@ -2015,6 +2043,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6232,
           "status": {
             "stage": "paused",
@@ -2031,6 +2060,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "state": "queued"
@@ -2273,6 +2303,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "path": "/Users/test/Dokumente/Vertrag_signed.pdf",
@@ -2289,6 +2320,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": null,
           "status": {
             "code": "error-PDFPwdProtected",
@@ -2305,6 +2337,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6232,
           "status": {
             "existing": false,
@@ -2321,6 +2354,7 @@
           "position": {
             "kind": "auto"
           },
+          "signatures": 1,
           "size_bytes": 6233,
           "status": {
             "path": "/Users/test/Dokumente/Beilage_signed.pdf",

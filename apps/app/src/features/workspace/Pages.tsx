@@ -19,6 +19,9 @@
  * - **Überdeckung** (Rahmen, Plakette) nur, wenn `check.for_revision == revision`.
  * - **Gesperrt** (Einstellung „Automatische Positionierung“, `locked`): weder Ziehen noch Tastatur noch
  *   Feld-Markierungen; der Block nennt sich „automatisch platziert“ und verweist auf „Diesmal selbst platzieren“.
+ * - **Mehrfachsignatur** (`document.blocks`, je Block eine eigene Signatur): Der ausgewählte Block ist der Sticker;
+ *   die übrigen stehen als nummerierte Knöpfe an ihrer Stelle – ein Klick wählt sie aus (`select_block`). Am
+ *   ausgewählten Block entfernt „×“ bzw. Entf den Block (`remove_block`); belegte Felder zeigen keine Markierung.
  */
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from 'react';
 import { Button } from 'react-aria-components';
@@ -26,8 +29,10 @@ import { useApp } from '../../app/context';
 import { tileScale } from '../../core/bridge';
 import type { DocumentView, GuideKind, GuideView, RectPt } from '../../core/types';
 import { useModKey } from '../../ui/controls';
-import { IconAlert, IconCheck, IconGrip, IconLock, IconPen, IconQr } from '../../ui/Icons';
+import { IconAlert, IconCheck, IconGrip, IconLock, IconClose, IconPen, IconQr } from '../../ui/Icons';
 import {
+  activeBlock,
+  blockItems,
   clampToPage,
   grabPoint,
   offeredField,
@@ -135,6 +140,19 @@ export function Pages({
   const block = doc.block;
   const placementPage = doc.placement.page_index;
   const realPages = doc.doc.page_count;
+  // Mehrfachsignatur: die übrigen Blöcke (nummeriert, wählbar) und die Nummer des ausgewählten
+  const items = blockItems(doc);
+  const total = Math.max(1, items.length);
+  const activeNo = activeBlock(doc) + 1;
+  const others = items.filter((b) => !b.active && b.rect && b.page < sizes.length);
+  const takenFields = new Set(others.flatMap((b) => (b.target.kind === 'field' ? [b.target.index] : [])));
+  const qrTaken = others.some((b) => b.target.kind === 'qr');
+  const removable = editable && !locked && total > 1;
+  const removeActive = () => {
+    onInteract();
+    onSnap([]);
+    void dispatch({ type: 'remove_block', index: activeNo - 1 });
+  };
 
   // Neue Projektion des Kerns ersetzt den Entwurf (seine Lage ist maßgeblich – auch wenn er anders klemmt)
   useEffect(() => {
@@ -298,6 +316,14 @@ export function Pages({
         return page(0);
       case 'End':
         return page(sizes.length - 1);
+      case 'Delete':
+      case 'Backspace':
+        // Mehrfachsignatur: den ausgewählten Block entfernen (der letzte bleibt)
+        if (removable) {
+          e.preventDefault();
+          removeActive();
+        }
+        return;
       default:
     }
   };
@@ -387,7 +413,7 @@ export function Pages({
         {editable
           ? doc.fields.map((f) => {
               // nur angebotene Felder (Kern: `suitable`); ein seitengroßes Feld verdeckte sonst die ganze Seite
-              if (!offeredField(f) || f.page >= sizes.length || f.index === currentField) return null;
+              if (!offeredField(f) || f.page >= sizes.length || f.index === currentField || takenFields.has(f.index)) return null;
               const b = rectToBox(f.rect, pageH(f.page), scale);
               return (
                 <Button
@@ -409,7 +435,7 @@ export function Pages({
               );
             })
           : null}
-        {editable && doc.qr && doc.target.kind !== 'qr' && doc.qr.page < sizes.length
+        {editable && doc.qr && doc.target.kind !== 'qr' && !qrTaken && doc.qr.page < sizes.length
           ? (() => {
               const qr = doc.qr;
               const b = rectToBox(qr.rect, pageH(qr.page), scale);
@@ -433,6 +459,33 @@ export function Pages({
             })()
           : null}
 
+        {/* Mehrfachsignatur: die nicht ausgewählten Blöcke an ihrer Stelle – ein Klick wählt den Block aus */}
+        {others.map((b) => {
+          if (!b.rect) return null;
+          const bb = rectToBox(b.rect, pageH(b.page), scale);
+          return (
+            <Button
+              key={`block-${b.index}`}
+              className="sticker-other"
+              style={{ top: top(b.page) + bb.top, left: left(b.page) + bb.left, width: bb.width, height: bb.height }}
+              aria-label={t.t('ng-ui-ws-block-select', { n: b.index + 1, total })}
+              isDisabled={!editable || locked}
+              data-testid="block-other"
+              data-block={b.index}
+              onPress={() => {
+                onInteract();
+                onSnap([]);
+                void dispatch({ type: 'select_block', index: b.index });
+              }}
+            >
+              {block.preview_revision > 0 ? <img className="sticker-img" src={previewUrl} alt="" draggable={false} /> : null}
+              <span className="sticker-number" aria-hidden="true">
+                {b.index + 1}
+              </span>
+            </Button>
+          );
+        })}
+
         {box && !doc.invisible ? (
           <div
             ref={stickerRef}
@@ -440,7 +493,7 @@ export function Pages({
             style={{ top: top(stickerPage) + box.top, left: left(stickerPage) + box.left, width: box.width, height: box.height }}
             role="application"
             aria-roledescription={t.t(locked ? 'ng-ui-ws-sticker-role-locked' : 'ng-ui-ws-sticker-role')}
-            aria-label={t.t('ng-ui-ws-sticker-label')}
+            aria-label={total > 1 ? t.t('ng-ui-ws-sticker-label-n', { n: activeNo, total }) : t.t('ng-ui-ws-sticker-label')}
             aria-describedby={helpId}
             aria-disabled={editable ? undefined : true}
             tabIndex={editable ? 0 : -1}
@@ -454,13 +507,18 @@ export function Pages({
           >
             <span className="sticker-tab" aria-hidden="true">
               {locked ? <IconLock size={14} /> : <IconGrip size={14} />}
-              {t.t('ng-ui-ws-sticker-label')}
+              {total > 1 ? t.t('ng-ui-ws-sticker-label-n', { n: activeNo, total }) : t.t('ng-ui-ws-sticker-label')}
             </span>
+            {total > 1 ? (
+              <span className="sticker-number is-active" aria-hidden="true" data-testid="sticker-number">
+                {activeNo}
+              </span>
+            ) : null}
             {block.preview_revision > 0 ? <img className="sticker-img" src={previewUrl} alt="" draggable={false} /> : null}
             {overlap ? (
               <span className="sticker-flag sticker-flag-warn" aria-hidden="true">
                 <IconAlert size={13} />
-                {t.t(overlap === 'widget' ? 'ng-ui-ws-sticker-widget' : 'ng-ui-ws-sticker-overlap')}
+                {t.t(overlap === 'block' ? 'ng-ui-ws-sticker-block' : overlap === 'widget' ? 'ng-ui-ws-sticker-widget' : 'ng-ui-ws-sticker-overlap')}
               </span>
             ) : inField ? (
               <span className="sticker-flag sticker-flag-ok" aria-hidden="true">
@@ -468,7 +526,8 @@ export function Pages({
                 {t.t(doc.target.kind === 'qr' && !draft ? 'ng-ui-ws-sticker-in-qr' : 'ng-ui-ws-sticker-in-field')}
               </span>
             ) : null}
-            {coach && !dragging ? (
+            {/* nur beim einen, automatisch platzierten Block – nicht an einem hinzugefügten */}
+            {coach && !dragging && total === 1 ? (
               <span className={`sticker-coach${coachAnchor((box.left + box.width / 2) / (pageW(stickerPage) * scale))}`} aria-hidden="true">
                 {/* nennt das Ziel der Automatik (Einstellungen › Dokument: QR-Platzhalter bzw. Signaturfeld) */}
                 {t.t(doc.target.kind === 'qr' ? 'ng-ui-ws-placed-qr' : doc.target.kind === 'field' ? 'ng-ui-ws-placed-field' : 'ng-ui-ws-placed')}
@@ -476,8 +535,21 @@ export function Pages({
             ) : null}
             <span id={helpId} className="sr-only">
               {t.t(locked ? 'ng-ui-ws-sticker-locked-help' : 'ng-ui-ws-sticker-help', { sign: `${mod}+${enter}` })}
+              {removable ? ` ${t.t('ng-ui-ws-sticker-help-remove')}` : ''}
             </span>
           </div>
+        ) : null}
+        {/* „×“ am ausgewählten Block (Geschwister des Stickers: kein Knopf in der `application`-Rolle) */}
+        {box && !doc.invisible && removable && !dragging ? (
+          <Button
+            className="sticker-remove"
+            style={{ top: top(stickerPage) + box.top, left: left(stickerPage) + box.left + box.width }}
+            aria-label={t.t('ng-ui-ws-block-remove', { n: activeNo })}
+            data-testid="block-remove"
+            onPress={removeActive}
+          >
+            <IconClose size={14} />
+          </Button>
         ) : null}
       </div>
     </div>

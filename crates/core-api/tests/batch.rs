@@ -831,6 +831,74 @@ async fn single_document_from_the_overview_keeps_its_plan_and_counts_as_signed()
     }
 }
 
+/// Mehrfachsignatur im Stapel (echte Engine, PDFium nötig): ein Eintrag mit zwei von Hand platzierten Blöcken behält
+/// sie als Plan (erneut geöffnet: beide wieder da), die Übersicht zählt drei Bestätigungen für zwei Dokumente, und
+/// der Lauf signiert dieses Dokument zweimal in derselben Sitzung – das andere einmal.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_entry_with_two_blocks_is_signed_twice_in_the_run() {
+    let fx = Fixture::new();
+    let out = fx.dir("out");
+    let o = Opts { backends: None, engine: None, pdfium: true };
+    // unveränderte Dateien (die echte Engine lehnt die mit Anhang unterscheidbar gemachten ab)
+    let dir = fx.dir("in");
+    let files = vec![copy_pdf(PDF, &dir, "a.pdf"), copy_pdf(PDF, &dir, "b.pdf")];
+    let Some(core) = start(&fx, keystore_overlay(files, &out), o) else {
+        eprintln!("PIDA_PDFIUM_DIR nicht gesetzt – übersprungen");
+        return;
+    };
+    let v = overview_ready(&core, 2).await;
+    let b = doc_of(&v, "b.pdf");
+    let blocks = |v: &ViewState| v.document.as_ref().and_then(|d| d.blocks.clone());
+    core.dispatch(UiEvent::OpenBatchItem { doc: b });
+    wait_for(&core, "Arbeitsbereich mit Block", |v| {
+        v.document.as_ref().is_some_and(|d| d.doc.id == b && d.sticker.is_some())
+            && blocks(v).is_some_and(|x| x.can_add)
+    })
+    .await;
+    core.dispatch(UiEvent::AddBlock { page: Some(0) });
+    let v = wait_for(&core, "zwei Blöcke", |v| blocks(v).is_some_and(|x| x.items.len() == 2)).await;
+    let placed = blocks(&v).unwrap().items;
+    core.dispatch(UiEvent::BackToBatch);
+    let v = wait_for(&core, "zurück", |v| matches!(v.step, StepView::Batch)).await;
+    let signatures =
+        |v: &ViewState, name: &str| batch(v).items.iter().find(|i| i.name == name).and_then(|i| i.signatures);
+    assert_eq!((signatures(&v, "a.pdf"), signatures(&v, "b.pdf")), (Some(1), Some(2)));
+    assert_eq!(item_status(&v, "b.pdf"), BatchItemStatusView::Positioned);
+    select(&core, BackendId::Keystore);
+    let v = wait_for(&core, "Schätzung", |v| v.batch.as_ref().is_some_and(|x| x.estimate.is_some())).await;
+    let estimate = batch(&v).estimate.clone().unwrap();
+    // der Keystore bestätigt nicht je Dokument (Passwort einmal); mit ID Austria wären es drei Bestätigungen
+    assert_eq!((estimate.documents, estimate.confirmations), (2, 0));
+    // erneut öffnen: beide Blöcke wieder an ihrer Stelle, derselbe ausgewählt
+    core.dispatch(UiEvent::OpenBatchItem { doc: b });
+    let v = wait_for(&core, "wieder geöffnet", |v| {
+        v.document.as_ref().is_some_and(|d| d.doc.id == b) && blocks(v).is_some_and(|x| x.items.len() == 2)
+    })
+    .await;
+    let again = blocks(&v).unwrap().items;
+    assert_eq!(again.iter().map(|x| (x.active, x.page)).collect::<Vec<_>>(), vec![(false, placed[0].page), (true, 0)]);
+    for (x, y) in again.iter().zip(&placed) {
+        let (r, q) = (x.rect.unwrap(), y.rect.unwrap());
+        assert!((r.left - q.left).abs() < 0.5 && (r.top - q.top).abs() < 0.5, "{r:?} ≠ {q:?}");
+    }
+    core.dispatch(UiEvent::BackToBatch);
+    let v = wait_for(&core, "zurück", |v| matches!(v.step, StepView::Batch)).await;
+    start_batch(&core, &v, BackendId::Keystore, ExistingPolicy::KeepBoth, None);
+    let v = summary(&core).await;
+    let s = batch(&v).summary.clone().unwrap();
+    assert_eq!((s.total, s.signed), (2, 2));
+    let signed = |name: &str| {
+        let bytes = std::fs::read(out.join(name)).unwrap();
+        let pdf = pida_pdf_cos::SourcePdf::open(bytes, &pida_pdf_cos::Limits::default()).unwrap();
+        pdf.signature_fields().unwrap().into_iter().filter(|f| f.signed).count()
+    };
+    assert_eq!((signed("a_signed.pdf"), signed("b_signed.pdf")), (1, 2));
+    if tool("qpdf") {
+        let o = Command::new("qpdf").arg("--check").arg(out.join("b_signed.pdf")).output().unwrap();
+        assert!(o.status.success(), "qpdf: {}", String::from_utf8_lossy(&o.stdout));
+    }
+}
+
 // ------------------------------------------------------------------------------------------------
 // „PDF hinzufügen“ (ADR 0004 Nachtrag 9): Kopfzeile „+ PDF“, Miniaturleiste
 // ------------------------------------------------------------------------------------------------

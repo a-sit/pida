@@ -30,11 +30,11 @@ use super::{discard_all, files_added_single, grown_reserve, start_current, works
 use crate::batch::{Batch, BatchItem, BatchItemStatus, BatchPause, BatchPhase, BatchRun, BatchSummary, DocSummary};
 use crate::queue::{DocId, DocResult, InputDocument, Queue};
 use crate::state::{
-    BackendOption, BatchOutput, Context, DocFacts, Effect, Event, ExistingPolicy, MSG_BATCH_ABORTED, MSG_BATCH_ADDED,
-    MSG_BATCH_DONE, MSG_BATCH_ITEM_SIGNED, MSG_BATCH_NOTHING_TO_SIGN, MSG_BATCH_OUTPUT_FOLDER_REQUIRED,
-    MSG_BATCH_PENDING_APP_REQUEST, MSG_CERT_CACHE_MISMATCH, MSG_CONSTRAINT_CERTIFIED, MSG_SIGNER_UNAVAILABLE,
-    MSG_SIGNING_DECLINED, ParkedPlacement, PlaceholderFound, PlacementOrigin, PositionChoice, RetryTarget, SignFlow,
-    SigningPhase, State, Step, Target, Transition, WorkflowError, WorkspaceEdit,
+    BackendOption, BatchOutput, BlockSlot, Context, DocFacts, Effect, Event, ExistingPolicy, MSG_BATCH_ABORTED,
+    MSG_BATCH_ADDED, MSG_BATCH_DONE, MSG_BATCH_ITEM_SIGNED, MSG_BATCH_NOTHING_TO_SIGN,
+    MSG_BATCH_OUTPUT_FOLDER_REQUIRED, MSG_BATCH_PENDING_APP_REQUEST, MSG_CERT_CACHE_MISMATCH, MSG_CONSTRAINT_CERTIFIED,
+    MSG_SIGNER_UNAVAILABLE, MSG_SIGNING_DECLINED, ParkedPlacement, PlaceholderFound, PlacementOrigin, PositionChoice,
+    RetryTarget, SignFlow, SigningPhase, State, Step, Target, Transition, WorkflowError, WorkspaceEdit,
 };
 
 // ------------------------------------------------------------------------------------------------
@@ -49,6 +49,50 @@ pub(super) fn opened_plan(queue: &Queue, doc: DocId) -> Option<(Option<PositionC
         return None;
     }
     Some(b.item(doc).map_or((None, true), |i| (i.plan.clone(), i.auto_plan)))
+}
+
+/// Mehrfachsignatur: die weiteren Blöcke des aus der Übersicht geöffneten Dokuments wieder in den
+/// Bearbeitungszustand legen (nach [`apply_plan`]; nur mit einem Plan der Nutzerin). Freie Blöcke kommen an ihre
+/// Lage, Blöcke in einem Feld bzw. im QR-Platzhalter an ihr Ziel; die gemerkte freie Lage solcher Blöcke ist die
+/// Startlage des Dokuments.
+pub(super) fn apply_more(edit: &mut WorkspaceEdit, queue: &Queue, doc: &DocFacts) {
+    let Some(item) = queue.batch.as_ref().and_then(|b| b.item(doc.id)) else { return };
+    if item.auto_plan || item.more.is_empty() {
+        return;
+    }
+    let last = doc.page_count.saturating_sub(1);
+    let memory = |page: usize| doc.start.map(|p| Placement { page_index: page.min(last), ..p });
+    let mut others = Vec::with_capacity(item.more.len());
+    for position in &item.more {
+        let slot = match position {
+            PositionChoice::Manual(p) => Some(BlockSlot {
+                target: Target::Free,
+                origin: PlacementOrigin::User,
+                page: p.page_index.min(last),
+                placement: Some(Placement { page_index: p.page_index.min(last), ..*p }),
+            }),
+            PositionChoice::Field(f) => {
+                edit.fields.iter().position(|c| c.qualified_name == f.qualified_name).map(|i| {
+                    let page = f.page_index.unwrap_or(0).min(last);
+                    BlockSlot {
+                        target: Target::Field(i),
+                        origin: PlacementOrigin::Field,
+                        page,
+                        placement: memory(page),
+                    }
+                })
+            }
+            PositionChoice::Placeholder(qr) => {
+                let page = qr.page_index.min(last);
+                edit.qr = Some(qr.clone());
+                Some(BlockSlot { target: Target::Qr, origin: PlacementOrigin::Qr, page, placement: memory(page) })
+            }
+            PositionChoice::Auto | PositionChoice::Invisible => None,
+        };
+        others.extend(slot);
+    }
+    edit.active = item.active.min(others.len());
+    edit.others = others;
 }
 
 /// Analysewarnungen dieses Stapeleintrags bereits bestätigt?
@@ -162,8 +206,8 @@ enum Back {
     /// Status und Plan unverändert (Abbrechen, „Start“)
     Keep,
     /// neuer Plan (`BackToBatch`, `ShowBatch`) und ob er aus der Automatik stammt; Warnungen gelten als
-    /// bestätigt
-    Plan(Option<PositionChoice>, bool),
+    /// bestätigt. Dazu die weiteren Blöcke der Mehrfachsignatur und die Stelle des Blocks des Plans.
+    Plan(Box<Option<PositionChoice>>, bool, Vec<PositionChoice>, usize),
     /// beim Öffnen abgelehnt
     Rejected(String),
     /// einzeln signiert und gespeichert
@@ -182,9 +226,11 @@ fn back(mut queue: Queue, doc: DocId, how: Back, mut effects: Vec<Effect>) -> Tr
     if let Some(item) = batch.item_mut(doc) {
         match &how {
             Back::Keep => {}
-            Back::Plan(plan, automatic) => {
-                item.plan = plan.clone();
+            Back::Plan(plan, automatic, more, active) => {
+                item.plan = (**plan).clone();
                 item.auto_plan = *automatic;
+                item.more = more.clone();
+                item.active = *active;
                 item.reviewed = true;
                 item.settle();
             }
@@ -212,11 +258,21 @@ fn back_with_plan(
     doc: &DocFacts,
     edit: &WorkspaceEdit,
 ) -> Transition {
-    let plan = plan_of(edit, placement, new_page, doc);
+    let mut plan = plan_of(edit, placement, new_page, doc);
     // „Unsichtbar signieren“ von der Nutzerin ist ihr Plan: er folgt nicht mehr den Einstellungen
     // (sonst ginge er beim erneuten Öffnen bzw. bei der nächsten Einstellungsänderung verloren)
-    let automatic = edit.automatic && !(edit.invisible && !edit.invisible_by_profile);
-    back(queue, doc.id, Back::Plan(plan, automatic), Vec::new())
+    let mut automatic = edit.automatic && !(edit.invisible && !edit.invisible_by_profile);
+    // Mehrfachsignatur: die weiteren Blöcke gehören zum Plan; der ausgewählte Block bekommt dann immer seine
+    // gezeigte Lage (Vorschau = Ergebnis), auch wenn sie aus „Freie Fläche suchen“ stammt
+    let more: Vec<PositionChoice> = edit.others.iter().filter_map(|b| super::slot_position(edit, b, doc)).collect();
+    if !more.is_empty() {
+        automatic = false;
+        if plan.is_none() && !edit.invisible {
+            plan = workspace_position(edit, placement, new_page, doc);
+        }
+    }
+    let active = edit.active_index().min(more.len());
+    back(queue, doc.id, Back::Plan(Box::new(plan), automatic, more, active), Vec::new())
 }
 
 /// Zustand und Ereignis, die [`intercept`] nicht behandelt (geboxt: beide sind groß).
@@ -248,6 +304,8 @@ pub(super) fn intercept(state: State, event: Event, _ctx: &Context) -> Result<Tr
                         status: BatchItemStatus::Signed { output: output.clone() },
                         reviewed: true,
                         auto_plan: false,
+                        more: Vec::new(),
+                        active: 0,
                     });
                     // Miniatur, Seitenzahl und Größe der Zeile (der Status bleibt „Signiert“)
                     effects.push(Effect::Preanalyze(doc.id));
@@ -552,6 +610,8 @@ pub(super) fn overview(state: State, event: Event, ctx: &Context) -> Transition 
             if enabled && replace_manual {
                 for item in batch.items.iter_mut().filter(|i| i.status.signable() && !i.auto_plan) {
                     item.auto_plan = true;
+                    item.more.clear();
+                    item.active = 0;
                     if needs_qr_search(item.summary.as_ref(), ctx) {
                         item.summary = None;
                         item.plan = None;
@@ -676,6 +736,8 @@ fn start(
         doc: None,
         position: None,
         skipping: false,
+        positions: Vec::new(),
+        round: 0,
     };
     Transition::with(State::BatchSigning { queue, run: Box::new(run) }, vec![Effect::OpenSession(backend)])
 }
@@ -717,9 +779,31 @@ impl Lauf<'_> {
     }
 
     /// Dokument an `run.index` beginnen; ohne weiteres Dokument Ende des Laufs.
+    /// Mehrfachsignatur: zurück zur ersten Runde – nach einem Fehler wird ein Teilergebnis verworfen, „Erneut
+    /// versuchen“ signiert das Dokument wieder ab der ersten Signatur (`Effect::Prepare` der ersten Runde setzt
+    /// die Quelle im Kern auf das Original zurück).
+    fn first_round(&mut self) {
+        if let Some(first) = self.run.positions.first() {
+            self.run.position = Some(first.clone());
+        }
+        self.run.round = 0;
+    }
+
+    /// Mehrfachsignatur: nächste Runde des aktuellen Dokuments (das Ergebnis ist die Quelle der nächsten
+    /// Signatur, dieselbe Sitzung); `false` nach der letzten.
+    fn next_round(&mut self) -> bool {
+        let Some(next) = self.run.positions.get(self.run.round + 1).cloned() else { return false };
+        self.run.round += 1;
+        self.run.position = Some(next);
+        self.effects.push(Effect::NextSignature);
+        true
+    }
+
     fn start_doc(mut self) -> Transition {
         self.run.doc = None;
         self.run.position = None;
+        self.run.positions.clear();
+        self.run.round = 0;
         self.run.skipping = false;
         self.run.flow = SignFlow::default();
         while let Some(doc) = self.run.current() {
@@ -824,6 +908,8 @@ impl Lauf<'_> {
     fn pause_for_next_session(mut self, error: WorkflowError) -> Transition {
         self.run.doc = None;
         self.run.position = None;
+        self.run.positions.clear();
+        self.run.round = 0;
         match self.run.current() {
             Some(next) => {
                 self.run.phase = BatchPhase::OpeningSession;
@@ -852,6 +938,7 @@ impl Lauf<'_> {
         let Some(doc) = self.run.current() else { return self.start_doc() };
         if resume != BatchPhase::Writing {
             self.effects.push(Effect::ReleaseDocument);
+            self.first_round();
         }
         self.run.pause = Some(BatchPause::Document { doc, error, retry, resume });
         self.stay()
@@ -983,10 +1070,21 @@ impl Lauf<'_> {
         // ein unsichtbares Profil erzwingt „unsichtbar“ – auch gegen einen Plan aus der Übersicht bzw. dem
         // Arbeitsbereich, der vor dem Wechsel des Profils entstand (wie `settings_changed` im Arbeitsbereich);
         // ein automatischer Plan (Platzhalter der Voranalyse) folgt den aktuellen Einstellungen
-        let plan = item.filter(|i| !follows_settings(i)).and_then(|i| i.plan);
+        let manual = item.filter(|i| !follows_settings(i));
+        let plan = manual.as_ref().and_then(|i| i.plan.clone());
         let position = if ctx.invisible { PositionChoice::Invisible } else { plan.unwrap_or(automatic) };
-        let new_visible =
-            matches!(position, PositionChoice::Manual(_) | PositionChoice::Auto | PositionChoice::Placeholder(_));
+        // Mehrfachsignatur: von Hand platzierte weitere Blöcke – je Block eine Signatur (unsichtbar: eine)
+        let positions = match &manual {
+            Some(i) if !i.more.is_empty() && position != PositionChoice::Invisible => i.positions(position.clone()),
+            _ => Vec::new(),
+        };
+        let is_new_visible = |p: &PositionChoice| {
+            matches!(p, PositionChoice::Manual(_) | PositionChoice::Auto | PositionChoice::Placeholder(_))
+        };
+        let new_visible = is_new_visible(&position) || positions.iter().any(is_new_visible);
+        let position = positions.first().cloned().unwrap_or(position);
+        self.run.positions = positions;
+        self.run.round = 0;
         if new_visible && !facts.new_visible_field_allowed {
             // DocMDP-zertifiziert: nur vorhandene Felder oder unsichtbar
             let error =
@@ -1112,7 +1210,14 @@ pub(super) fn signing(state: State, event: Event, ctx: &Context) -> Transition {
                     l.effects.push(Effect::Finish);
                     l.stay()
                 }
-                BatchPhase::Finishing => l.write(),
+                // Mehrfachsignatur: weitere Blöcke dieses Dokuments zuerst, dann speichern
+                BatchPhase::Finishing => {
+                    if l.next_round() {
+                        l.prepare()
+                    } else {
+                        l.write()
+                    }
+                }
                 _ => l.stay(),
             }
         }

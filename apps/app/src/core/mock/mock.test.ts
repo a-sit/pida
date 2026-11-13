@@ -751,3 +751,101 @@ describe('„Zur Startseite“ parkt offene Arbeit (Nachtrag 10, Mock wie der Ke
   });
 
 });
+
+describe('Mehrfachsignatur (je Block eine eigene Signatur)', () => {
+  const blocks = (v: ViewState) => v.document!.blocks!;
+
+  it('hinzufügen, auswählen, entfernen: die Werkzeuge wirken auf den ausgewählten Block', async () => {
+    const c = core({ scenario: 'contract' });
+    let v = await until(c, hasDoc);
+    expect(blocks(v)).toMatchObject({ limit: 10, can_add: true, items: [{ index: 0, active: true }] });
+    const first = blocks(v).items[0]!.rect;
+    await c.dispatch({ type: 'add_block', page: 0 });
+    v = await c.view();
+    expect(blocks(v).items.map((b) => [b.index, b.active, b.page])).toEqual([[0, false, v.document!.blocks!.items[0]!.page], [1, true, 0]]);
+    expect(blocks(v).items[0]!.rect).toEqual(first);
+    expect(v.document!.sticker).toEqual(blocks(v).items[1]!.rect);
+    expect(v.document!.check.overlaps_block).toBe(false);
+    // dritter Block auf derselben Seite: überdeckt keinen anderen
+    await c.dispatch({ type: 'add_block', page: 0 });
+    v = await c.view();
+    expect(blocks(v).items).toHaveLength(3);
+    expect(v.document!.check.overlaps_block).toBe(false);
+    // auswählen und verschieben: nur der ausgewählte Block bewegt sich
+    await c.dispatch({ type: 'select_block', index: 1 });
+    const before = blocks(await c.view()).items;
+    await c.dispatch({ type: 'nudge_block', dx: 1, dy: 0, fine: false, coarse: false });
+    const after = blocks(await c.view()).items;
+    expect(after[1]!.rect).not.toEqual(before[1]!.rect);
+    expect([after[0], after[2]]).toEqual([before[0], before[2]]);
+    // auf den dritten geschoben: die Prüfung meldet es
+    const r = after[2]!.rect!;
+    await c.dispatch({ type: 'move_block', page: after[2]!.page, x: r.left + 4, y: r.top - 4 });
+    expect((await c.view()).document!.check.overlaps_block).toBe(true);
+    // entfernen: der ausgewählte geht, der vorige ist ausgewählt; der letzte Block bleibt
+    await c.dispatch({ type: 'remove_block', index: 1 });
+    v = await c.view();
+    expect(blocks(v).items.map((b) => b.active)).toEqual([true, false]);
+    await c.dispatch({ type: 'remove_block', index: 1 });
+    await c.dispatch({ type: 'remove_block', index: 0 });
+    v = await c.view();
+    expect(blocks(v).items).toHaveLength(1);
+    expect(c.dispatched.some((e) => e.type === 'sign_with')).toBe(false);
+  });
+
+  it('Grenzen: höchstens 10 Blöcke, „Auf neuer Seite“ nur mit einem Block, unsichtbar eine Signatur', async () => {
+    const c = core({ scenario: 'contract' });
+    await until(c, hasDoc);
+    for (let i = 0; i < 9; i++) await c.dispatch({ type: 'add_block', page: 0 });
+    let v = await c.view();
+    expect(blocks(v)).toMatchObject({ can_add: false });
+    expect(blocks(v).items).toHaveLength(10);
+    await c.dispatch({ type: 'add_block', page: 0 });
+    v = await c.view();
+    expect(blocks(v).items).toHaveLength(10);
+    expect(v.notices.some((n) => n.code === 'ng-blocks-limit')).toBe(true);
+    await c.dispatch({ type: 'toggle_new_page' });
+    v = await c.view();
+    expect(v.document!.new_page).toBe(false);
+    expect(v.notices.some((n) => n.code === 'ng-blocks-new-page')).toBe(true);
+    await c.dispatch({ type: 'set_invisible', invisible: true });
+    v = await c.view();
+    expect(blocks(v).items).toHaveLength(1);
+    // auf neuer Seite: kein weiterer Block
+    const d = core({ scenario: 'contract' });
+    await until(d, hasDoc);
+    await d.dispatch({ type: 'toggle_new_page' });
+    await d.dispatch({ type: 'add_block', page: 0 });
+    v = await d.view();
+    expect([v.document!.new_page, blocks(v).items.length, blocks(v).can_add]).toEqual([true, 1, false]);
+  });
+
+  it('„Alle Platzhalter belegen“: der freie Block wandert ins erste Feld, je weiterem Feld ein Block; ein Feld nur einmal', async () => {
+    const c = core({ scenario: 'field' });
+    let v = await until(c, hasDoc);
+    const offered = v.document!.fields.filter((f) => f.suitable).length;
+    expect(offered).toBeGreaterThanOrEqual(1);
+    expect(blocks(v).free_targets).toBe(offered);
+    await c.dispatch({ type: 'fill_targets' });
+    v = await c.view();
+    expect(v.document!.target).toEqual({ kind: 'field', index: 0 });
+    expect(blocks(v).items).toHaveLength(offered);
+    expect(blocks(v).free_targets).toBe(0);
+    // ein zweiter Block kann nicht in dasselbe Feld
+    await c.dispatch({ type: 'add_block', page: 0 });
+    await c.dispatch({ type: 'use_target', target: { kind: 'field', index: 0 } });
+    v = await c.view();
+    expect(v.document!.target).toEqual({ kind: 'free' });
+    expect(v.notices.some((n) => n.code === 'ng-block-target-taken')).toBe(true);
+  });
+
+  it('Signieren: je Block eine Bestätigung im Fortschritt', async () => {
+    const c = core({ scenario: 'contract', settings: idAustria() });
+    await until(c, hasDoc);
+    await c.dispatch({ type: 'add_block', page: 0 });
+    await c.dispatch({ type: 'add_block', page: 1 });
+    await c.dispatch({ type: 'sign_with', backend: 'atrust_native' });
+    const v = await until(c, (x) => x.step.step === 'signing');
+    expect(v.step.step === 'signing' && v.step.progress.confirmations_total).toBe(3);
+  });
+});

@@ -654,6 +654,8 @@ pub fn typescript_bindings_with_names() -> (String, Vec<String>) {
         GuideView,
         PageLayoutView,
         PlacementCheckView,
+        BlockSlotView,
+        BlocksView,
         PdfaIdView,
         PdfaDecision,
         DocumentDetectionView,

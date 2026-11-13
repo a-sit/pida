@@ -962,6 +962,30 @@ pub enum UiEvent {
     /// Positionierung“ (`DocumentView::placement_locked`) für das aktuelle Dokument auf – danach normales
     /// Ziehen und Einrasten. Startet **nichts** (A1).
     UnlockPlacement,
+    /// Mehrfachsignatur „Weiteren Block hinzufügen“ ([`DocumentView::blocks`]): ein weiterer Signaturblock mit
+    /// eigener Signatur auf `page` (`None` = Seite des ausgewählten Blocks) an einer freien Stelle; er wird der
+    /// ausgewählte Block. Ohne Wirkung, wenn [`BlocksView::can_add`] falsch ist. Startet **nichts** (A1).
+    AddBlock {
+        /// Seite (0-basiert), auf der der Block erscheinen soll
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[cfg_attr(feature = "ts", ts(optional = nullable))]
+        page: Option<usize>,
+    },
+    /// Mehrfachsignatur: Block auswählen ([`BlockSlotView::index`]) – alle Werkzeuge der Platzierung wirken auf
+    /// den ausgewählten Block. Startet **nichts** (A1).
+    SelectBlock {
+        /// Stelle in der Reihenfolge der Blöcke (0-basiert)
+        index: u32,
+    },
+    /// Mehrfachsignatur: Block entfernen ([`BlockSlotView::index`]); der letzte Block bleibt. Startet **nichts**.
+    RemoveBlock {
+        /// Stelle in der Reihenfolge der Blöcke (0-basiert)
+        index: u32,
+    },
+    /// Mehrfachsignatur „Alle Platzhalter belegen“: je noch freiem, geeignetem Signaturfeld bzw. QR-Platzhalter
+    /// ein Block ([`BlocksView::free_targets`]); ein frei platzierter ausgewählter Block wandert in das erste
+    /// Ziel. Startet **nichts** (A1).
+    FillTargets,
     /// Stapelübersicht „Für diesen Stapel automatisch positionieren“ (Nachtrag 8, `BatchView::auto_position_once`):
     /// nur für diesen Stapel, die Einstellung bleibt unverändert; `replace_manual` = auch die von Hand
     /// platzierten Einträge (`BatchView::manual_plans`) neu automatisch platzieren – nur nach ausdrücklicher
@@ -1405,6 +1429,42 @@ pub struct PlacementCheckView {
     /// 20.10.2026, Backlog Nr. 32: Block bleibt PDF-AS-gleich, die Oberfläche weist inline darauf hin). Additiv.
     #[serde(default)]
     pub placeholder_uncovered: bool,
+    /// Mehrfachsignatur: der ausgewählte Block überdeckt einen anderen Signaturblock desselben Dokuments. Additiv.
+    #[serde(default)]
+    pub overlaps_block: bool,
+}
+
+/// Ein Signaturblock der Mehrfachsignatur ([`BlocksView::items`]).
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct BlockSlotView {
+    /// Stelle in der Reihenfolge der Blöcke (0-basiert) = Reihenfolge der Signaturen
+    pub index: u32,
+    /// der ausgewählte Block (seine Lage steht auch in [`DocumentView::placement`] und [`DocumentView::sticker`])
+    pub active: bool,
+    /// Seite des Blocks (0-basiert)
+    pub page: usize,
+    /// Rechteck des Blocks auf `page` (`None` = keine Vorschau)
+    pub rect: Option<RectPt>,
+    /// Ziel
+    pub target: PlacementTarget,
+}
+
+/// Mehrfachsignatur: alle Signaturblöcke des Dokuments – je Block eine eigene Signatur, in dieser Reihenfolge
+/// ([`DocumentView::blocks`]).
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct BlocksView {
+    /// alle Blöcke in ihrer Reihenfolge (mindestens einer; unsichtbar: nur der ausgewählte)
+    pub items: Vec<BlockSlotView>,
+    /// Höchstzahl der Blöcke je Dokument
+    pub limit: u32,
+    /// „Weiteren Block hinzufügen“ möglich (nicht unsichtbar, nicht auf neuer Seite, nicht gesperrt, Höchstzahl
+    /// nicht erreicht, neues sichtbares Feld erlaubt, Vorschau vorhanden)
+    pub can_add: bool,
+    /// Anzahl der Ziele, die „Alle Platzhalter belegen“ noch belegen würde (geeignete leere Signaturfelder und
+    /// der QR-Platzhalter, die noch kein Block benutzt)
+    pub free_targets: u32,
 }
 
 /// Aktuelles Dokument im Arbeitsbereich (§3.3) – einzige Inhaltsquelle der neuen Oberfläche;
@@ -1475,11 +1535,16 @@ pub struct DocumentView {
     #[serde(default)]
     #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub new_page_size: Option<(f32, f32)>,
+    /// Mehrfachsignatur: alle Signaturblöcke (je Block eine eigene Signatur). Additiv; in TypeScript optional.
+    /// Der Kern liefert es im Arbeitsbereich immer (`Some`, mindestens ein Block).
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
+    pub blocks: Option<BlocksView>,
 }
 
 redacted_debug!(DocumentView {
     size_bytes, phase, revision, block, placement, origin, target, invisible, new_page, sticker, fields, qr,
-    constraints, layout, check, announce, detection, placement_locked, new_page_size,
+    constraints, layout, check, announce, detection, placement_locked, new_page_size, blocks,
 } redact { doc, existing });
 
 /// PDF/A-Kennung eines Dokuments (XMP `pdfaid:part`, `pdfaid:conformance`).
@@ -1800,9 +1865,14 @@ pub struct SignedSummaryView {
     pub self_check: bool,
     /// Seite des sichtbaren Blocks (`None` = unsichtbar)
     pub page: Option<usize>,
+    /// Mehrfachsignatur: Anzahl der in diesem Vorgang erstellten Signaturen (je Block eine; sonst 1). Additiv; in
+    /// TypeScript optional, der Kern liefert es immer.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
+    pub signatures: Option<u32>,
 }
 
-redacted_debug!(SignedSummaryView { signing_time, backend, qualification, self_check, page }
+redacted_debug!(SignedSummaryView { signing_time, backend, qualification, self_check, page, signatures }
     redact { file_name, folder_display, signer });
 
 // --- §3.8 Stapel --------------------------------------------------------------------------------
@@ -1921,9 +1991,14 @@ pub struct BatchItemView {
     pub target_exists: bool,
     /// Miniatur über `pida-render://thumb/<doc>` verfügbar
     pub thumbnail: bool,
+    /// Mehrfachsignatur: Anzahl der Signaturen, die das Dokument im Lauf erhält (je von Hand platziertem Block
+    /// eine; sonst 1). Additiv; in TypeScript optional, der Kern liefert es immer.
+    #[serde(default)]
+    #[cfg_attr(feature = "ts", ts(optional = nullable))]
+    pub signatures: Option<u32>,
 }
 
-redacted_debug!(BatchItemView { doc, page_count, size_bytes, status, position, target_exists, thumbnail }
+redacted_debug!(BatchItemView { doc, page_count, size_bytes, status, position, target_exists, thumbnail, signatures }
     redact { name, target_name });
 
 /// Ausgabeart des Stapels (§3.8).
@@ -2248,6 +2323,7 @@ mod tests {
             qualification: Qualification::Qes,
             self_check: true,
             page: Some(0),
+            signatures: Some(1),
         };
         assert_redacted(format!("{summary:?}"));
         let signer = SignerView {
@@ -2270,6 +2346,7 @@ mod tests {
             target_name: Some(file.clone()),
             target_exists: false,
             thumbnail: false,
+            signatures: Some(1),
         };
         assert_redacted(format!("{item:?}"));
         let mut params = BTreeMap::new();

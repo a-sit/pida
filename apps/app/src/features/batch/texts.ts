@@ -82,6 +82,13 @@ function baseName(path: string): string {
 
 /** Platzierung eines Eintrags („automatisch platziert“, „im QR-Platzhalter“ …). */
 export function positionDetail(t: Translator, item: BatchItemView): string {
+  const one = singlePositionDetail(t, item);
+  // Mehrfachsignatur: je von Hand platziertem Block eine Signatur
+  const n = item.signatures ?? 1;
+  return n > 1 ? `${one} · ${t.t('ng-ui-batch-detail-signatures', { n })}` : one;
+}
+
+function singlePositionDetail(t: Translator, item: BatchItemView): string {
   const p = item.position;
   switch (p.kind) {
     case 'qr':

@@ -338,6 +338,37 @@ ng-ui-ws-share-hint = Mehrere PDFs geteilt? iOS übergibt beim Teilen nur das er
 ng-ui-ws-share-hint-dismiss = Hinweis ausblenden
 ng-ui-insp-sign = Signieren
     .accesskey = S
+# Mehrfachsignatur: mehrere Signaturblöcke in einem Dokument, je Block eine eigene Signatur (Kern: `DocumentView::blocks`)
+ng-ui-insp-blocks = Signaturblöcke
+ng-ui-insp-blocks-hint = Jeder Block erhält eine eigene Signatur – in dieser Reihenfolge.
+ng-ui-insp-blocks-add = Weiteren Block hinzufügen
+ng-ui-insp-blocks-add-hint = Für mehrere Unterschriftsstellen: Jeder Block erhält eine eigene Signatur.
+ng-ui-insp-blocks-limit = Mehr als { $n } Signaturblöcke je Dokument sind nicht möglich.
+ng-ui-insp-blocks-new-page = Mit „Auf neuer Seite“ ist nur ein Signaturblock möglich.
+ng-ui-insp-blocks-fill = Alle { $n } Platzhalter belegen
+ng-ui-insp-blocks-fill-more =
+    { $n ->
+        [one] Weiteren Platzhalter belegen
+       *[other] Weitere { $n } Platzhalter belegen
+    }
+ng-ui-insp-blocks-item-free = Seite { $page } · { $zone }
+ng-ui-insp-blocks-item-field = Signaturfeld „{ $name }“
+ng-ui-insp-blocks-item-qr = QR-Code-Platzhalter
+ng-ui-insp-blocks-select = Block { $n } auswählen: { $where }
+ng-ui-insp-blocks-remove = Block { $n } entfernen
+ng-ui-insp-new-page-blocks = Nur mit einem einzigen Signaturblock möglich.
+ng-ui-insp-sign-times = { $n }-mal signieren
+    .accesskey = S
+ng-ui-insp-sign-count = Dieses Dokument erhält { $n } Signaturen.
+ng-ui-insp-sign-count-confirm = Mit ID Austria kann für jede Signatur eine eigene Bestätigung nötig sein.
+ng-ui-insp-overlap-block = Der Signaturblock überdeckt einen anderen Signaturblock.
+ng-ui-ws-sticker-block = Überdeckt einen Block
+ng-ui-ws-sticker-label-n = Signaturblock { $n } von { $total }
+ng-ui-ws-sticker-help-remove = Entf entfernt diesen Block.
+ng-ui-ws-block-select = Signaturblock { $n } von { $total } auswählen
+ng-ui-ws-block-remove = Signaturblock { $n } entfernen
+ng-ui-ws-announce-block = Achtung: überdeckt einen anderen Signaturblock.
+ng-ui-ws-announce-blocks = Signaturblock { $n } von { $total }.
 ng-ui-insp-sheet-expand = Optionen einblenden
 ng-ui-insp-sheet-collapse = Optionen ausblenden
 ng-ui-insp-warning = Hinweis zum Dokument
@@ -430,6 +461,8 @@ ng-ui-sc-single-unavailable = { $signer } ist derzeit nicht verfügbar.
 ng-ui-fin-title = Signiert
 ng-ui-fin-seal = Signatur erstellt und geprüft (Selbstprüfung)
 ng-ui-fin-text = PIDA hat die neue Signatur vor dem Speichern selbst geprüft. Vertrauenskette und Sperrstatus prüft signaturpruefung.gv.at.
+ng-ui-fin-seal-n = { $n } Signaturen erstellt und geprüft (Selbstprüfung)
+ng-ui-fin-text-n = PIDA hat jede neue Signatur vor dem Speichern selbst geprüft. Vertrauenskette und Sperrstatus prüft signaturpruefung.gv.at.
 ng-ui-fin-qes = Qualifiziert laut Zertifikat
 ng-ui-fin-ades = Fortgeschritten laut Zertifikat
 ng-ui-fin-saving = Das signierte Dokument wird gespeichert …
@@ -550,6 +583,7 @@ ng-ui-batch-detail-signed = als { $file }
 ng-ui-batch-detail-skipped = von Ihnen übersprungen
 ng-ui-batch-detail-skipped-existing = Zieldatei gab es schon
 ng-ui-batch-detail-cancelled = nicht signiert
+ng-ui-batch-detail-signatures = { $n } Signaturen
 ng-ui-batch-detail-exists = „{ $file }“ gibt es schon
 ng-ui-batch-detail-waiting = wartet auf die Bestätigung
 ng-ui-batch-stage-connecting = Verbindung wird aufgebaut

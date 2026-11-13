@@ -1768,7 +1768,19 @@ password: string | null,
  * Antwort auf „Passwort merken?“ (nur solange `keystore.storage_chosen` falsch ist, sonst ohne
  * Wirkung)
  */
-password_storage?: PasswordStorage | null, } | { "type": "unlock_placement" } | { "type": "set_batch_auto_position", 
+password_storage?: PasswordStorage | null, } | { "type": "unlock_placement" } | { "type": "add_block", 
+/**
+ * Seite (0-basiert), auf der der Block erscheinen soll
+ */
+page?: number | null, } | { "type": "select_block", 
+/**
+ * Stelle in der Reihenfolge der Blöcke (0-basiert)
+ */
+index: number, } | { "type": "remove_block", 
+/**
+ * Stelle in der Reihenfolge der Blöcke (0-basiert)
+ */
+index: number, } | { "type": "fill_targets" } | { "type": "set_batch_auto_position", 
 /**
  * ein bzw. aus
  */
@@ -2046,7 +2058,60 @@ clamped: boolean,
  * Breite), bedeckt das Platzhalterbild nicht ganz – es schaut unten bzw. rechts hervor (Entscheidung
  * 20.10.2026, Backlog Nr. 32: Block bleibt PDF-AS-gleich, die Oberfläche weist inline darauf hin). Additiv.
  */
-placeholder_uncovered: boolean, };
+placeholder_uncovered: boolean, 
+/**
+ * Mehrfachsignatur: der ausgewählte Block überdeckt einen anderen Signaturblock desselben Dokuments. Additiv.
+ */
+overlaps_block: boolean, };
+
+/**
+ * Ein Signaturblock der Mehrfachsignatur ([`BlocksView::items`]).
+ */
+export type BlockSlotView = { 
+/**
+ * Stelle in der Reihenfolge der Blöcke (0-basiert) = Reihenfolge der Signaturen
+ */
+index: number, 
+/**
+ * der ausgewählte Block (seine Lage steht auch in [`DocumentView::placement`] und [`DocumentView::sticker`])
+ */
+active: boolean, 
+/**
+ * Seite des Blocks (0-basiert)
+ */
+page: number, 
+/**
+ * Rechteck des Blocks auf `page` (`None` = keine Vorschau)
+ */
+rect: RectPt | null, 
+/**
+ * Ziel
+ */
+target: PlacementTarget, };
+
+/**
+ * Mehrfachsignatur: alle Signaturblöcke des Dokuments – je Block eine eigene Signatur, in dieser Reihenfolge
+ * ([`DocumentView::blocks`]).
+ */
+export type BlocksView = { 
+/**
+ * alle Blöcke in ihrer Reihenfolge (mindestens einer; unsichtbar: nur der ausgewählte)
+ */
+items: Array<BlockSlotView>, 
+/**
+ * Höchstzahl der Blöcke je Dokument
+ */
+limit: number, 
+/**
+ * „Weiteren Block hinzufügen“ möglich (nicht unsichtbar, nicht auf neuer Seite, nicht gesperrt, Höchstzahl
+ * nicht erreicht, neues sichtbares Feld erlaubt, Vorschau vorhanden)
+ */
+can_add: boolean, 
+/**
+ * Anzahl der Ziele, die „Alle Platzhalter belegen“ noch belegen würde (geeignete leere Signaturfelder und
+ * der QR-Platzhalter, die noch kein Block benutzt)
+ */
+free_targets: number, };
 
 /**
  * PDF/A-Kennung eines Dokuments (XMP `pdfaid:part`, `pdfaid:conformance`).
@@ -2190,7 +2255,12 @@ placement_locked: boolean,
  * in PDF-AS). Die Oberfläche zeigt die virtuelle neue Seite in dieser Größe (Nachtrag 16). Additiv; in
  * TypeScript optional, `None` ohne Seiten.
  */
-new_page_size?: [number, number] | null, };
+new_page_size?: [number, number] | null, 
+/**
+ * Mehrfachsignatur: alle Signaturblöcke (je Block eine eigene Signatur). Additiv; in TypeScript optional.
+ * Der Kern liefert es im Arbeitsbereich immer (`Some`, mindestens ein Block).
+ */
+blocks?: BlocksView | null, };
 
 /**
  * Signiermittel für Konto-Chip, Menü und Stapel (§3.4).
@@ -2427,7 +2497,12 @@ self_check: boolean,
 /**
  * Seite des sichtbaren Blocks (`None` = unsichtbar)
  */
-page: number | null, };
+page: number | null, 
+/**
+ * Mehrfachsignatur: Anzahl der in diesem Vorgang erstellten Signaturen (je Block eine; sonst 1). Additiv; in
+ * TypeScript optional, der Kern liefert es immer.
+ */
+signatures?: number | null, };
 
 /**
  * Status eines Stapeleintrags (§3.8).
@@ -2514,7 +2589,12 @@ target_exists: boolean,
 /**
  * Miniatur über `pida-render://thumb/<doc>` verfügbar
  */
-thumbnail: boolean, };
+thumbnail: boolean, 
+/**
+ * Mehrfachsignatur: Anzahl der Signaturen, die das Dokument im Lauf erhält (je von Hand platziertem Block
+ * eine; sonst 1). Additiv; in TypeScript optional, der Kern liefert es immer.
+ */
+signatures?: number | null, };
 
 /**
  * Ausgabeart des Stapels (§3.8).

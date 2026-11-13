@@ -30,7 +30,7 @@ import { webProfile } from '../../core/web-profile';
 import { SignCheck } from './SignCheck';
 import { signerChoice } from './signers';
 import { Pages } from './Pages';
-import { announceText, displayPages, isAutoPlaced, layoutPages, offeredField, PAGE_PAD, PT_TO_PX, visiblePages, ZOOM_STEPS } from './placement';
+import { activeBlock, announceText, displayPages, isAutoPlaced, layoutPages, offeredField, PAGE_PAD, PT_TO_PX, visiblePages, ZOOM_STEPS } from './placement';
 import { Thumbnails } from './Thumbnails';
 import './workspace.css';
 
@@ -264,10 +264,14 @@ function WorkspaceView({ doc }: { doc: DocumentView }) {
   // Sticker beim Seitenwechsel im Blick halten
   const page = doc.placement.page_index;
   const prevPage = useRef(page);
+  // Mehrfachsignatur: auch nach dem Auswählen bzw. Hinzufügen eines Blocks (auf derselben Seite) in den Blick
+  const selectedBlock = activeBlock(doc);
+  const prevBlock = useRef(selectedBlock);
   useEffect(() => {
-    if (prevPage.current !== page) centerInCanvas(stickerRef.current, scrollRef.current, true);
+    if (prevPage.current !== page || prevBlock.current !== selectedBlock) centerInCanvas(stickerRef.current, scrollRef.current, true);
     prevPage.current = page;
-  }, [page]);
+    prevBlock.current = selectedBlock;
+  }, [page, selectedBlock]);
 
   const interact = useCallback(() => setCoach(false), []);
   const onSnap = useCallback((s: GuideKind[]) => {
@@ -421,6 +425,7 @@ function WorkspaceView({ doc }: { doc: DocumentView }) {
 
       <Inspector
         doc={doc}
+        visiblePage={Math.min(current, Math.max(0, doc.doc.page_count - 1))}
         chipOpen={chip.open}
         signMode={chip.sign}
         onChipOpenChange={(open) => setChip({ open, sign: open ? chip.sign : false })}

@@ -9,7 +9,7 @@ import { Button } from '../../ui/controls';
 import { DialogHeader, ModalShell } from '../../ui/Dialog';
 import { IconAlert, IconSignature } from '../../ui/Icons';
 import { formatMm } from '../accessibility';
-import { announceText, overlapState } from './placement';
+import { announceText, blockTotal, overlapState } from './placement';
 import { chipLabel } from './signers';
 
 export function SignCheck({ doc, onCancel, onSign }: { doc: DocumentView; onCancel: () => void; onSign: () => void }) {
@@ -29,6 +29,12 @@ export function SignCheck({ doc, onCancel, onSign }: { doc: DocumentView; onCanc
               ? t.t('ng-ui-insp-check-invisible')
               : t.t('ng-ui-insp-check-block-size', { w: formatMm(doc.block.width, t.lang), h: formatMm(doc.block.height, t.lang) })}
           </dd>
+          {blockTotal(doc) > 1 ? (
+            <>
+              <dt>{t.t('ng-ui-insp-blocks')}</dt>
+              <dd data-testid="sign-check-count">{t.t('ng-ui-insp-sign-count', { n: blockTotal(doc) })}</dd>
+            </>
+          ) : null}
           {signer ? (
             <>
               <dt>{t.t('ng-ui-insp-check-signer')}</dt>

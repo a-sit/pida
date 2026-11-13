@@ -47,6 +47,9 @@ fn workspace_state(target: Target, origin: PlacementOrigin, invisible: bool) -> 
         automatic: matches!(origin, PlacementOrigin::Auto | PlacementOrigin::Qr),
         invisible_by_profile: false,
         lock: PlacementLock::Off,
+        others: Vec::new(),
+        active: 0,
+        rounds: None,
     };
     State::Positioning {
         queue: queue(&[1]),

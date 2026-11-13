@@ -202,6 +202,8 @@ pub use view::{
 };
 // Nachtrag K3 (Einstellungen › Dokument)
 pub use view::{DocumentDetectionView, PdfaDecision, PdfaIdView};
+// Mehrfachsignatur (je Block eine eigene Signatur)
+pub use view::{BlockSlotView, BlocksView};
 // Nachtrag 9 („PDF hinzufügen“)
 pub use view::OpenFilesMode;
 // Nachtrag 10 („Zur Startseite“ parkt offene Arbeit)

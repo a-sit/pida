@@ -10,6 +10,7 @@
  * Texte und Personen sind frei erfunden (keine echten Personen, Firmen oder Verträge).
  */
 import type {
+  BlocksView,
   BlockView,
   DocConstraintsView,
   DocId,
@@ -799,7 +800,24 @@ export interface EditState {
    * „Diesmal selbst platzieren“ (nur dieses Dokument)
    */
   lock: PlacementLock;
+  /**
+   * Mehrfachsignatur (Kern: `WorkspaceEdit::others`): weitere Signaturblöcke in Reihenfolge, ohne den ausgewählten –
+   * je Block eine eigene Signatur. Der ausgewählte Block steht wie bisher in `placement`/`target`/`origin`.
+   */
+  others?: MockBlock[];
+  /** Stelle des ausgewählten Blocks in der Reihenfolge aller Blöcke (Kern: `WorkspaceEdit::active`) */
+  active?: number;
 }
+
+/** Ein ruhender Signaturblock der Mehrfachsignatur (Kern: `pida_workflow::BlockSlot`). */
+export interface MockBlock {
+  placement: Placement;
+  origin: PlacementOrigin;
+  target: PlacementTarget;
+}
+
+/** Höchstzahl der Signaturblöcke je Dokument (Kern: `pida_workflow::MAX_BLOCKS`). */
+export const MAX_BLOCKS = 10;
 
 /** Sperre der Platzierung (Kern: `pida_workflow::PlacementLock`). */
 export type PlacementLock = 'off' | 'locked' | 'released';
@@ -1002,6 +1020,8 @@ export function changePage(doc: MockDoc, edit: EditState, page: number): EditSta
 /** `ToggleNewPage` (bei signierten Dokumenten gesperrt). */
 export function toggleNewPage(doc: MockDoc, edit: EditState): EditState | null {
   if (!edit.placement) return edit;
+  // „Auf neuer Seite“ nur mit einem einzigen Signaturblock (Kern: `ng-blocks-new-page`)
+  if (!edit.newPage && (edit.others?.length ?? 0) > 0) return null;
   if (!constraintsFor(doc, edit).new_page_allowed && !edit.newPage) return null;
   const newPage = !edit.newPage;
   const page = newPage ? doc.spec.pages.length : doc.spec.pages.length - 1;
@@ -1022,6 +1042,8 @@ export function autoPlace(doc: MockDoc, edit: EditState, block: { width: number;
 export function useTarget(doc: MockDoc, edit: EditState, target: PlacementTarget, block: { width: number; height: number }): EditState | null {
   if (target.kind === 'free') return { ...autoPlace(doc, edit, block), automatic: false };
   if (target.kind === 'field' && (!doc.spec.fields[target.index] || doc.spec.fields[target.index]!.locked)) return null;
+  // Mehrfachsignatur: jedes Feld bzw. der QR-Platzhalter nur für einen Block
+  if (targetTaken(edit, target)) return null;
   const placement = targetPlacement(doc, target, block);
   if (!placement) return null;
   return bump(edit, { placement, origin: target.kind === 'qr' ? 'qr' : 'field', target, newPage: false, invisible: false, automatic: false });
@@ -1048,6 +1070,123 @@ export function resizeBlock(doc: MockDoc, edit: EditState, settings: Settings, l
   if (edit.target.kind !== 'free') return bump(edit, { placement: { ...edit.placement, width: block.width, height: block.height }, ...visibility });
   const { placement, clamped } = clampPlacement({ ...edit.placement, width: block.width, height: block.height }, pageSize(doc, edit.placement.page_index));
   return bump(edit, { placement, clamped, ...visibility });
+}
+
+/* ================================================================ Mehrfachsignatur (je Block eine Signatur) */
+
+function sameTarget(a: PlacementTarget, b: PlacementTarget): boolean {
+  return a.kind === b.kind && (a.kind !== 'field' || (b.kind === 'field' && a.index === b.index));
+}
+
+/** Ziel schon von einem anderen (nicht ausgewählten) Block belegt? (Kern: `WorkspaceEdit::target_taken`) */
+export function targetTaken(edit: EditState, target: PlacementTarget): boolean {
+  return target.kind !== 'free' && (edit.others ?? []).some((b) => sameTarget(b.target, target));
+}
+
+function activeIndex(edit: EditState): number {
+  return Math.min(edit.active ?? 0, edit.others?.length ?? 0);
+}
+
+/** Rechteck eines ruhenden Blocks auf seiner Seite. */
+function blockRect(doc: MockDoc, b: MockBlock): RectPt {
+  if (b.target.kind === 'field') {
+    const f = doc.spec.fields[b.target.index];
+    if (f) return fieldFit(toRectPt(f.rect, pageSize(doc, f.page)[1]), { width: b.placement.width, height: b.placement.height }).rect;
+  }
+  if (b.target.kind === 'qr' && doc.spec.qr) return toRectPt(doc.spec.qr.rect, pageSize(doc, doc.spec.qr.page)[1]);
+  return placementRect(b.placement);
+}
+
+/** `AddBlock`: neuer, frei platzierter Block an einer freien Stelle der Seite; er wird der ausgewählte. `null` = abgelehnt. */
+export function addBlock(doc: MockDoc, edit: EditState, page: number | null, block: { width: number; height: number }): EditState | null | string {
+  if (!edit.placement || edit.invisible) return edit;
+  if (edit.newPage) return 'ng-blocks-new-page';
+  const others = edit.others ?? [];
+  if (others.length + 1 >= MAX_BLOCKS) return 'ng-blocks-limit';
+  const pages = doc.spec.pages.length;
+  const target = page !== null && Number.isInteger(page) && page >= 0 && page < pages ? page : Math.min(edit.placement.page_index, pages - 1);
+  const [pw, ph] = pageSize(doc, target);
+  const current: MockBlock = { placement: edit.placement, origin: edit.origin, target: edit.target };
+  const taken = [...others, current].filter((b) => b.placement.page_index === target).map((b) => blockRect(doc, b));
+  const gap = 6;
+  const free = (x: number, top: number) => !taken.some((r) => intersects({ left: x, right: x + block.width, top, bottom: top - block.height }, r, gap));
+  const margin = 36;
+  const candidates: [number, number][] = [];
+  for (let top = margin + block.height; top <= ph - margin; top += block.height + 2 * gap) {
+    for (const x of [pw - block.width - margin, margin, (pw - block.width) / 2]) candidates.push([x, top]);
+  }
+  const [x, y] = candidates.find(([cx, top]) => free(cx, top)) ?? [edit.placement.x + 24, edit.placement.y - 24];
+  const { placement } = clampPlacement({ page_index: target, x, y, width: block.width, height: block.height }, [pw, ph]);
+  const at = activeIndex(edit);
+  const next = [...others];
+  next.splice(at, 0, current);
+  return bump(edit, { others: next, active: next.length, placement, origin: 'user', target: { kind: 'free' }, automatic: false, clamped: false });
+}
+
+/** `SelectBlock`: der ausgewählte und der gewählte Block tauschen die Plätze. */
+export function selectBlock(_doc: MockDoc, edit: EditState, index: number): EditState {
+  const others = edit.others ?? [];
+  const at = activeIndex(edit);
+  if (!edit.placement || !Number.isInteger(index) || index < 0 || index > others.length || index === at) return edit;
+  const next = [...others];
+  const [chosen] = next.splice(index < at ? index : index - 1, 1);
+  if (!chosen) return edit;
+  next.splice(at < index ? at : at - 1, 0, { placement: edit.placement, origin: edit.origin, target: edit.target });
+  return bump(edit, { others: next, active: index, placement: chosen.placement, origin: chosen.origin, target: chosen.target, clamped: false });
+}
+
+/** `RemoveBlock`: der letzte Block bleibt; wird der ausgewählte entfernt, ist der vorige (sonst der nächste) ausgewählt. */
+export function removeBlock(_doc: MockDoc, edit: EditState, index: number): EditState {
+  const others = edit.others ?? [];
+  const at = activeIndex(edit);
+  if (others.length === 0 || !Number.isInteger(index) || index < 0 || index > others.length) return edit;
+  const next = [...others];
+  if (index !== at) {
+    next.splice(index < at ? index : index - 1, 1);
+    return bump(edit, { others: next, active: index < at ? at - 1 : at });
+  }
+  const j = Math.max(0, at - 1);
+  const [chosen] = next.splice(j, 1);
+  if (!chosen) return edit;
+  return bump(edit, { others: next, active: j, placement: chosen.placement, origin: chosen.origin, target: chosen.target, clamped: false });
+}
+
+/** Ziele, die „Alle Platzhalter belegen“ noch belegen würde (geeignete leere Felder, angebotener QR-Platzhalter). */
+function freeTargets(doc: MockDoc, edit: EditState, block: { width: number; height: number }, qrOffered: boolean): PlacementTarget[] {
+  const used = (t: PlacementTarget) => sameTarget(edit.target, t) || targetTaken(edit, t);
+  const fields: PlacementTarget[] = doc.spec.fields
+    .map((f, index) => ({ f, index }))
+    .filter(({ f }) => !f.locked && fieldFit(toRectPt(f.rect, pageSize(doc, f.page)[1]), block, pageSize(doc, f.page)).suitable)
+    .map(({ index }) => ({ kind: 'field', index }) as PlacementTarget);
+  const qr: PlacementTarget[] = doc.spec.qr && qrOffered ? [{ kind: 'qr' }] : [];
+  return [...fields, ...qr].filter((t) => !used(t));
+}
+
+/** `FillTargets`: je freiem Ziel ein Block; ein frei platzierter ausgewählter Block wandert in das erste Ziel. */
+export function fillTargets(doc: MockDoc, edit: EditState, block: { width: number; height: number }, qrOffered: boolean): EditState {
+  if (!edit.placement || edit.invisible) return edit;
+  const targets = freeTargets(doc, edit, block, qrOffered);
+  if (targets.length === 0) return edit;
+  let next: EditState = edit;
+  let rest = targets;
+  if (edit.target.kind === 'free') {
+    const first = targets[0]!;
+    const placement = targetPlacement(doc, first, block);
+    if (placement) next = { ...next, placement, origin: first.kind === 'qr' ? 'qr' : 'field', target: first, newPage: false };
+    rest = targets.slice(1);
+  }
+  const others = [...(next.others ?? [])];
+  for (const t of rest) {
+    if (others.length + 1 >= MAX_BLOCKS) break;
+    const placement = targetPlacement(doc, t, block);
+    if (placement) others.push({ placement, origin: t.kind === 'qr' ? 'qr' : 'field', target: t });
+  }
+  return bump(next, { others, automatic: false });
+}
+
+/** Anzahl der Signaturen, die das Dokument erhält (unsichtbar: eine). */
+export function blockCount(edit: EditState | null): number {
+  return !edit || edit.invisible ? 1 : 1 + (edit.others?.length ?? 0);
 }
 
 /* ================================================================ Layout, Prüfung, Projektion */
@@ -1114,7 +1253,8 @@ export function pageLayout(doc: MockDoc, page: number, block: { width: number; h
 function check(doc: MockDoc, edit: EditState, sticker: RectPt | null, block: { width: number; height: number }): PlacementCheckView {
   const page = edit.placement?.page_index ?? 0;
   const known = edit.ready.includes(page) && page < doc.spec.pages.length;
-  if (!sticker || edit.invisible) return { for_revision: edit.revision, overlaps_content: known ? false : null, overlaps_widget: false, clamped: edit.clamped, placeholder_uncovered: false };
+  if (!sticker || edit.invisible)
+    return { for_revision: edit.revision, overlaps_content: known ? false : null, overlaps_widget: false, clamped: edit.clamped, placeholder_uncovered: false, overlaps_block: false };
   const [, ph] = pageSize(doc, page);
   const targetRect =
     edit.target.kind === 'field'
@@ -1131,7 +1271,16 @@ function check(doc: MockDoc, edit: EditState, sticker: RectPt | null, block: { w
     .map((f) => toRectPt(f.rect, ph))
     .filter((r) => fieldFit(r, block, pageSize(doc, page)).suitable)
     .concat(doc.spec.existing.filter((e) => e.page === page && e.rect).map((e) => toRectPt(e.rect as Rect, ph)));
-  return { for_revision: edit.revision, overlaps_content: overlapsContent, overlaps_widget: widgets.some((r) => intersects(sticker, r)), clamped: edit.clamped, placeholder_uncovered: false };
+  // Mehrfachsignatur: der ausgewählte Block überdeckt einen anderen Block desselben Dokuments
+  const overlapsBlock = (edit.others ?? []).some((b) => b.placement.page_index === page && intersects(sticker, blockRect(doc, b)));
+  return {
+    for_revision: edit.revision,
+    overlaps_content: overlapsContent,
+    overlaps_widget: widgets.some((r) => intersects(sticker, r)),
+    clamped: edit.clamped,
+    placeholder_uncovered: false,
+    overlaps_block: overlapsBlock,
+  };
 }
 
 function mm(pt: number): string {
@@ -1222,6 +1371,24 @@ export function projectDocument(doc: MockDoc, edit: EditState, phase: DocumentPh
     placement_locked: edit.lock === 'locked',
     // neue Seite: Größe der letzten Seite (Mock ohne CropBox)
     new_page_size: pageSize(doc, doc.spec.pages.length - 1),
+    blocks: blocksView(doc, edit, phase, sticker, size, qr !== null),
+  };
+}
+
+/** Mehrfachsignatur: alle Blöcke in ihrer Reihenfolge (Kern: `BlocksView`). */
+function blocksView(doc: MockDoc, edit: EditState, phase: DocumentPhase, sticker: RectPt | null, block: { width: number; height: number }, qrOffered: boolean): BlocksView {
+  const others = edit.invisible ? [] : (edit.others ?? []);
+  const at = edit.invisible ? 0 : activeIndex(edit);
+  const active = { index: 0, active: true, page: edit.placement?.page_index ?? 0, rect: sticker, target: edit.target };
+  const items = others.map((b) => ({ index: 0, active: false, page: b.placement.page_index, rect: blockRect(doc, b) as RectPt | null, target: b.target }));
+  items.splice(at, 0, active);
+  items.forEach((item, i) => (item.index = i));
+  const open = phase === 'editing' && !edit.invisible && edit.lock !== 'locked' && edit.placement !== null;
+  return {
+    items,
+    limit: MAX_BLOCKS,
+    can_add: open && !edit.newPage && items.length < MAX_BLOCKS && constraintsFor(doc, edit).new_visible_field_allowed,
+    free_targets: open ? freeTargets(doc, edit, block, qrOffered).length : 0,
   };
 }
 

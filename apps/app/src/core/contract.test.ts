@@ -175,7 +175,14 @@ const documentView = obj({
       guides: arr(obj({ axis: lit('x', 'y'), at: num, kind: guideKind })),
     }),
   ),
-  check: obj({ for_revision: int, overlaps_content: nullable(bool), overlaps_widget: bool, clamped: bool, placeholder_uncovered: bool }),
+  check: obj({
+    for_revision: int,
+    overlaps_content: nullable(bool),
+    overlaps_widget: bool,
+    clamped: bool,
+    placeholder_uncovered: bool,
+    overlaps_block: bool,
+  }),
   announce: record(str),
   // Nachtrag K3 (Einstellungen › Dokument): in TS optional, vom Kern immer geliefert
   detection: optional(
@@ -189,6 +196,15 @@ const documentView = obj({
   placement_locked: bool,
   // Nachtrag 16: Größe einer neuen Seite (MediaBox der letzten Seite); in TS optional
   new_page_size: optional(tuple2(num, num)),
+  // Mehrfachsignatur (je Block eine eigene Signatur); in TS optional, vom Kern immer geliefert
+  blocks: optional(
+    obj({
+      items: arr(obj({ index: int, active: bool, page: int, rect: nullable(rectPt), target: placementTarget })),
+      limit: int,
+      can_add: bool,
+      free_targets: int,
+    }),
+  ),
 });
 
 const signersView = obj({
@@ -249,6 +265,8 @@ const signedSummary = obj({
   backend: backendId,
   qualification: lit('Qes', 'AdES', 'Unknown'),
   self_check: bool,
+  // Mehrfachsignatur: Anzahl der erstellten Signaturen; in TS optional
+  signatures: optional(int),
   page: nullable(int),
 });
 
@@ -276,6 +294,8 @@ const batchView = obj({
       target_name: nullable(str),
       target_exists: bool,
       thumbnail: bool,
+      // Mehrfachsignatur: Signaturen des Eintrags im Lauf; in TS optional
+      signatures: optional(int),
     }),
   ),
   open_item: nullable(int),
@@ -578,6 +598,11 @@ const uiEvent = tagged('type', {
   // Nachtrag 8 (Einstellung „Automatische Positionierung“)
   unlock_placement: {},
   set_batch_auto_position: { enabled: bool, replace_manual: bool },
+  // Mehrfachsignatur: je Block eine eigene Signatur
+  add_block: { page: omittable(num) },
+  select_block: { index: num },
+  remove_block: { index: num },
+  fill_targets: {},
   // Nachtrag 10: „Zur Startseite“ parkt offene Arbeit
   go_home: {},
   resume_parked: {},
@@ -788,9 +813,10 @@ describe('Vertrag UiEvent (TS → Rust)', () => {
   // ohne das veraltete `acknowledge_privacy` (nicht mehr in den TS-Typen, ADR 0003); 26 davon aus ADR 0004
   // (19 aus E0 – ohne die vier des entfernten Prüfmodus –, `inspect_keystore` aus Nachtrag 7, `unlock_placement` und
   // `set_batch_auto_position` aus Nachtrag 8, `open_recent`/`reveal_recent`/`share_recent`/`sign_recent` aus
-  // Nachtrag 15; `check_for_updates` aus Nachtrag 21)
-  it('alle 64 Varianten sind vertreten', () => {
-    expect(new Set(UI_EVENT_SAMPLES.map((s) => s.type)).size).toBe(64);
+  // Nachtrag 15; `check_for_updates` aus Nachtrag 21; `add_block`, `select_block`, `remove_block` und
+  // `fill_targets` der Mehrfachsignatur)
+  it('alle 68 Varianten sind vertreten', () => {
+    expect(new Set(UI_EVENT_SAMPLES.map((s) => s.type)).size).toBe(68);
   });
 
   it('enthält die Mobile-Proben (Plattform, FIDO2-Hinweis, Fortsetzen) und den Import nur am Desktop', () => {

@@ -3751,3 +3751,54 @@ Tests:
 - `placement/tests/qr_placeholders.rs` (Demodokument: Platzhalter Nr. 1 erkannt, 240 pt breit)
 - `src-tauri/tests/security_config.rs` (Berechtigung `allow-demo-document`)
 - `app/demo.test.tsx`, `features/settings/settings.test.tsx` (Standard an)
+
+### Nachtrag 26 (13.11.2026): Mehrere Signaturblöcke in einem Dokument – je Block eine eigene Signatur
+
+Entscheidungen (13.11.2026, gemeinsam mit dem Auftraggeber):
+
+1. **Je Block eine eigene Signatur** (nicht „eine Signatur, mehrere Blöcke“): N Blöcke = N echte, einzeln prüfbare
+   Signaturen mit je eigenem Signaturfeld. PIDA signiert dasselbe Dokument N-mal hintereinander; jede Signatur ist ein
+   weiteres Inkrement und deckt die früheren mit ab. Abweichung zu PDF-Over (dort ein Block je Durchgang).
+2. **Abbruch mittendrin:** Das Teilergebnis wird verworfen, das Original bleibt unberührt. „Erneut versuchen“ beginnt
+   wieder bei der ersten Signatur. Ein solcher Vorgang wird auf Mobilgeräten nicht für „Signatur fortsetzen“ gesichert.
+3. **Höchstens 10 Blöcke** je Dokument (`pida_workflow::MAX_BLOCKS`).
+4. **ID Austria:** Die Funktion wird auch angeboten, wenn A-Trust je Signatur eine eigene Bestätigung verlangt; vor dem
+   Start steht ein Inline-Hinweis (kein Dialog). Ob eine Anmeldung für alle Signaturen reicht, zeigt erst ein echter
+   Lauf (offen).
+5. **Oberfläche:** Knopf „Weiteren Block hinzufügen“ im Inspektor (Abschnitt „Signaturblöcke“), nummerierte Blöcke auf
+   der Seite, Liste im Inspektor (auswählen, entfernen), „Alle Platzhalter belegen“, Knopf „n-mal signieren“ mit
+   Hinweis „Dieses Dokument erhält n Signaturen“. Kein Modus „auf die Seite tippen setzt einen Block“.
+6. **Auch im Stapel:** Die Blöcke gehören zum Plan des Eintrags.
+7. **Ein Signaturbild für alle Blöcke.**
+
+Umsetzung:
+
+- **Zustand** (`pida-workflow`): Der ausgewählte Block liegt wie bisher in `State::Positioning` (`page`, `placement`)
+  und `WorkspaceEdit::target`/`origin`; die übrigen ruhen in `WorkspaceEdit::others` (`BlockSlot`), `active` ist die
+  Stelle des ausgewählten in der Reihenfolge. Beim Auswählen tauschen beide die Plätze – alle Werkzeuge (Ziehen,
+  Tastatur, Zielwahl, Millimeter, automatische Platzierung) wirken unverändert auf den ausgewählten Block. Ereignisse
+  `BlockAdded`, `BlockSelected`, `BlockRemoved`, `TargetsFilled`.
+- **Regeln:** Ein Signaturfeld bzw. der QR-Platzhalter nur für einen Block (`ng-block-target-taken`); „Auf neuer
+  Seite“ nur mit einem Block (`ng-blocks-new-page` – eine neue Seite nach der ersten Signatur veränderte das bereits
+  signierte Dokument); unsichtbar: genau eine Signatur, die weiteren Blöcke ruhen; gesperrte Platzierung
+  („Automatische Positionierung“): keine weiteren Blöcke.
+- **Signieren:** `SignRequested` sammelt die Positionen aller Blöcke in ihrer Reihenfolge (`WorkspaceEdit::rounds`).
+  Nach `Finishing` einer Runde folgt `Effect::NextSignature` + `Effect::Prepare` der nächsten – dieselbe Sitzung, je
+  Runde ein `sign_one`. Im Kern (`pida-core-api`) ist ab der zweiten Runde das eben signierte Zwischenergebnis die
+  Quelle (`SignSlot::chain_doc`, neu geöffnet und analysiert, nur im Speicher); die Selbstprüfung jeder Runde prüft
+  gegen die Quelle dieser Runde. Die erste Runde eines Dokuments setzt die Quelle immer auf das Original zurück.
+- **Stapel:** `BatchItem::more`/`active` tragen die weiteren Blöcke als Plan („Zurück zum Stapel“ und erneutes Öffnen
+  erhalten sie); im Lauf `BatchRun::positions`/`round`. Ein Fehler in einer späteren Runde setzt das Dokument auf die
+  erste Runde zurück. Schätzung und Fortschritt zählen je Block eine Bestätigung.
+- **Vertrag** (additiv): `UiEvent::{AddBlock, SelectBlock, RemoveBlock, FillTargets}`, `DocumentView::blocks`
+  (`BlocksView`, `BlockSlotView`), `PlacementCheckView::overlaps_block`, `BatchItemView::signatures`,
+  `SignedSummaryView::signatures`; `SigningProgressView::confirmations_total` = Anzahl der Blöcke.
+- **Oberfläche:** `Pages` (nicht ausgewählte Blöcke als nummerierte Knöpfe, „×“ und Entf am ausgewählten),
+  `Inspector` (Abschnitt „Signaturblöcke“, Hinweis vor „Signieren“), `Thumbnails`, `SignCheck`, `DoneView`
+  („n Signaturen erstellt und geprüft“), Stapelzeile („· n Signaturen“).
+
+Tests:
+- `workflow/tests/blocks.rs`, `workflow/tests/batch.rs` (Mehrfachsignatur im Stapel)
+- `core-api/tests/workspace.rs` `several_blocks_sign_the_document_once_per_block` (echte Engine, Keystore: drei
+  Signaturen an den gezeigten Stellen), `core-api/tests/batch.rs` `an_entry_with_two_blocks_is_signed_twice_in_the_run`
+- `features/workspace/workspace.test.tsx`, `core/mock/mock.test.ts` (Mehrfachsignatur)

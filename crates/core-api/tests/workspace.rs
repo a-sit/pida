@@ -2379,3 +2379,116 @@ async fn accessibility_settings_apply_without_settings_view_and_set_the_keyboard
     })
     .await;
 }
+
+// ------------------------------------------------------------------------------------------------
+// Mehrfachsignatur: mehrere Blöcke in einem Dokument, je Block eine eigene Signatur
+// ------------------------------------------------------------------------------------------------
+
+fn blocks(v: &ViewState) -> Option<&pida_core_api::BlocksView> {
+    v.document.as_ref().and_then(|d| d.blocks.as_ref())
+}
+
+/// Drei Blöcke platzieren (hinzufügen, auswählen, entfernen, wieder hinzufügen), mit dem Keystore signieren: eine
+/// Sitzung, drei Bestätigungen, das Ergebnis trägt drei Signaturen an den gezeigten Stellen; jede bleibt gültig
+/// (pyHanko), qpdf. PDFium nötig (ohne Vorschau gibt es nur einen automatisch platzierten Block).
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn several_blocks_sign_the_document_once_per_block() {
+    let fx = Fixture::new();
+    let input = fx.dir("in");
+    let out = fx.dir("out");
+    let a = copy_pdf(TEXT_PDF, &input, "doc.pdf");
+    let Some(core) = start(&fx, keystore_overlay(vec![a.clone()], &out), None, None, true) else {
+        eprintln!("PIDA_PDFIUM_DIR nicht gesetzt – übersprungen");
+        return;
+    };
+    let v = wait_for(&core, "Arbeitsbereich mit Block", |v| {
+        editing(v) && v.document.as_ref().is_some_and(|d| d.sticker.is_some()) && blocks(v).is_some_and(|b| b.can_add)
+    })
+    .await;
+    let b = blocks(&v).unwrap();
+    assert_eq!((b.items.len(), b.limit, b.items[0].active), (1, 10, true));
+    let first = b.items[0].clone();
+
+    // zweiter Block auf Seite 1, dritter auf der Seite des ausgewählten – keiner überdeckt einen anderen
+    core.dispatch(UiEvent::AddBlock { page: Some(0) });
+    let v = wait_for(&core, "zwei Blöcke", |v| blocks(v).is_some_and(|b| b.items.len() == 2)).await;
+    let b = blocks(&v).unwrap();
+    assert!(b.items[1].active && !b.items[0].active, "der neue Block ist ausgewählt");
+    assert_eq!(b.items[0].rect, first.rect, "der erste Block bleibt, wo er war");
+    assert_eq!(b.items[1].page, 0);
+    let d = v.document.as_ref().unwrap();
+    assert!(!d.check.overlaps_block);
+    assert_eq!(d.sticker, b.items[1].rect);
+    core.dispatch(UiEvent::AddBlock { page: None });
+    let v = wait_for(&core, "drei Blöcke", |v| blocks(v).is_some_and(|b| b.items.len() == 3)).await;
+    assert!(!v.document.as_ref().unwrap().check.overlaps_block);
+
+    // auswählen: die Werkzeuge wirken auf den ausgewählten Block, die anderen bleiben liegen
+    core.dispatch(UiEvent::SelectBlock { index: 0 });
+    let v = wait_for(&core, "erster ausgewählt", |v| blocks(v).is_some_and(|b| b.items[0].active)).await;
+    let before = blocks(&v).unwrap().clone();
+    assert_eq!(v.document.as_ref().unwrap().sticker, before.items[0].rect);
+    core.dispatch(UiEvent::NudgeBlock { dx: 3, dy: 0, fine: false, coarse: false });
+    let v = wait_for(&core, "verschoben", |v| blocks(v).is_some_and(|b| b.items[0].rect != before.items[0].rect)).await;
+    let after = blocks(&v).unwrap();
+    assert_eq!((&after.items[1], &after.items[2]), (&before.items[1], &before.items[2]));
+
+    // den auf den ersten geschobenen Block meldet die Prüfung
+    let r0 = after.items[0].rect.unwrap();
+    core.dispatch(UiEvent::SelectBlock { index: 2 });
+    wait_for(&core, "dritter ausgewählt", |v| blocks(v).is_some_and(|b| b.items[2].active)).await;
+    core.dispatch(UiEvent::MoveBlock { page: after.items[0].page, x: r0.left + 5.0, y: r0.top - 5.0 });
+    wait_for(&core, "überdeckt", |v| v.document.as_ref().is_some_and(|d| d.check.overlaps_block)).await;
+
+    // entfernen und wieder hinzufügen
+    core.dispatch(UiEvent::RemoveBlock { index: 2 });
+    let v = wait_for(&core, "wieder zwei", |v| blocks(v).is_some_and(|b| b.items.len() == 2)).await;
+    assert!(blocks(&v).unwrap().items[1].active, "der vorige Block ist ausgewählt");
+    core.dispatch(UiEvent::AddBlock { page: Some(0) });
+    let v = wait_for(&core, "wieder drei", |v| {
+        blocks(v).is_some_and(|b| b.items.len() == 3) && v.document.as_ref().is_some_and(|d| !d.check.overlaps_block)
+    })
+    .await;
+    let placed = blocks(&v).unwrap().items.clone();
+
+    core.dispatch(UiEvent::SignWith { backend: BackendId::Keystore });
+    let seen = collect_until(&core, "gespeichert", saved).await;
+    let progress: Vec<(u32, u32)> = seen
+        .iter()
+        .filter_map(|v| match &v.step {
+            StepView::Signing { progress, .. } => Some((progress.confirmations_done, progress.confirmations_total)),
+            _ => None,
+        })
+        .collect();
+    assert!(progress.iter().all(|(_, total)| *total == 3), "je Block eine Bestätigung: {progress:?}");
+    assert!(progress.windows(2).all(|w| w[0].0 <= w[1].0), "Fortschritt nur vorwärts: {progress:?}");
+    for v in &seen {
+        assert!(v.document.is_some(), "Dokumentansicht fehlt: {:?}", v.step);
+    }
+
+    let signed = out.join("doc_signed.pdf");
+    let bytes = std::fs::read(&signed).unwrap();
+    let pdf = pida_pdf_cos::SourcePdf::open(bytes, &pida_pdf_cos::Limits::default()).unwrap();
+    let fields: Vec<_> = pdf.signature_fields().unwrap().into_iter().filter(|f| f.signed).collect();
+    assert_eq!(fields.len(), 3, "drei Signaturen");
+    // jede Signatur steht dort, wo ihr Block lag (Seite ohne CropBox und Drehung)
+    for block in &placed {
+        let want = pt_rect(block.rect.unwrap());
+        let hit = fields.iter().any(|f| {
+            let (page, drawn) = written_block(&pdf, &f.qualified_name);
+            page == block.page && (drawn.llx - want.llx).abs() < 0.5 && (drawn.ury - want.ury).abs() < 0.5
+        });
+        assert!(hit, "Block {} nicht an seiner Stelle: {want:?}", block.index);
+    }
+    if tool("pyhanko") {
+        let o = Command::new("pyhanko").args(["sign", "validate", "--no-strict-syntax"]).arg(&signed).output().unwrap();
+        let text = String::from_utf8_lossy(&o.stdout);
+        assert_eq!(text.matches("INTACT").count() + text.matches("intact").count(), 3, "pyHanko: {text}");
+    } else {
+        eprintln!("pyHanko fehlt – Orakel übersprungen");
+    }
+    if tool("qpdf") {
+        let o = Command::new("qpdf").arg("--check").arg(&signed).output().unwrap();
+        assert!(o.status.success(), "qpdf: {}", String::from_utf8_lossy(&o.stdout));
+    }
+}
