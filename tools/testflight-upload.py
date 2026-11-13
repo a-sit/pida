@@ -6,9 +6,11 @@ Nur Python-Standardbibliothek, `openssl` (ES256-Signatur des API-Tokens) und `xc
     tools/testflight-upload.py --check                                   # Zugang prüfen, Builds auflisten
     tools/testflight-upload.py dist/release-0.6.3/PIDA_0.6.3_ios_appstore.ipa [--notify]
 
-Ablauf: Upload mit `altool`, dann wartet das Skript, bis App Store Connect den Build kennt, und schaltet
-„Tester automatisch benachrichtigen“ (`autoNotifyEnabled`) aus – bevor Apple die Verarbeitung abschließt und den
-Build an die internen Gruppen verteilt. Der Build erscheint dort trotzdem, nur ohne E-Mail. `--notify` lässt die
+Ablauf: Upload mit `altool`, dann wartet das Skript, bis App Store Connect den Build fertig verarbeitet hat,
+schaltet „Tester automatisch benachrichtigen“ (`autoNotifyEnabled`) aus und gibt den Build den internen Gruppen
+ohne automatische Verteilung („PIDA interne Tests“). Die Tester sehen ihn in TestFlight, bekommen aber keine
+E-Mail. Automatische Verteilung ist dafür in der Gruppe ausgeschaltet – Apple verteilt sonst schon während der
+Verarbeitung und benachrichtigt, bevor das Skript den Build überhaupt sieht (0.6.3). `--notify` lässt die
 Benachrichtigung an.
 
 Zugang: `~/.pida-release/appstore.env` (APPLE_API_KEY, APPLE_API_ISSUER, APPLE_API_KEY_PATH; App-Store-Connect-
@@ -149,32 +151,52 @@ def upload(env, ipa):
         raise AscError("Upload mit altool fehlgeschlagen")
 
 
-def silence(env, app, version):
+def wait_valid(env, app, version):
+    # erst nach der Verarbeitung lässt sich der Build einer Gruppe geben
     deadline = time.time() + WAIT_SECONDS
     while time.time() < deadline:
         found = builds(env, app, version)
         if found:
             build, detail_id, detail = found[0]
-            if detail.get("autoNotifyEnabled") is False:
-                print(f"Benachrichtigung für Build {version} ist bereits aus.")
-                return
-            if detail_id:
-                request(env, "PATCH", f"/v1/buildBetaDetails/{detail_id}", {
-                    "data": {"type": "buildBetaDetails", "id": detail_id, "attributes": {"autoNotifyEnabled": False}}
-                })
-                state = detail.get("internalBuildState", "?")
-                print(f"Build {version}: „Tester automatisch benachrichtigen“ aus (Status {build['attributes']['processingState']}, {state}).")
-                if state == "IN_BETA_TESTING":
-                    print("Hinweis: Der Build war schon verteilt – für ihn kam die Benachrichtigung womöglich bereits.")
-                return
+            state = build["attributes"]["processingState"]
+            if state == "VALID":
+                return build, detail_id, detail
+            if state in ("FAILED", "INVALID"):
+                raise AscError(f"Build {version}: Verarbeitung bei Apple gescheitert ({state})")
         time.sleep(20)
-    raise AscError(f"Build {version} ist nach {WAIT_SECONDS // 60} Minuten nicht in App Store Connect aufgetaucht")
+    raise AscError(f"Build {version} ist nach {WAIT_SECONDS // 60} Minuten nicht fertig verarbeitet")
+
+
+def internal_groups(env, app):
+    d = request(env, "GET", f"/v1/apps/{app}/betaGroups?" + urllib.parse.urlencode(
+        {"fields[betaGroups]": "name,isInternalGroup,hasAccessToAllBuilds", "limit": "50"}))
+    return [g for g in d.get("data", []) if g["attributes"].get("isInternalGroup")]
+
+
+def distribute(env, app, version, notify):
+    build, detail_id, detail = wait_valid(env, app, version)
+    if not notify and detail_id and detail.get("autoNotifyEnabled") is not False:
+        request(env, "PATCH", f"/v1/buildBetaDetails/{detail_id}", {
+            "data": {"type": "buildBetaDetails", "id": detail_id, "attributes": {"autoNotifyEnabled": False}}
+        })
+        print(f"Build {version}: „Tester automatisch benachrichtigen“ aus.")
+    if not notify and detail.get("internalBuildState") == "IN_BETA_TESTING":
+        print("Hinweis: Apple hatte den Build schon verteilt – für ihn kam die E-Mail womöglich bereits"
+              " (automatische Verteilung in der Gruppe ausschalten).")
+    for g in internal_groups(env, app):
+        name = g["attributes"]["name"]
+        if g["attributes"].get("hasAccessToAllBuilds"):
+            print(f"Gruppe „{name}“: automatische Verteilung an – Apple gibt ihr den Build selbst.")
+            continue
+        request(env, "POST", f"/v1/betaGroups/{g['id']}/relationships/builds",
+                {"data": [{"type": "builds", "id": build["id"]}]})
+        print(f"Gruppe „{name}“: Build {version} freigegeben" + ("" if notify else " (ohne E-Mail)") + ".")
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("ipa", nargs="?", help="für App Store Connect exportiertes .ipa")
-    ap.add_argument("--check", action="store_true", help="nur Zugang prüfen und die letzten Builds zeigen")
+    ap.add_argument("--check", action="store_true", help="nur Zugang prüfen, Builds und interne Gruppen zeigen")
     ap.add_argument("--notify", action="store_true", help="Tester wie gewohnt benachrichtigen (E-Mail/Push)")
     args = ap.parse_args()
     if not args.check and not args.ipa:
@@ -187,14 +209,16 @@ def main():
             a = b["attributes"]
             print(f"  {a['version']}: {a['processingState']}, {detail.get('internalBuildState')}, "
                   f"benachrichtigen={detail.get('autoNotifyEnabled')}")
+        for g in internal_groups(env, app):
+            auto = "an" if g["attributes"].get("hasAccessToAllBuilds") else "aus"
+            print(f"  Gruppe „{g['attributes']['name']}“: automatische Verteilung {auto}")
         return
     version = ipa_version(args.ipa)
     if builds(env, app, version):
         raise AscError(f"Build {version} gibt es schon – CFBundleVersion erhöhen")
     print(f"Lade {os.path.basename(args.ipa)} (Build {version}) nach TestFlight hoch …")
     upload(env, args.ipa)
-    if not args.notify:
-        silence(env, app, version)
+    distribute(env, app, version, args.notify)
 
 
 if __name__ == "__main__":

@@ -589,6 +589,8 @@ check -p pida-app` für `aarch64-apple-ios-sim` und `aarch64-linux-android` grü
   wird daher über das A-SIT-Konto in Xcode: `xcodebuild -exportArchive -allowProvisioningUpdates` mit
   `method = app-store-connect`, `teamID = 9CYHJNG644`, `signingStyle = automatic`.
 - **Hochladen:** `tools/testflight-upload.py <ipa>` – Upload mit `xcrun altool` und dem Teamschlüssel aus
-  `~/.pida-release/appstore.env`, danach schaltet das Skript für den neuen Build „Tester automatisch benachrichtigen“
-  aus (keine E-Mail/Push je Testbuild; `--notify` lässt sie an). `--check` zeigt die letzten Builds mit Status.
+  `~/.pida-release/appstore.env`; nach der Verarbeitung schaltet das Skript „Tester automatisch benachrichtigen“ aus
+  und gibt den Build der internen Gruppe (keine E-Mail/Push je Testbuild; `--notify` lässt sie an). Dafür ist in der
+  Gruppe „PIDA interne Tests“ die **automatische Verteilung aus** (nur in App Store Connect umstellbar, nicht per
+  API) – sonst verteilt Apple schon während der Verarbeitung und benachrichtigt. `--check` zeigt Builds und Gruppen.
 - **Exportkontrolle:** `ITSAppUsesNonExemptEncryption = false` (Info.plist) – keine Frage je Build.
