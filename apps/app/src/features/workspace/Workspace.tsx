@@ -343,8 +343,16 @@ function WorkspaceView({ doc }: { doc: DocumentView }) {
           <IconButton label={t.t('ng-ui-ws-toggle-pages')} onPress={() => setPagesOpen((v) => !v)} aria-pressed={pagesOpen}>
             <IconSidebar size={18} />
           </IconButton>
+          {/* Telefonbreite: der Dateiname steht hier, in der Kopfzeile fehlt ihm der Platz (shell.css) */}
+          <span className="toolbar-doc-name" aria-hidden="true">
+            {doc.doc.name}
+          </span>
           <span className="page-indicator" aria-live="off">
-            {t.t('ng-ui-ws-page-indicator', { n: current + 1, total: sizes.length })}
+            <span className="page-indicator-long">{t.t('ng-ui-ws-page-indicator', { n: current + 1, total: sizes.length })}</span>
+            {/* Telefonbreite: nur die Zahlen, der Platz gehört dem Dateinamen */}
+            <span className="page-indicator-short" aria-hidden="true">
+              {current + 1} / {sizes.length}
+            </span>
           </span>
           <span className="toolbar-spacer" />
           <IconButton label={t.t('ng-ui-ws-zoom-out')} onPress={() => zoomBy(-1)} isDisabled={zoomPct <= 50}>

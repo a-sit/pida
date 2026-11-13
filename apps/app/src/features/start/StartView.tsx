@@ -27,7 +27,7 @@
 import { Link } from 'react-aria-components';
 import { useApp } from '../../app/context';
 import { isMobile } from '../../core/types';
-import { webProfile } from '../../core/web-profile';
+import { hintOs, webProfile } from '../../core/web-profile';
 import { AccessButton, Button, Keys, useModKey } from '../../ui/controls';
 import { useMediaQuery } from '../../ui/hooks';
 import { IconLock, IconQr, IconUpload } from '../../ui/Icons';
@@ -39,7 +39,7 @@ import './start.css';
 
 export function StartView() {
   const { t, view, dragActive, browse, startDemo, setOverlay } = useApp();
-  const { mod } = useModKey();
+  const { mod, isMac } = useModKey();
   const mobile = isMobile(view);
   // Browser am Telefon/Tablet (Web-Variante): nichts zu ziehen, keine Kürzel, die Dateiauswahl gehört dem Browser
   const touchOnly = useMediaQuery('(hover: none) and (pointer: coarse)') && !mobile;
@@ -66,12 +66,13 @@ export function StartView() {
                 {dragActive ? t.t('ng-ui-start-drop-release') : t.t('ng-ui-start-drop-title')}
               </p>
             )}
-            {/* mehrere Dateien = Stapel: Wortlaut je Standard-Signiermittel (Kern: `batch_flow`), sonst neutral */}
-            <p className="drop-hint">{t.t(mobile ? 'ng-ui-start-drop-hint-mobile' : dropHintMsg(batchFlow(view, view.signers.selected ?? view.signers.default)))}</p>
             <AccessButton msg={mobile ? 'ng-ui-start-pick-mobile' : 'ng-ui-start-pick'} variant="primary" size="lg" onPress={() => void browse()} isDisabled={!view.actions.open_files} />
+            {/* mehrere Dateien = Stapel: Wortlaut je Standard-Signiermittel (Kern: `batch_flow`), sonst neutral;
+                unter dem Knopf und klein – erst die Handlung, dann der Hinweis */}
+            <p className="drop-hint drop-hint-below">{t.t(mobile ? 'ng-ui-start-drop-hint-mobile' : dropHintMsg(batchFlow(view, view.signers.selected ?? view.signers.default)))}</p>
             {/* wie die System-Dateiauswahl mehrere PDFs übernimmt (macOS: Doppelklick nimmt nur eines; Android: Antippen
                 nimmt sofort eines; ADR 0004 Nachtrag 17) */}
-            {touchOnly ? null : <p className="drop-multi">{t.t('ng-ui-start-multi-hint', { os: view.platform.os })}</p>}
+            {touchOnly ? null : <p className="drop-multi">{t.t('ng-ui-start-multi-hint', { os: hintOs(view.platform.os, isMac) })}</p>}
             <p className="drop-foot">
               <span className="drop-foot-item">
                 <IconLock size={14} />

@@ -91,6 +91,16 @@
   justify-content: center;
   gap: var(--sp-2);
 }
+.drop-hint-below {
+  max-width: 52ch;
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-13);
+  color: var(--c-text-3);
+  text-wrap: balance;
+}
+.drop-hint-below + .drop-multi {
+  margin-top: 0;
+}
 /* Mehrfachauswahl: wie die Dateiauswahl mehrere PDFs übernimmt (ADR 0004 Nachtrag 17) */
 .drop-multi {
   max-width: 46ch;

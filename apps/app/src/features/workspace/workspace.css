@@ -167,6 +167,36 @@
 .toolbar-spacer {
   flex: 1;
 }
+/* Dateiname in der Leiste: nur auf Telefonbreite (dort blendet die Kopfzeile ihn aus) */
+.toolbar-doc-name {
+  display: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  padding-left: var(--sp-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-13);
+  font-weight: var(--fw-semibold);
+}
+.page-indicator-short {
+  display: none;
+}
+@media (max-width: 560px) {
+  .toolbar-doc-name {
+    display: block;
+  }
+  .page-indicator {
+    padding: 0 var(--sp-1) 0 var(--sp-2);
+    font-weight: var(--fw-regular, 400);
+  }
+  .page-indicator-long {
+    display: none;
+  }
+  .page-indicator-short {
+    display: inline;
+  }
+}
 .zoom-value {
   min-width: 52px;
   text-align: center;

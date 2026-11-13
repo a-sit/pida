@@ -16,6 +16,14 @@ export function webProfile(): WebProfile | null {
   return profile;
 }
 
+/**
+ * Betriebssystem für Bedienhinweise („⌘-Klick“ bzw. „Strg-Klick“): Der Kern der Web-Variante kennt das System des
+ * Browsers nicht – am Mac zählt dort die Erkennung der Oberfläche.
+ */
+export function hintOs(os: string, isMac: boolean): string {
+  return profile && isMac ? 'macos' : os;
+}
+
 /** Nur die Web-Brücke (und Tests). */
 export function setWebProfile(p: WebProfile | null): void {
   profile = p;

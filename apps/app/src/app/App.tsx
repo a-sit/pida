@@ -24,7 +24,7 @@ import { I18nProvider } from 'react-aria-components';
 import type { Bridge, FileDragEvent } from '../core/bridge';
 import { mainBar, workspaceDefaults } from '../core/defaults';
 import { isMobile, type OpenFilesMode, type UiEvent, type ViewState } from '../core/types';
-import { webProfile } from '../core/web-profile';
+import { hintOs, webProfile } from '../core/web-profile';
 import { accessibilityOf } from '../features/accessibility';
 import { BatchView } from '../features/batch';
 import { DoneView, OutputDialogs } from '../features/done';
@@ -255,7 +255,7 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
   // `mode` aus „+ PDF“ (ADR 0004 Nachtrag 9): „Anderes PDF öffnen“ wählt eine Datei, sonst Mehrfachauswahl;
   // was daraus folgt (Stapel, Schließen), entscheidet der Kern. Alle gewählten Pfade gehen in der Reihenfolge der
   // Auswahl an den Kern; Duplikate und fehlende Dateien meldet der Kern (ADR 0004 Nachtrag 17)
-  const os = current.platform.os;
+  const os = hintOs(current.platform.os, isMac);
   const browse = useCallback(
     async (mode?: OpenFilesMode) => {
       const multiple = mode !== 'replace';
