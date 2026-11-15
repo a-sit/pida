@@ -71,6 +71,12 @@ describe('Demo starten', () => {
     expect(row).toHaveTextContent(/Alt.*Umschalt.*D/);
   });
 
+  it('Desktop: Link „Mit Demodokument ausprobieren“ auf der Startseite, neben dem Kürzel', async () => {
+    const { user, mock } = renderApp();
+    await user.click(await screen.findByRole('link', { name: 'Mit Demodokument ausprobieren' }));
+    await waitFor(() => expect(demoOpened(mock)).toHaveLength(1));
+  });
+
   it('Mobil: Link „Mit Demodokument ausprobieren“ auf der Startseite', async () => {
     const { user, mock } = renderApp({ platform: 'android' });
     await user.click(await screen.findByRole('link', { name: 'Mit Demodokument ausprobieren' }));

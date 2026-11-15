@@ -3873,3 +3873,15 @@ einmaligem Einschalten stand „Platzierung der Signatur“ bei jedem Besuch wie
 Folge: Wer im Web auf die barrierefreie Bedienung angewiesen ist, schaltet sie je Besuch ein oder nutzt den Direktlink.
 
 Tests: `features/accessibility/accessibility.test.tsx`.
+
+### Nachtrag 29 (15.11.2026): „Mit Demodokument ausprobieren“ auch am Desktop auf der Startseite
+
+Entscheidung des Auftraggebers (15.11.2026): Der Link „Mit Demodokument ausprobieren“ stand bisher nur auf
+Mobilgeräten und im Browser am Telefon/Tablet auf der Startseite; am Desktop gab es die Demo nur über ⌘/Strg+D (Web:
+⌥⇧D bzw. Alt+Umschalt+D) und die Befehlspalette – wer das Kürzel nicht kennt, fand sie nicht.
+
+- Der Link steht jetzt auf jeder Plattform unter der Ablagefläche (`StartView`, neben dem Hinweis auf ⌘/Strg+O), am
+  Desktop der Apps wie in der Web-Variante. Kürzel und Befehl bleiben.
+- Wie bisher nur, solange Dateien geöffnet werden dürfen (`actions.open_files`).
+
+Tests: `app/demo.test.tsx`.
