@@ -583,12 +583,28 @@ check -p pida-app` für `aarch64-apple-ios-sim` und `aarch64-linux-android` grü
 - **Team und App:** A-SIT-Team `9CYHJNG644`, App „PIDA“ (`at.asit.pida.app`) in App Store Connect; nur interne Tests
   (Gruppe „PIDA interne Tests“, automatische Verteilung). Keine Einreichung zur App-Store-Prüfung ohne ausdrückliche
   Freigabe.
-- **Bauen und signieren:** `npx tauri ios build --target aarch64 --export-method app-store-connect` mit
-  `APPLE_DEVELOPMENT_TEAM=9CYHJNG644` erzeugt das Archiv; der Export scheitert dort an der Cloud-Signatur (der
-  API-Schlüssel mit Rolle App Manager darf die in der Cloud verwalteten Vertriebszertifikate nicht nutzen). Exportiert
-  wird daher über das A-SIT-Konto in Xcode: `xcodebuild -exportArchive -allowProvisioningUpdates` mit
-  `method = app-store-connect`, `teamID = 9CYHJNG644`, `signingStyle = automatic`.
+- **Bauen und signieren:** `tools/build-ios-appstore.sh` (seit 15.11.2026) baut das Archiv mit
+  `npx tauri ios build --target aarch64 --export-method app-store-connect` und exportiert es danach selbst mit
+  `xcodebuild -exportArchive` und `tools/ios/ExportOptions-appstore.plist`: Signatur von Hand mit der Identität
+  „iPhone Distribution“ des A-SIT-Teams (privater Schlüssel im Schlüsselbund) und dem Profil „PIDA App Store“
+  (beide gültig bis 15.11.2027). Das braucht weder ein in Xcode angemeldetes Konto noch den API-Schlüssel; der
+  Export, den Tauri selbst versucht (automatische Signatur), scheitert dabei erwartungsgemäß. `--export` exportiert
+  nur ein vorhandenes Archiv.
+- **Archiv von Hand signieren:** Auch der Archiv-Schritt verlangt mit der automatischen Signatur des Projekts ein
+  Konto. `tools/ios/appstore-signing.xcconfig` stellt ihn auf dieselbe Identität und dasselbe Profil um. Tauri
+  entfernt `XCODE_XCCONFIG_FILE` aus der Umgebung von `xcodebuild`, ruft es aber über den `PATH` auf; das Skript
+  schaltet deshalb für diesen Lauf ein `xcodebuild` vor, das die Datei als `-xcconfig` an den Build-Aufruf anhängt.
+  Das Xcode-Projekt selbst bleibt bei automatischer Signatur (Simulator- und Gerätebuilds unverändert).
+- **Kein API-Schlüssel im Build:** Mit `APPLE_API_KEY`/`APPLE_API_ISSUER`/`APPLE_API_KEY_PATH` in der Umgebung
+  reicht Tauri den Schlüssel an `xcodebuild` weiter. Die Cloud-Signatur scheitert dann ohnehin (Rolle App Manager
+  darf die in der Cloud verwalteten Vertriebszertifikate nicht nutzen), und in allen vier beobachteten Fällen
+  (13. und 15.11.2026) kannte die Kommandozeile unmittelbar danach das in Xcode angemeldete Konto nicht mehr
+  („No Accounts“, obwohl Xcode die Anmeldung weiter anzeigt) – bis zur nächsten Neuanmeldung. Der Mechanismus in
+  Xcode ist nicht geklärt; das Skript entfernt die Variablen deshalb vor dem Build.
+- **Zertifikat erneuern:** Das Team hat nur wenige Plätze für Verteilungszertifikate. Läuft die Identität ab oder
+  fehlt sie auf einem Rechner: `.p12` übernehmen oder im Entwicklerportal ein neues „iOS Distribution“-Zertifikat
+  und dazu ein App-Store-Profil mit dem Namen „PIDA App Store“ für `at.asit.pida.app` anlegen.
 - **Hochladen:** `tools/testflight-upload.py <ipa>` – Upload mit `xcrun altool` und dem Teamschlüssel aus
-  `~/.pida-release/appstore.env`, danach schaltet das Skript für den neuen Build „Tester automatisch benachrichtigen“
+  `~/.pida-release/appstore.env` (das Skript lädt ihn selbst, nur hier wird er gebraucht), danach schaltet das Skript für den neuen Build „Tester automatisch benachrichtigen“
   aus (keine E-Mail/Push je Testbuild; `--notify` lässt sie an). `--check` zeigt die letzten Builds mit Status.
 - **Exportkontrolle:** `ITSAppUsesNonExemptEncryption = false` (Info.plist) – keine Frage je Build.

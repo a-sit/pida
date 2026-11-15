@@ -1,0 +1,7 @@
+// PIDA – Signatur für das App-Store-Archiv (tools/build-ios-appstore.sh, über XCODE_XCCONFIG_FILE).
+// Von Hand statt automatisch: Die automatische Signatur des Xcode-Projekts braucht ein in Xcode
+// angemeldetes Konto oder den API-Schlüssel; beides soll der Build nicht voraussetzen.
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = iPhone Distribution
+DEVELOPMENT_TEAM = 9CYHJNG644
+PROVISIONING_PROFILE_SPECIFIER = PIDA App Store
