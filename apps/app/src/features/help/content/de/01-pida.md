@@ -31,9 +31,16 @@ freie Software unter der EUPL-1.2 und ein Open-Source-Projekt von A-SIT, kein of
   Fläche. Verschieben mit Maus, Finger oder Pfeiltasten, oder per Doppelklick bzw. Doppeltippen direkt an eine Stelle
   setzen; der Block rastet an Rändern, unter dem Text und in leere Signaturfelder ein. Signatur auch auf einer neuen Seite oder unsichtbar (ohne Signaturbild).
 - **Signaturfelder und QR-Platzhalter** im Dokument werden erkannt und als Ziel angeboten.
+- **Platzierung der Signatur:** „Ohne Vorschau platzieren …“ zeigt die Methoden als Knöpfe; ein Klick platziert
+  sofort, bei mehreren Signaturblöcken alle auf einmal. „Automatisch“ setzt den ersten Block unter den letzten Text,
+  weitere in freie Flächen. „Platzhalter im Dokument“ legt die Blöcke der Reihe nach in QR-Code-Platzhalter und leere
+  Signaturfelder – ohne Platzhalter ist der Knopf ausgegraut. „Freie Fläche“ nimmt die am besten geeigneten freien
+  Flächen, „Position in Millimetern“ setzt den ausgewählten Block an eine eingegebene Stelle. Reichen Platzhalter oder
+  Platz nicht für alle Blöcke, bleiben die übrigen, wo sie sind, und ein Hinweis sagt es. „Selbst platzieren“ ändert
+  nichts und überlässt Ihnen das Verschieben; „Rückgängig“ stellt die Platzierung von vor dem letzten Klick wieder her.
 - **Mehrere Signaturblöcke:** Für Dokumente mit mehreren Unterschriftsstellen fügt „Weiteren Block hinzufügen“
   (unter „Signaturblöcke“) einen weiteren Block ein, höchstens zehn je Dokument. Die Blöcke sind nummeriert; ein Klick
-  wählt einen Block aus, verschoben und platziert wird immer der ausgewählte. „Alle Platzhalter belegen“ setzt in
+  wählt einen Block aus, von Hand verschoben wird immer der ausgewählte. „Alle Platzhalter belegen“ setzt in
   jedes leere Signaturfeld einen Block. Jeder Block erhält eine eigene Signatur, in der Reihenfolge der Nummern –
   der Knopf heißt dann zum Beispiel „3-mal signieren“. Mit ID Austria kann für jede Signatur eine eigene Bestätigung
   nötig sein. Bricht der Vorgang ab, wird nichts gespeichert. Mit „Auf neuer Seite“ dürfen auch mehrere Blöcke auf der
