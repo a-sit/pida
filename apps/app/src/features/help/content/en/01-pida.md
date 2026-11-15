@@ -31,9 +31,16 @@ Republic of Austria or of A-Trust GmbH.
   with the mouse, your finger or the arrow keys, or double-click (double-tap) to put it right where you want it; the
   block snaps to margins, below the text and into empty signature fields. You can also sign on a new page or invisibly (without a signature block).
 - **Signature fields and QR placeholders** in the document are detected and offered as targets.
+- **Signature placement:** “Place without the preview …” shows the methods as buttons; one click places at once,
+  with several signature blocks all of them together. “Automatically” puts the first block below the last text and
+  further blocks into free areas. “Placeholder in the document” puts the blocks, in order, into QR code placeholders
+  and empty signature fields – without placeholders the button is greyed out. “Free area” takes the best suited free
+  areas, “Position in millimetres” puts the selected block at a position you enter. If there are not enough
+  placeholders or not enough room for all blocks, the others stay where they are and a notice says so. “Place it
+  yourself” changes nothing and leaves the moving to you; “Undo” restores the placement from before the last click.
 - **Several signature blocks:** for documents with several signing places, “Add another block” (under “Signature
   blocks”) adds one more block, at most ten per document. The blocks are numbered; a click selects a block, and moving
-  and placing always applies to the selected one. “Fill all placeholders” puts a block into every empty signature
+  by hand always applies to the selected one. “Fill all placeholders” puts a block into every empty signature
   field. Each block gets its own signature, in the order of the numbers – the button then reads, for example, “Sign
   3 times”. With ID Austria, each signature may need its own confirmation. If the process is interrupted, nothing is
   saved. With “On a new page”, several blocks may sit on the new page; they are signed first and therefore get the
