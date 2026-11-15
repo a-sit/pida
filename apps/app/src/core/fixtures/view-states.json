@@ -6610,6 +6610,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -7055,6 +7056,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -7484,6 +7486,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": false,
           "for_revision": 4,
@@ -7930,6 +7933,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": false,
           "for_revision": 3,
@@ -8373,6 +8377,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": false,
           "for_revision": 0,
@@ -8595,6 +8600,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -8972,6 +8978,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -9367,6 +9374,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -9762,6 +9770,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -10157,6 +10166,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -10552,6 +10562,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -10947,6 +10958,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -11342,6 +11354,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -11737,6 +11750,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -12132,6 +12146,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -12527,6 +12542,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -12922,6 +12938,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -13317,6 +13334,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -15029,6 +15047,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -15657,6 +15676,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,
@@ -16052,6 +16072,7 @@
           ],
           "limit": 10
         },
+        "can_undo_placement": false,
         "check": {
           "clamped": true,
           "for_revision": 4,

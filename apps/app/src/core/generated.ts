@@ -1780,7 +1780,11 @@ index: number, } | { "type": "remove_block",
 /**
  * Stelle in der Reihenfolge der Blöcke (0-basiert)
  */
-index: number, } | { "type": "fill_targets" } | { "type": "set_batch_auto_position", 
+index: number, } | { "type": "fill_targets" } | { "type": "place_blocks", 
+/**
+ * Methode
+ */
+method: PlaceMethod, } | { "type": "undo_placement" } | { "type": "set_batch_auto_position", 
 /**
  * ein bzw. aus
  */
@@ -2115,6 +2119,11 @@ can_add: boolean,
 free_targets: number, };
 
 /**
+ * Platzierungsmethode für alle Blöcke ([`UiEvent::PlaceBlocks`]).
+ */
+export type PlaceMethod = "auto" | "placeholders" | "free";
+
+/**
  * PDF/A-Kennung eines Dokuments (XMP `pdfaid:part`, `pdfaid:conformance`).
  */
 export type PdfaIdView = { 
@@ -2261,7 +2270,11 @@ new_page_size?: [number, number] | null,
  * Mehrfachsignatur: alle Signaturblöcke (je Block eine eigene Signatur). Additiv; in TypeScript optional.
  * Der Kern liefert es im Arbeitsbereich immer (`Some`, mindestens ein Block).
  */
-blocks?: BlocksView | null, };
+blocks?: BlocksView | null, 
+/**
+ * „Rückgängig“ möglich: Die letzte Änderung der Platzierung war `place_blocks`. Additiv.
+ */
+can_undo_placement: boolean, };
 
 /**
  * Signiermittel für Konto-Chip, Menü und Stapel (§3.4).

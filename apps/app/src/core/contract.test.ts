@@ -205,6 +205,8 @@ const documentView = obj({
       free_targets: int,
     }),
   ),
+  // Nachtrag 27: „Rückgängig“ nach einer Platzierungsmethode
+  can_undo_placement: bool,
 });
 
 const signersView = obj({
@@ -603,6 +605,9 @@ const uiEvent = tagged('type', {
   select_block: { index: num },
   remove_block: { index: num },
   fill_targets: {},
+  // Nachtrag 27: Platzierungsmethoden für alle Blöcke, „Rückgängig“
+  place_blocks: { method: lit('auto', 'placeholders', 'free') },
+  undo_placement: {},
   // Nachtrag 10: „Zur Startseite“ parkt offene Arbeit
   go_home: {},
   resume_parked: {},
@@ -814,9 +819,9 @@ describe('Vertrag UiEvent (TS → Rust)', () => {
   // (19 aus E0 – ohne die vier des entfernten Prüfmodus –, `inspect_keystore` aus Nachtrag 7, `unlock_placement` und
   // `set_batch_auto_position` aus Nachtrag 8, `open_recent`/`reveal_recent`/`share_recent`/`sign_recent` aus
   // Nachtrag 15; `check_for_updates` aus Nachtrag 21; `add_block`, `select_block`, `remove_block` und
-  // `fill_targets` der Mehrfachsignatur)
-  it('alle 68 Varianten sind vertreten', () => {
-    expect(new Set(UI_EVENT_SAMPLES.map((s) => s.type)).size).toBe(68);
+  // `fill_targets` der Mehrfachsignatur; `place_blocks` und `undo_placement` aus Nachtrag 27)
+  it('alle 70 Varianten sind vertreten', () => {
+    expect(new Set(UI_EVENT_SAMPLES.map((s) => s.type)).size).toBe(70);
   });
 
   it('enthält die Mobile-Proben (Plattform, FIDO2-Hinweis, Fortsetzen) und den Import nur am Desktop', () => {

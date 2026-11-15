@@ -457,6 +457,56 @@ pub(crate) fn rects_intersect(a: Rect, b: Rect) -> bool {
     a.llx < b.urx && b.llx < a.urx && a.lly < b.ury && b.lly < a.ury
 }
 
+/// Abstand zwischen Signaturblöcken, die der Kern selbst nebeneinander setzt (pt).
+pub(crate) const BLOCK_GAP: f32 = 6.0;
+
+/// Platzierungsmethoden „Automatisch“ und „Freie Fläche“: Lagen (linke obere Ecke) für bis zu `count` Blöcke der
+/// Größe `w` × `h` in den freien Flächen `pages` (Seite, Flächen absteigend nach Eignung) – Seite für Seite,
+/// Fläche für Fläche, darin zeilenweise von links oben. Keine Lage überdeckt eine in `taken` (Seite, Rechteck)
+/// oder eine frühere; jede gewählte Lage kommt zu `taken` hinzu. Rein.
+pub(crate) fn tile_blocks(
+    pages: &[(usize, Vec<Rect>)],
+    w: f32,
+    h: f32,
+    taken: &mut Vec<(usize, Rect)>,
+    count: usize,
+) -> Vec<Placement> {
+    const EPS: f32 = 0.05;
+    let mut out = Vec::new();
+    if !(w > 0.0 && h > 0.0) {
+        return out;
+    }
+    for (page, areas) in pages {
+        for area in areas {
+            let area = area.normalized();
+            let mut top = area.ury;
+            while top - h >= area.lly - EPS {
+                let mut x = area.llx;
+                while x + w <= area.urx + EPS {
+                    if out.len() >= count {
+                        return out;
+                    }
+                    let mine = Rect { llx: x, lly: top - h, urx: x + w, ury: top };
+                    let spaced = Rect {
+                        llx: mine.llx - BLOCK_GAP,
+                        lly: mine.lly - BLOCK_GAP,
+                        urx: mine.urx + BLOCK_GAP,
+                        ury: mine.ury + BLOCK_GAP,
+                    };
+                    if !taken.iter().any(|(p, r)| p == page && rects_intersect(spaced, *r)) {
+                        taken.push((*page, mine));
+                        out.push(Placement { page_index: *page, x, y: top, width: w, height: h });
+                    }
+                    x += w + BLOCK_GAP;
+                }
+                top -= h + BLOCK_GAP;
+            }
+        }
+    }
+    out.truncate(count);
+    out
+}
+
 /// Wie [`target_rect`] für ein beliebiges Ziel des Dokuments.
 fn rect_at(data: &DocData, edit: &WorkspaceEdit, target: Target, block: BlockGeometry) -> Option<(usize, Rect)> {
     match target {
@@ -755,6 +805,7 @@ impl crate::runtime::CoreTask {
             placement_locked: edit.placement_locked(),
             new_page_size: data.as_deref().and_then(|d| page_info(d, n)).map(|p| p.visible_size()),
             blocks: Some(blocks),
+            can_undo_placement: s.phase == DocumentPhase::Editing && !edit.placement_locked() && edit.undo.is_some(),
         })
     }
 

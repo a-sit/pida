@@ -328,3 +328,113 @@ fn state_roundtrips_and_reads_older_snapshots() {
     }
     assert_eq!(serde_json::from_value::<State>(v).unwrap(), workspace());
 }
+
+// --- Platzierungsmethoden (wirken auf alle Blöcke) und „Rückgängig“ ---------------------------------------
+
+/// Blöcke in ihrer Reihenfolge: (Ziel, Seite, Lage).
+fn blocks_in_order(s: &State) -> Vec<(Target, usize, Option<Placement>)> {
+    let e = edit_of(s);
+    let (page, placement) = shown(s);
+    let mut all: Vec<_> = e.others.iter().map(|b| (b.target, b.page, b.placement)).collect();
+    all.insert(e.active.min(all.len()), (e.target, page, placement));
+    all
+}
+
+#[test]
+fn placing_all_blocks_and_undo() {
+    let before = three_blocks();
+    let order = blocks_in_order(&before);
+    // drei Blöcke, zwei Lagen: der dritte bleibt, wo er ist
+    let t =
+        step(before.clone(), Event::BlocksPlaced { placements: vec![at(1, 10.0), at(1, 250.0)], auto: true }, &ws());
+    let after = blocks_in_order(&t.state);
+    assert_eq!(after[0], (Target::Free, 1, Some(at(1, 10.0))));
+    assert_eq!(after[1], (Target::Free, 1, Some(at(1, 250.0))));
+    assert_eq!(after[2], order[2]);
+    let e = edit_of(&t.state);
+    assert_eq!(e.origin, PlacementOrigin::User, "mehrere Blöcke: keine nachgeführte Automatik");
+    assert!(e.undo.is_some());
+    assert!(t.effects.contains(&Effect::BuildBlockPreview(DocId(1))));
+    // „Rückgängig“ stellt alles wieder her – genau einmal
+    let u = step(t.state.clone(), Event::PlacementUndone, &ws());
+    assert_eq!(blocks_in_order(&u.state), order);
+    assert_eq!(edit_of(&u.state).active, edit_of(&before).active);
+    assert!(edit_of(&u.state).undo.is_none());
+    let again = step(u.state.clone(), Event::PlacementUndone, &ws());
+    assert_eq!(again.state, u.state);
+    // jede andere Änderung der Platzierung verwirft den gemerkten Stand
+    let moved = step(t.state, Event::PlacementChanged(at(0, 5.0)), &ws());
+    assert!(edit_of(&moved.state).undo.is_none());
+}
+
+#[test]
+fn a_single_block_placed_automatically_keeps_following_the_rule() {
+    let t = step(workspace(), Event::BlocksPlaced { placements: vec![at(0, 10.0)], auto: true }, &ws());
+    let e = edit_of(&t.state);
+    assert_eq!((e.target, e.origin), (Target::Free, PlacementOrigin::Auto));
+    assert_eq!(shown(&t.state), (0, Some(at(0, 10.0))));
+    // „Freie Fläche“: Herkunft Nutzerin
+    let t = step(workspace(), Event::BlocksPlaced { placements: vec![at(0, 10.0)], auto: false }, &ws());
+    assert_eq!(edit_of(&t.state).origin, PlacementOrigin::User);
+    // nichts bzw. Unsinn: ohne Wirkung
+    for placements in [Vec::new(), vec![at(9, 10.0)], vec![at(0, f32::NAN)]] {
+        let same = step(workspace(), Event::BlocksPlaced { placements, auto: false }, &ws());
+        assert_eq!(same.state, workspace());
+    }
+}
+
+#[test]
+fn automatic_placement_on_the_new_page_switches_it_on() {
+    let t = step(workspace(), Event::BlocksPlaced { placements: vec![at(3, 10.0)], auto: true }, &ws());
+    match &t.state {
+        State::Positioning { page, new_page, .. } => assert_eq!((*page, *new_page), (3, true)),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn assigning_placeholders_to_the_free_blocks() {
+    // der zweite Block sitzt schon in Feld 0 und bleibt; die beiden freien bekommen die übrigen Ziele in Reihenfolge
+    let targets = vec![Target::Field(0), Target::Field(1), Target::Qr];
+    let t = step(three_blocks(), Event::TargetsAssigned(targets.clone()), &ws());
+    assert_eq!(
+        blocks_in_order(&t.state).iter().map(|b| b.0).collect::<Vec<_>>(),
+        vec![Target::Field(1), Target::Field(0), Target::Qr]
+    );
+    assert_eq!(edit_of(&t.state).others.len(), 2, "es kommt kein Block hinzu");
+    let u = step(t.state.clone(), Event::PlacementUndone, &ws());
+    assert_eq!(blocks_in_order(&u.state), blocks_in_order(&three_blocks()));
+    // schon alles belegt: ohne Wirkung, der gemerkte Stand bleibt
+    let same = step(t.state.clone(), Event::TargetsAssigned(targets), &ws());
+    assert_eq!(same.state, t.state);
+    // weniger Ziele als Blöcke: die ersten Blöcke bekommen sie, der Rest bleibt frei
+    let t = step(three_blocks(), Event::TargetsAssigned(vec![Target::Qr]), &ws());
+    assert_eq!(
+        blocks_in_order(&t.state).iter().map(|b| b.0).collect::<Vec<_>>(),
+        vec![Target::Qr, Target::Field(0), Target::Free]
+    );
+    // der Block im Ziel wechselt vorher das Feld: er bleibt dort, die freien Blöcke bekommen die übrigen
+    let s = step(three_blocks(), Event::TargetChosen(Target::Field(1)), &ws()).state;
+    let chosen = edit_of(&s).active;
+    let t = step(s, Event::TargetsAssigned(vec![Target::Field(0), Target::Field(1), Target::Qr]), &ws());
+    let got: Vec<_> = blocks_in_order(&t.state).iter().map(|b| b.0).collect();
+    assert_eq!(got[chosen], Target::Field(1));
+    let mut rest = got.clone();
+    rest.remove(chosen);
+    assert_eq!(rest, vec![Target::Field(0), Target::Qr]);
+}
+
+#[test]
+fn locked_placement_ignores_the_methods() {
+    let mut s = workspace();
+    if let State::Positioning { edit: Some(e), .. } = &mut s {
+        e.lock = pida_workflow::PlacementLock::Locked;
+    }
+    for event in [
+        Event::BlocksPlaced { placements: vec![at(0, 10.0)], auto: true },
+        Event::TargetsAssigned(vec![Target::Qr]),
+        Event::PlacementUndone,
+    ] {
+        assert_eq!(step(s.clone(), event, &ws()).state, s);
+    }
+}

@@ -52,6 +52,14 @@ pub(crate) enum Msg {
     /// Ergebnis von „Automatisch platzieren“ für ein Dokument (verworfen, wenn inzwischen ein anderes
     /// Dokument positioniert wird)
     AutoPlaced(DocId, Placement),
+    /// Ergebnis einer Platzierungsmethode für alle Blöcke (`UiEvent::PlaceBlocks`): Lagen der ersten Blöcke von
+    /// `total`; verworfen, wenn inzwischen ein anderes Dokument positioniert wird
+    BlocksPlaced {
+        doc: DocId,
+        placements: Vec<Placement>,
+        auto: bool,
+        total: usize,
+    },
     /// Blockvorschau gebaut (mit der Generation des Auftrags; ältere Ergebnisse werden verworfen)
     BlockBuilt(BlockInfo, u64),
     /// Blockvorschau nicht gebaut (Generation, i18n-ID)
@@ -190,6 +198,8 @@ fn ui_event_kind(e: &UiEvent) -> &'static str {
         UiEvent::SelectBlock { .. } => "select_block",
         UiEvent::RemoveBlock { .. } => "remove_block",
         UiEvent::FillTargets => "fill_targets",
+        UiEvent::PlaceBlocks { .. } => "place_blocks",
+        UiEvent::UndoPlacement => "undo_placement",
         UiEvent::SetBatchAutoPosition { .. } => "set_batch_auto_position",
         UiEvent::GoHome => "go_home",
         UiEvent::ResumeParked => "resume_parked",
@@ -302,6 +312,50 @@ fn uses_certificate_cache(id: BackendId) -> bool {
 /// Fehlercodes der CMS-Prüfung, die ein anderes Signerzertifikat als das erwartete bedeuten.
 fn is_signer_mismatch(code: &str) -> bool {
     matches!(code, "cms-unexpected-signer" | "cms-signing-certificate-mismatch")
+}
+
+/// Automatische Lage wie bei `p:auto` (PDF-AS-Regel; `page_index == Seitenzahl` = neue Seite). `Ok(None)` =
+/// nicht berechenbar (kein Profilspeicher, kein Ergebnis), `Err` = Meldungs-ID. Läuft im Blocking-Pool.
+fn auto_position(shared: &Shared, snap: &Snapshot, data: &DocData) -> Result<Option<Placement>, String> {
+    let Some(store) = shared.profiles.as_deref() else { return Ok(None) };
+    let emblem = snap.effective().emblem().and_then(plan::load_emblem);
+    let Ok(spec) = plan::block_spec(
+        store,
+        SpecInput {
+            effective: snap.effective(),
+            system_language: Lang::system(),
+            pdfa: data.report.pdfa.as_ref(),
+            cert: None,
+            signing_time: plan::local_now(),
+            emblem: emblem.as_ref(),
+        },
+    ) else {
+        return Ok(None);
+    };
+    let built = data.with_renderer_opt(shared.render.as_deref(), |renderer| {
+        plan::build_plan(PlanInput {
+            report: &data.report,
+            pages: &data.pages,
+            position: &PositionChoice::Auto,
+            spec: &spec,
+            chain: None,
+            reserve: Reserve::ModelB,
+            cms_profile: Default::default(),
+            renderer,
+            // nur im Arbeitsbereich: wie die Überdeckungsprüfung keine Felder überdecken (Nachtrag 12)
+            avoid_widgets: true,
+            store,
+            fonts: &shared.fonts,
+        })
+    });
+    match built.map(|b| b.resolved) {
+        Ok(Some(r)) => {
+            let page_index = if r.new_page { data.pages.len() } else { r.page_index };
+            Ok(Some(Placement { page_index, x: r.x, y: r.y, width: r.width, height: r.height }))
+        }
+        Ok(None) => Ok(None),
+        Err(e) => Err(e.code()),
+    }
 }
 
 /// Gemeinsame Daten (Kern-Task, Effekt-Tasks, Shell-Threads).
@@ -1080,6 +1134,23 @@ impl CoreTask {
                     let event =
                         if self.ws.enabled { Event::AutoPlaced(placement) } else { Event::PlacementChanged(placement) };
                     self.apply(event);
+                }
+            }
+            Msg::BlocksPlaced { doc, placements, auto, total } => {
+                if matches!(&self.state, State::Positioning { doc: facts, .. } if facts.id == doc) {
+                    let placed = placements.len();
+                    if placed > 0 {
+                        self.apply(Event::BlocksPlaced { placements, auto });
+                    }
+                    if placed == 0 {
+                        self.notify("ng-blocks-no-free-area", BTreeMap::new());
+                    } else if placed < total {
+                        let params = BTreeMap::from([
+                            ("placed".to_owned(), placed.to_string()),
+                            ("total".to_owned(), total.to_string()),
+                        ]);
+                        self.notify("ng-blocks-not-all-placed", params);
+                    }
                 }
             }
             Msg::BlockBuilt(info, generation) => self.on_block(info, generation),
@@ -2712,6 +2783,8 @@ impl CoreTask {
             UiEvent::SelectBlock { index } if self.ws.enabled => self.apply(Event::BlockSelected(index as usize)),
             UiEvent::RemoveBlock { index } if self.ws.enabled => self.apply(Event::BlockRemoved(index as usize)),
             UiEvent::FillTargets if self.ws.enabled => self.fill_targets(),
+            UiEvent::PlaceBlocks { method } if self.ws.enabled => self.place_blocks(method),
+            UiEvent::UndoPlacement if self.ws.enabled => self.apply(Event::PlacementUndone),
             // „Zur Startseite“ (Nachtrag 10): der Reducer parkt offene Arbeit (im klassischen Ablauf wie
             // `navigate{Open}`); Fortsetzen und Verwerfen nur im Arbeitsbereich-Modus
             UiEvent::GoHome => self.apply(Event::WentHome),
@@ -2741,6 +2814,8 @@ impl CoreTask {
             | UiEvent::SelectBlock { .. }
             | UiEvent::RemoveBlock { .. }
             | UiEvent::FillTargets
+            | UiEvent::PlaceBlocks { .. }
+            | UiEvent::UndoPlacement
             | UiEvent::SetBatchAutoPosition { .. }
             | UiEvent::ResumeParked
             | UiEvent::DiscardParked) => {
@@ -3273,47 +3348,138 @@ impl CoreTask {
         let Some(data) = self.shared.docs.get(doc_id) else { return };
         let shared = self.shared.clone();
         let snap = self.snapshot();
-        crate::rt::spawn_blocking(move || {
-            let Some(store) = shared.profiles.as_deref() else { return };
-            let emblem = snap.effective().emblem().and_then(plan::load_emblem);
-            let Ok(spec) = plan::block_spec(
-                store,
-                SpecInput {
-                    effective: snap.effective(),
-                    system_language: Lang::system(),
-                    pdfa: data.report.pdfa.as_ref(),
-                    cert: None,
-                    signing_time: plan::local_now(),
-                    emblem: emblem.as_ref(),
-                },
-            ) else {
-                return;
-            };
-            let built = data.with_renderer_opt(shared.render.as_deref(), |renderer| {
-                plan::build_plan(PlanInput {
-                    report: &data.report,
-                    pages: &data.pages,
-                    position: &PositionChoice::Auto,
-                    spec: &spec,
-                    chain: None,
-                    reserve: Reserve::ModelB,
-                    cms_profile: Default::default(),
-                    renderer,
-                    // nur im Arbeitsbereich: wie die Überdeckungsprüfung keine Felder überdecken (Nachtrag 12)
-                    avoid_widgets: true,
-                    store,
-                    fonts: &shared.fonts,
+        crate::rt::spawn_blocking(move || match auto_position(&shared, &snap, &data) {
+            Ok(Some(p)) => shared.send(Msg::AutoPlaced(doc_id, p)),
+            Ok(None) => {}
+            Err(code) => shared.send(Msg::Notices(vec![(code, BTreeMap::new())])),
+        });
+    }
+
+    /// Platzierungsmethode für alle Blöcke (`UiEvent::PlaceBlocks`, ADR 0004 Nachtrag 27).
+    fn place_blocks(&mut self, method: crate::view::PlaceMethod) {
+        use crate::view::{DocumentPhase, PlaceMethod};
+        let State::Positioning { doc: facts, edit: Some(_), placement: Some(_), .. } = &self.state else { return };
+        let doc_id = facts.id;
+        let n = facts.page_count;
+        let Some(view) = self.document_view() else { return };
+        if view.phase != DocumentPhase::Editing || view.invisible || view.placement_locked || n == 0 {
+            return;
+        }
+        let total = view.blocks.as_ref().map_or(1, |b| b.items.len().max(1));
+        if method == PlaceMethod::Placeholders {
+            // Dokumentreihenfolge: Seite, dann von oben nach unten, dann von links
+            let mut targets: Vec<(usize, f32, f32, pida_workflow::Target)> = view
+                .fields
+                .iter()
+                .filter(|f| f.suitable)
+                .map(|f| {
+                    let (top, left) = f.rect.map_or((0.0, 0.0), |r| (r.top, r.left));
+                    (f.page.unwrap_or(usize::MAX), -top, left, pida_workflow::Target::Field(f.index as usize))
                 })
-            });
-            match built.map(|b| b.resolved) {
-                Ok(Some(r)) => {
-                    let page_index = if r.new_page { data.pages.len() } else { r.page_index };
-                    let p = Placement { page_index, x: r.x, y: r.y, width: r.width, height: r.height };
-                    shared.send(Msg::AutoPlaced(doc_id, p));
-                }
-                Ok(None) => {}
-                Err(e) => shared.send(Msg::Notices(vec![(e.code(), BTreeMap::new())])),
+                .collect();
+            if let Some(qr) = &view.qr {
+                targets.push((qr.page, -qr.rect.top, qr.rect.left, pida_workflow::Target::Qr));
             }
+            if targets.is_empty() {
+                self.notify("ng-blocks-no-placeholder", BTreeMap::new());
+                return;
+            }
+            targets.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.total_cmp(&b.1)).then(a.2.total_cmp(&b.2)));
+            self.apply(Event::TargetsAssigned(targets.into_iter().map(|t| t.3).collect()));
+            let placed = self
+                .document_view()
+                .and_then(|v| v.blocks)
+                .map_or(0, |b| b.items.iter().filter(|i| i.target != crate::view::PlacementTarget::Free).count());
+            if placed < total {
+                let params = BTreeMap::from([
+                    ("placed".to_owned(), placed.to_string()),
+                    ("total".to_owned(), total.to_string()),
+                ]);
+                self.notify("ng-blocks-placeholders-short", params);
+            }
+            return;
+        }
+        let Some(data) = self.shared.docs.get(doc_id) else { return };
+        let auto = method == PlaceMethod::Auto;
+        let (w, h) = (view.block.width, view.block.height);
+        let current = view.placement.page_index;
+        let new_page = view.new_page;
+        let cached: Vec<Option<Arc<pida_placement::OccupancyGrid>>> =
+            (0..n).map(|page| self.ws.layouts.grid(doc_id, page)).collect();
+        let shared = self.shared.clone();
+        let snap = self.snapshot();
+        crate::rt::spawn_blocking(move || {
+            let mut placements: Vec<Placement> = Vec::new();
+            let mut taken: Vec<(usize, pida_pdf_cos::Rect)> = Vec::new();
+            let mut first_page = current;
+            let mut with_new_page = new_page;
+            if auto {
+                match auto_position(&shared, &snap, &data) {
+                    Ok(Some(p)) => {
+                        taken.push((
+                            p.page_index,
+                            pida_pdf_cos::Rect { llx: p.x, lly: p.y - p.height, urx: p.x + p.width, ury: p.y },
+                        ));
+                        first_page = p.page_index;
+                        with_new_page |= p.page_index >= n;
+                        placements.push(p);
+                    }
+                    Ok(None) => return,
+                    Err(code) => {
+                        shared.send(Msg::Notices(vec![(code, BTreeMap::new())]));
+                        return;
+                    }
+                }
+            }
+            // Seiten in der Reihenfolge der Suche: die Seite des ersten Blocks, die neue Seite (falls es sie gibt),
+            // dann – automatisch von hinten, sonst die letzte und danach von vorn – die übrigen
+            let mut order: Vec<usize> = vec![first_page.min(n)];
+            if with_new_page {
+                order.push(n);
+            }
+            if auto {
+                order.extend((0..n).rev());
+            } else {
+                order.push(n - 1);
+                order.extend(0..n);
+            }
+            let mut seen = Vec::new();
+            order.retain(|p| {
+                (*p < n || with_new_page) && !seen.contains(p) && {
+                    seen.push(*p);
+                    true
+                }
+            });
+            let geom = pida_placement::BlockGeometry { width: w, height: h };
+            let mut computed = 0usize;
+            for page in order {
+                if placements.len() >= total {
+                    break;
+                }
+                let grid = if page >= n {
+                    crate::workspace::page_info(&data, n).map(|info| {
+                        let (pw, ph) = info.visible_size();
+                        Arc::new(pida_placement::OccupancyGrid::empty(pw, ph))
+                    })
+                } else if let Some(grid) = cached.get(page).cloned().flatten() {
+                    Some(grid)
+                } else if computed < crate::workspace::MAX_INSPECTED {
+                    computed += 1;
+                    shared
+                        .render
+                        .as_deref()
+                        .and_then(|render| crate::workspace::compute_grid(&data, render, page))
+                        .map(Arc::new)
+                } else {
+                    None
+                };
+                let Some(grid) = grid else { continue };
+                let layout = pida_placement::page_layout(&grid, page, geom, &pida_placement::LayoutOptions::default());
+                let more =
+                    crate::workspace::tile_blocks(&[(page, layout.free)], w, h, &mut taken, total - placements.len());
+                placements.extend(more);
+            }
+            shared.send(Msg::BlocksPlaced { doc: doc_id, placements, auto, total });
         });
     }
 

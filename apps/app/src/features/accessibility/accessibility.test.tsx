@@ -97,8 +97,20 @@ describe('Platzierung ohne Vorschau', () => {
     expect(within(panel).getByRole('heading', { name: 'Platzierung der Signatur' })).toBeInTheDocument();
     const inspector = screen.getByRole('complementary', { name: /./ });
     expect(inspector.querySelector('.insp-section')).toBe(panel);
-    const methods = within(panel).getByRole('radiogroup', { name: 'Wie soll die Signatur platziert werden?' });
-    await waitFor(() => expect(within(methods).getByRole('radio', { name: /Automatisch/ })).toHaveFocus());
+    // Schaltflächen statt Radio-Gruppe: Pfeiltasten wählen (und platzieren) nicht schon beim Durchgehen
+    const methods = within(panel).getByRole('group', { name: 'Wie soll die Signatur platziert werden?' });
+    expect(methods).toHaveAccessibleDescription('Ein Klick platziert sofort.');
+    expect(within(methods).getAllByRole('button').map((b) => b.textContent?.replace(/(Selbst platzieren|Automatisch|Platzhalter im Dokument|Position in Millimetern|Freie Fläche).*/, '$1'))).toEqual([
+      'Selbst platzieren',
+      'Automatisch',
+      'Platzhalter im Dokument',
+      'Position in Millimetern',
+      'Freie Fläche',
+    ]);
+    const auto = within(methods).getByRole('button', { name: /^Automatisch/ });
+    await waitFor(() => expect(auto).toHaveFocus());
+    expect(auto).toHaveAttribute('aria-pressed', 'true');
+    expect(within(panel).queryByRole('button', { name: 'Rückgängig' })).not.toBeInTheDocument();
     expect(within(panel).getByTestId('placement-current')).toHaveTextContent('Seite 3 von 3, linke obere Ecke 64 mm von links, 106 mm von unten. Lage:');
     await expectNoAxeViolations(container);
   });
@@ -106,7 +118,9 @@ describe('Platzierung ohne Vorschau', () => {
   it('Millimeter: Bereich wird geprüft, gültige Werte gehen als move_block (pt) an den Kern', async () => {
     const { mock, user } = renderApp({ view: a11yView(ON) });
     const panel = await screen.findByTestId('placement-panel');
-    await user.click(within(panel).getByRole('radio', { name: /Position in Millimetern/ }));
+    await user.click(within(panel).getByRole('button', { name: /Position in Millimetern/ }));
+    // Millimeter stellt erst mit „Position übernehmen“ etwas um
+    expect(mock.dispatched.some((e) => e.type === 'place_blocks')).toBe(false);
     const page = within(panel).getByRole('textbox', { name: 'Seite' });
     const x = within(panel).getByRole('textbox', { name: 'Von links (mm)' });
     const y = within(panel).getByRole('textbox', { name: 'Von unten (mm)' });
@@ -145,29 +159,32 @@ describe('Platzierung ohne Vorschau', () => {
     const doc = documentView({ qr: { page: 2, rect: { left: 320, right: 384, top: 532, bottom: 468 }, id: '0002' } });
     const { mock, user } = renderApp({ view: a11yView(ON, doc) });
     const panel = await screen.findByTestId('placement-panel');
-    await user.click(within(panel).getByRole('radio', { name: /Platzhalter im Dokument/ }));
+    // ein Klick auf die Methode setzt die Blöcke sofort in die Platzhalter
+    await user.click(within(panel).getByRole('button', { name: /Platzhalter im Dokument/ }));
+    expect(lastEvent(mock)).toEqual({ type: 'place_blocks', method: 'placeholders' });
     const found = within(panel).getByRole('radiogroup', { name: 'Im Dokument gefunden' });
     await user.click(within(found).getByRole('radio', { name: /^QR-Code-Platzhalter 0002 ?Seite 3, / }));
     expect(lastEvent(mock)).toEqual({ type: 'use_target', target: { kind: 'qr' } });
     expect(within(panel).queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  it('ohne QR-Platzhalter: Hinweis auf die Platzhaltersuche', async () => {
-    const { user } = renderApp({ view: a11yView(ON) });
+  it('ohne Platzhalter: Methode ausgegraut mit Grund, Hinweis auf die Platzhaltersuche bleibt erreichbar', async () => {
+    const { mock } = renderApp({ view: a11yView(ON) });
     const panel = await screen.findByTestId('placement-panel');
-    await user.click(within(panel).getByRole('radio', { name: /Platzhalter im Dokument/ }));
-    expect(within(panel).getByText('Kein QR-Code-Platzhalter und kein leeres Signaturfeld gefunden.')).toBeInTheDocument();
+    const button = within(panel).getByRole('button', { name: /Platzhalter im Dokument/ });
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent('QR-Code-Platzhalter oder Signaturfeld – keiner gefunden');
     expect(within(panel).getByText(/Signaturplatzhalter automatisch suchen/)).toBeInTheDocument();
-    // nichts gefunden: keine Liste und kein Nummernfeld
-    expect(within(panel).queryByRole('radiogroup', { name: 'Im Dokument gefunden' })).not.toBeInTheDocument();
-    expect(within(panel).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: 'Einstellungen › Dokument' })).toBeInTheDocument();
+    expect(mock.dispatched.some((e) => e.type === 'place_blocks')).toBe(false);
   });
 
-  it('freie Flächen als Liste; Wahl setzt den Block in die Fläche', async () => {
+  it('freie Fläche: Klick platziert sofort; die Liste setzt den ausgewählten Block in eine andere Fläche', async () => {
     const { mock, user } = renderApp({ view: a11yView(ON) });
     const panel = await screen.findByTestId('placement-panel');
-    await user.click(within(panel).getByRole('radio', { name: /Freie Fläche oder selbst verschieben/ }));
+    await user.click(within(panel).getByRole('button', { name: /^Freie Fläche/ }));
     expect(mock.dispatched.some((e) => e.type === 'inspect_pages' && e.pages.includes(2))).toBe(true);
+    expect(mock.dispatched.filter((e) => e.type === 'place_blocks')).toEqual([{ type: 'place_blocks', method: 'free' }]);
     await user.click(within(panel).getByRole('radio', { name: /Freie Fläche 1: Seite 3, unten mittig, 170,4 × 105,1 mm/ }));
     const e = lastEvent(mock);
     expect(e?.type).toBe('move_block');
@@ -178,11 +195,23 @@ describe('Platzierung ohne Vorschau', () => {
     }
   });
 
-  it('automatisch: auto_place', async () => {
+  it('automatisch: Klick platziert sofort (place_blocks)', async () => {
     const { mock, user } = renderApp({ view: a11yView(ON) });
     const panel = await screen.findByTestId('placement-panel');
-    await user.click(within(panel).getByRole('button', { name: 'Automatisch platzieren' }));
-    expect(lastEvent(mock)).toEqual({ type: 'auto_place' });
+    await user.click(within(panel).getByRole('button', { name: /^Automatisch/ }));
+    expect(lastEvent(mock)).toEqual({ type: 'place_blocks', method: 'auto' });
+  });
+
+  it('„Selbst platzieren“ stellt nichts um; „Rückgängig“ nur nach einer Methode', async () => {
+    const { mock, user } = renderApp({ view: a11yView(ON, documentView({ can_undo_placement: true })) });
+    const panel = await screen.findByTestId('placement-panel');
+    const before = mock.dispatched.length;
+    await user.click(within(panel).getByRole('button', { name: /^Selbst platzieren/ }));
+    expect(mock.dispatched.slice(before).filter((e) => e.type !== 'inspect_pages')).toEqual([]);
+    expect(within(panel).getByRole('button', { name: /^Selbst platzieren/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(panel).getByRole('button', { name: 'Zum Signaturblock' })).toBeInTheDocument();
+    await user.click(within(panel).getByRole('button', { name: 'Rückgängig' }));
+    expect(lastEvent(mock)).toEqual({ type: 'undo_placement' });
   });
 
   it('Ansagen anpassen direkt im Panel (set_accessibility)', async () => {

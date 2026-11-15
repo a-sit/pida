@@ -5,7 +5,7 @@
  */
 import { afterEach, describe, expect, it } from 'vitest';
 import { defaultSettings } from '../defaults';
-import type { Settings, UiEvent, ViewState } from '../types';
+import type { RectPt, Settings, UiEvent, ViewState } from '../types';
 import { MOCK_SCENARIOS, MockCore, type MockOptions } from './index';
 import { fieldFit } from './workspace';
 
@@ -853,6 +853,50 @@ describe('Mehrfachsignatur (je Block eine eigene Signatur)', () => {
     v = await c.view();
     expect(v.document!.target).toEqual({ kind: 'free' });
     expect(v.notices.some((n) => n.code === 'ng-block-target-taken')).toBe(true);
+  });
+
+  it('Platzierungsmethoden wirken auf alle Blöcke, ohne Überdeckung; „Rückgängig“ stellt den Stand davor wieder her', async () => {
+    const c = core({ scenario: 'contract' });
+    await until(c, hasDoc);
+    await c.dispatch({ type: 'add_block', page: 0 });
+    await c.dispatch({ type: 'add_block', page: 1 });
+    let v = await c.view();
+    const before = blocks(v).items.map((b) => ({ page: b.page, rect: b.rect }));
+    expect(v.document!.can_undo_placement).toBe(false);
+    const apart = (items: { page: number; rect: RectPt | null }[]) =>
+      items.every((a, i) => items.every((b, j) => i >= j || a.page !== b.page || !a.rect || !b.rect || a.rect.right <= b.rect.left || b.rect.right <= a.rect.left || a.rect.top <= b.rect.bottom || b.rect.top <= a.rect.bottom));
+    for (const method of ['auto', 'free'] as const) {
+      await c.dispatch({ type: 'place_blocks', method });
+      v = await c.view();
+      expect(blocks(v).items).toHaveLength(3);
+      expect(blocks(v).items.every((b) => b.target.kind === 'free')).toBe(true);
+      expect(apart(blocks(v).items)).toBe(true);
+      expect(v.document!.can_undo_placement).toBe(true);
+      await c.dispatch({ type: 'undo_placement' });
+      v = await c.view();
+      expect(blocks(v).items.map((b) => ({ page: b.page, rect: b.rect }))).toEqual(before);
+      expect(v.document!.can_undo_placement).toBe(false);
+    }
+    // jede andere Änderung der Platzierung verwirft den Stand für „Rückgängig“
+    await c.dispatch({ type: 'place_blocks', method: 'auto' });
+    await c.dispatch({ type: 'nudge_block', dx: 1, dy: 0, fine: false, coarse: false });
+    v = await c.view();
+    expect(v.document!.can_undo_placement).toBe(false);
+  });
+
+  it('„Platzhalter“: freie Blöcke wandern in die Platzhalter, es kommt keiner hinzu; zu wenige werden gemeldet', async () => {
+    const c = core({ scenario: 'field' });
+    let v = await until(c, hasDoc);
+    const offered = v.document!.fields.filter((f) => f.suitable).length;
+    for (let i = 0; i < offered; i++) await c.dispatch({ type: 'add_block', page: 0 });
+    await c.dispatch({ type: 'place_blocks', method: 'placeholders' });
+    v = await c.view();
+    expect(blocks(v).items).toHaveLength(offered + 1);
+    expect(blocks(v).items.filter((b) => b.target.kind !== 'free')).toHaveLength(offered);
+    expect(v.notices.some((n) => n.code === 'ng-blocks-placeholders-short' && n.params.placed === String(offered) && n.params.total === String(offered + 1))).toBe(true);
+    await c.dispatch({ type: 'undo_placement' });
+    v = await c.view();
+    expect(blocks(v).items.every((b) => b.target.kind === 'free')).toBe(true);
   });
 
   it('Signieren: je Block eine Bestätigung im Fortschritt', async () => {

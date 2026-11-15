@@ -50,6 +50,7 @@ fn workspace_state(target: Target, origin: PlacementOrigin, invisible: bool) -> 
         others: Vec::new(),
         active: 0,
         rounds: None,
+        undo: None,
     };
     State::Positioning {
         queue: queue(&[1]),

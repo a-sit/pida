@@ -191,6 +191,29 @@ pub struct Rounds {
     pub index: usize,
 }
 
+/// Stand der Platzierung vor der letzten Platzierungsmethode („Automatisch“, „Platzhalter“, „Freie Fläche“ –
+/// [`Event::BlocksPlaced`], [`Event::TargetsAssigned`]) für „Rückgängig“ ([`Event::PlacementUndone`]). Jede
+/// andere Änderung der Platzierung verwirft ihn.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct PlacementUndo {
+    /// Ziel des ausgewählten Blocks
+    pub target: Target,
+    /// Herkunft seiner Lage
+    pub origin: PlacementOrigin,
+    /// Seite der Ansicht
+    pub page: usize,
+    /// Lage des ausgewählten Blocks
+    pub placement: Option<Placement>,
+    /// „Auf neuer Seite“
+    pub new_page: bool,
+    /// weitere Blöcke
+    pub others: Vec<BlockSlot>,
+    /// Stelle des ausgewählten Blocks
+    pub active: usize,
+    /// [`WorkspaceEdit::automatic`]
+    pub automatic: bool,
+}
+
 /// Bearbeitungszustand des Dokuments im Arbeitsbereich-Modus (ADR 0004 §3.3, nur mit
 /// [`Context::workspace`]). Wandert durch `Signing`, `ChoosingBackend` (Rückfall/Startargument-
 /// Automatik), `Error` und `Output` mit.
@@ -245,6 +268,9 @@ pub struct WorkspaceEdit {
     /// laufende Mehrfachsignatur (nur in `Signing`, `Error` und `Output`)
     #[serde(default)]
     pub rounds: Option<Rounds>,
+    /// Stand vor der letzten Platzierungsmethode („Rückgängig“)
+    #[serde(default)]
+    pub undo: Option<Box<PlacementUndo>>,
 }
 
 impl WorkspaceEdit {
@@ -284,6 +310,7 @@ impl WorkspaceEdit {
             others: Vec::new(),
             active: 0,
             rounds: None,
+            undo: None,
         }
     }
 
@@ -1415,6 +1442,22 @@ pub enum Event {
     /// „Alle Platzhalter belegen“: je noch freiem Ziel (von core-api nach Eignung gewählt) ein Block; ein frei
     /// platzierter ausgewählter Block wandert in das erste Ziel
     TargetsFilled(Vec<Target>),
+    /// Platzierungsmethode „Automatisch“ bzw. „Freie Fläche“: neue freie Lagen für die Blöcke in ihrer
+    /// Reihenfolge (von core-api berechnet, ohne gegenseitige Überdeckung); Blöcke ohne Lage bleiben, wo sie
+    /// sind. `auto` = ein einzelner Block liegt nach der PDF-AS-Regel (Herkunft `Auto`). Merkt den Stand für
+    /// [`Event::PlacementUndone`].
+    BlocksPlaced {
+        /// Lagen der ersten Blöcke
+        placements: Vec<Placement>,
+        /// PDF-AS-Regel
+        auto: bool,
+    },
+    /// Platzierungsmethode „Platzhalter“: die frei platzierten Blöcke wandern in ihrer Reihenfolge in die noch
+    /// freien Ziele (von core-api in Dokumentreihenfolge); Blöcke in einem Ziel bleiben dort. Es kommt kein
+    /// Block hinzu. Merkt den Stand für [`Event::PlacementUndone`].
+    TargetsAssigned(Vec<Target>),
+    /// „Rückgängig“: Stand vor der letzten Platzierungsmethode wiederherstellen
+    PlacementUndone,
     /// `BackendError::Cancelled`, das core-api **nicht** selbst ausgelöst hat (SL 6000/6001, „Abbrechen“
     /// in einer A-Trust-Meldung; ADR 0004 §3.6)
     SigningDeclined,

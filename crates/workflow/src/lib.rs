@@ -124,6 +124,7 @@ pub use state::{
     MSG_DOCUMENT_LEAVES_DEVICE, MSG_FIELD_LOCKED, MSG_INITIALIZATION, MSG_INVARIANT, MSG_NO_BACKEND,
     MSG_PARKED_FILES_ADDED, MSG_POSITIONING_NOT_POSSIBLE, MSG_RESUME_BACKEND_UNAVAILABLE, MSG_SAVE_FAILED,
     MSG_SIGNER_UNAVAILABLE, MSG_SIGNING_CANCELLED, MSG_SIGNING_DECLINED, MSG_UNEXPECTED, MainBarStep, ParkedPlacement,
-    PlaceholderAnswer, PlaceholderFound, PlacementLock, PlacementOrigin, PositionChoice, ResumePlan, RetryTarget,
-    Rounds, SignFlow, SigningPhase, State, Step, Target, Transition, WorkflowError, WorkspaceEdit, backend_for_choice,
+    PlaceholderAnswer, PlaceholderFound, PlacementLock, PlacementOrigin, PlacementUndo, PositionChoice, ResumePlan,
+    RetryTarget, Rounds, SignFlow, SigningPhase, State, Step, Target, Transition, WorkflowError, WorkspaceEdit,
+    backend_for_choice,
 };

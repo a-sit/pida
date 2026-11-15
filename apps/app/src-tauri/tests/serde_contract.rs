@@ -936,6 +936,7 @@ fn document(phase: DocumentPhase, origin: PlacementOrigin, target: PlacementTarg
             can_add: true,
             free_targets: 1,
         }),
+        can_undo_placement: false,
     }
 }
 
@@ -1499,7 +1500,7 @@ fn typescript_events_deserialize_into_ui_event() {
 
 /// Anzahl der `UiEvent`-Varianten in den TypeScript-Typen (die TS-Beispiele müssen jede abdecken);
 /// ohne das veraltete `acknowledge_privacy` (`#[ts(skip)]`, ADR 0003).
-const UI_EVENT_VARIANTS: usize = 76;
+const UI_EVENT_VARIANTS: usize = 78;
 
 /// Das veraltete `acknowledge_privacy` (früherer Datenschutzdialog) wird weiter gelesen – ältere Aufrufer
 /// scheitern nicht –, steht aber nicht mehr in den TypeScript-Typen (ADR 0003).
