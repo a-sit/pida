@@ -38,7 +38,7 @@ const opened = (events: UiEvent[]) => events.filter((e) => e.type === 'open_file
 const sessions = (events: UiEvent[]) => events.filter((e) => e.type === 'sign_with' || e.type === 'start_batch' || e.type === 'choose_backend');
 
 /** Selbst platziert (Kern: `detection.auto_placed == false`). */
-const byHand = () => documentView({ origin: 'user', detection: { pdfa: null, pdfa_decision: 'none', auto_placed: false } });
+const byHand = () => documentView({ origin: 'user', detection: { pdfa: null, pdfa_decision: 'none', auto_placed: false, qr_search: true } });
 
 describe('Kopfzeile „+ PDF“', () => {
   it('neben dem Dokumentnamen, Menü per Tastatur bedienbar (Eingabe öffnet, Pfeile wählen, Esc schließt); axe', async () => {

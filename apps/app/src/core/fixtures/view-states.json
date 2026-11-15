@@ -6634,7 +6634,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -7080,7 +7081,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -7510,7 +7512,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -7954,7 +7957,8 @@
         "detection": {
           "auto_placed": true,
           "pdfa": null,
-          "pdfa_decision": "forced"
+          "pdfa_decision": "forced",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -8621,7 +8625,8 @@
         "detection": {
           "auto_placed": true,
           "pdfa": null,
-          "pdfa_decision": "none"
+          "pdfa_decision": "none",
+          "qr_search": false
         },
         "doc": {
           "id": 7,
@@ -9002,7 +9007,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -9398,7 +9404,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -9794,7 +9801,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -10190,7 +10198,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -10586,7 +10595,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -10982,7 +10992,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -11378,7 +11389,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -11774,7 +11786,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -12170,7 +12183,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -12566,7 +12580,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -12962,7 +12977,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -13358,7 +13374,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -15071,7 +15088,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -15700,7 +15718,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,
@@ -16096,7 +16115,8 @@
             "conformance": "B",
             "part": 2
           },
-          "pdfa_decision": "detected"
+          "pdfa_decision": "detected",
+          "qr_search": true
         },
         "doc": {
           "id": 7,

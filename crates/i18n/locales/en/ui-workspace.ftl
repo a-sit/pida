@@ -689,6 +689,7 @@ ng-ui-insp-pos-placeholder-desc = { $n ->
         [one] QR code placeholder or signature field – one found
        *[other] QR code placeholder or signature field – { $n } found
     }
+ng-ui-insp-pos-placeholder-desc-off = QR code placeholders are not searched for (Settings › Document) – no signature field found
 ng-ui-insp-pos-coords = Position in millimetres
 ng-ui-insp-pos-coords-desc = Enter the page and distances, e.g. from instructions
 ng-ui-insp-pos-free = Free area

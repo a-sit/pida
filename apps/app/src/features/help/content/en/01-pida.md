@@ -46,7 +46,7 @@ Republic of Austria or of A-Trust GmbH.
   saved. With “On a new page”, several blocks may sit on the new page; they are signed first and therefore get the
   first numbers automatically.
 - **Demo:** “Start demo” opens a bundled demo document with a QR placeholder – to try PIDA without risk. Shortcut ⌘D
-  or Ctrl+D, in the browser ⌥⇧D or Alt+Shift+D; also in the command palette and, on mobile devices, via “Try it with
+  or Ctrl+D, in the browser ⌥⇧D or Alt+Shift+D; also in the command palette and via “Try it with
   the demo document” on the start page. The signature is genuine, but the document has no legally relevant content.
 - **Batch:** several PDFs at once – log in to ID Austria once and confirm each document individually. Protected or
   damaged files are skipped.

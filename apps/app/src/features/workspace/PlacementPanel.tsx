@@ -77,6 +77,7 @@ function PanelBody({ doc, editable, a, focusOnStart }: { doc: DocumentView; edit
   const sizes = useMemo(() => displayPages(doc), [doc]);
   const fields = doc.fields.filter(offeredField);
   const placeholders = fields.length + (doc.qr ? 1 : 0);
+  const qrSearch = doc.detection?.qr_search ?? true;
   const blocks = blockTotal(doc);
   // Änderungen der Lage, die nicht aus diesem Panel kommen (Ziehen, Pfeiltasten): Anzeige „Selbst platzieren“
   const ownUntil = useRef(0);
@@ -133,7 +134,8 @@ function PanelBody({ doc, editable, a, focusOnStart }: { doc: DocumentView; edit
     {
       value: 'placeholder',
       label: t.t('ng-ui-insp-pos-placeholder'),
-      description: t.t('ng-ui-insp-pos-placeholder-desc', { n: placeholders }),
+      // Suche aus: ehrlich „nicht gesucht“ statt „keiner gefunden“ (Kern: `detection.qr_search`, Nachtrag 30)
+      description: placeholders === 0 && !qrSearch ? t.t('ng-ui-insp-pos-placeholder-desc-off') : t.t('ng-ui-insp-pos-placeholder-desc', { n: placeholders }),
       icon: <IconQr size={16} />,
       disabled: placeholders === 0,
     },

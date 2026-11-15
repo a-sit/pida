@@ -6,7 +6,8 @@
  * (`dragActive`). Die Oberfläche filtert nicht nach Endung – der Kern meldet Nicht-PDFs.
  *
  * Mobile: keine Ablagefläche und keine Tastenkürzel, Knopf „Dokument auswählen“ (Dokument-Picker bzw.
- * SAF) und der Hinweis auf „Teilen“/„Öffnen in“; statt des Kürzels ⌘/Strg+D der Link „Mit Demodokument ausprobieren“.
+ * SAF) und der Hinweis auf „Teilen“/„Öffnen in“. Der Link „Mit Demodokument ausprobieren“ steht auf jeder Plattform
+ * unter der Ablagefläche (am Desktop zusätzlich zum Kürzel ⌘/Strg+D, ADR 0004 Nachtrag 29).
  *
  * Web-Variante im Browser eines Telefons/Tablets (kein Hover, grober Zeiger): Titel und Demo-Link wie mobil, kein
  * Kürzel- und kein Mehrfachauswahl-Hinweis (die Kürzel-Tasten blendet `base.css` dort ohnehin aus).
@@ -78,20 +79,20 @@ export function StartView() {
                 <IconLock size={14} />
                 {t.t('ng-ui-start-local')}
               </span>
-              {mobile || touchOnly ? (
-                view.actions.open_files ? (
-                  <span className="drop-foot-item">
-                    <Link className="link" onPress={() => void startDemo()}>
-                      {t.t('ng-ui-start-demo')}
-                    </Link>
-                  </span>
-                ) : null
-              ) : (
+              {mobile || touchOnly ? null : (
                 <span className="drop-foot-item">
                   <Keys keys={[mod, 'O']} label={`${mod}+O`} />
                   {t.t('ng-ui-start-shortcut')}
                 </span>
               )}
+              {/* Demodokument: auf jeder Plattform sichtbar – am Desktop zusätzlich zum Kürzel ⌘/Strg+D (Nachtrag 29) */}
+              {view.actions.open_files ? (
+                <span className="drop-foot-item">
+                  <Link className="link" onPress={() => void startDemo()} data-testid="start-demo">
+                    {t.t('ng-ui-start-demo')}
+                  </Link>
+                </span>
+              ) : null}
             </p>
           </div>
         </section>

@@ -3873,3 +3873,30 @@ einmaligem Einschalten stand „Platzierung der Signatur“ bei jedem Besuch wie
 Folge: Wer im Web auf die barrierefreie Bedienung angewiesen ist, schaltet sie je Besuch ein oder nutzt den Direktlink.
 
 Tests: `features/accessibility/accessibility.test.tsx`.
+
+### Nachtrag 29 (15.11.2026): „Mit Demodokument ausprobieren“ auch am Desktop auf der Startseite
+
+Entscheidung des Auftraggebers (15.11.2026): Der Link „Mit Demodokument ausprobieren“ stand bisher nur auf
+Mobilgeräten und im Browser am Telefon/Tablet auf der Startseite; am Desktop gab es die Demo nur über ⌘/Strg+D (Web:
+⌥⇧D bzw. Alt+Umschalt+D) und die Befehlspalette – wer das Kürzel nicht kennt, fand sie nicht.
+
+- Der Link steht jetzt auf jeder Plattform unter der Ablagefläche (`StartView`, neben dem Hinweis auf ⌘/Strg+O), am
+  Desktop der Apps wie in der Web-Variante. Kürzel und Befehl bleiben.
+- Wie bisher nur, solange Dateien geöffnet werden dürfen (`actions.open_files`).
+
+Tests: `app/demo.test.tsx`.
+
+### Nachtrag 30 (15.11.2026): „Platzhalter im Dokument“ sagt ehrlich, wenn nicht gesucht wird
+
+Anlass: Auf einem iPhone mit ausgeschalteter Platzhaltersuche (Einstellung von vor Nachtrag 25) stand beim
+Demodokument „QR-Code-Platzhalter oder Signaturfeld – keiner gefunden“, obwohl gar nicht gesucht wurde.
+Entscheidung des Auftraggebers (15.11.2026): nur den Text richtigstellen – die Demo sucht nicht eigens, und
+bestehende Einstellungen werden nicht umgestellt.
+
+- **Kern:** `DocumentDetectionView::qr_search` (additiv) – `true`, wenn die Platzhaltersuche an ist und
+  „QR-Code-Platzhalter“ sucht (`placeholder.search && kind = marker`).
+- **Oberfläche:** Ohne Platzhalter und ohne QR-Suche lautet die Beschreibung der (ausgegrauten) Methode
+  „QR-Code-Platzhalter werden nicht gesucht (Einstellungen › Dokument) – kein Signaturfeld gefunden“. Der Hinweis
+  mit dem Knopf zu Einstellungen › Dokument darunter bleibt.
+
+Tests: `features/accessibility/accessibility.test.tsx`, Vertrags-Fixtures (`real-core-views.json` enthält beide Werte).
