@@ -3662,7 +3662,8 @@ und der vom Auftraggeber freigegebene Prototyp `prototypes/a11y-positionierung` 
    Einstellungen (ersetzt nichts; schmal nur Symbol und Schalter). Er stellt `start = methods`,
    `announce = detailed`, `announce_after_move` und `check_before_sign` gemeinsam ein bzw. zurück; Funktionen schaltet
    er nicht frei. Direktlink `?barrierefrei=1`; im Web merkt sich der Browser den Schalter (`localStorage`, nur
-   Bequemlichkeit – Einstellungen werden dort sonst nicht gespeichert).
+   Bequemlichkeit – Einstellungen werden dort sonst nicht gespeichert). *Überholt durch Nachtrag 28: im Web wird der
+   Schalter nicht mehr gemerkt.*
 3. **Platzierung ohne Vorschau** (`PlacementPanel`): Methode automatisch · Platzhalter im Dokument (Auswahlliste mit
    Nummer, Seite und Lage; ohne Fund nur der Hinweis auf die Platzhaltersuche) · Position in
    Millimetern · freie Fläche bzw. selbst verschieben; dazu die aktuelle Lage als Text. Mit dem Schalter als erster
@@ -3858,3 +3859,17 @@ Tests: `workflow/tests/blocks.rs` (`placing_all_blocks_and_undo`, `assigning_pla
 `locked_placement_ignores_the_methods`), `core-api/tests/workspace.rs`
 `placement_methods_place_all_blocks_and_undo_restores` (echte Engine), `core/mock/mock.test.ts`,
 `features/accessibility/accessibility.test.tsx`.
+
+### Nachtrag 28 (15.11.2026): Web merkt sich „Barrierefreie Bedienung“ nicht mehr
+
+Entscheidung des Auftraggebers (15.11.2026): Die Web-Variante speichert keine Einstellungen – das gilt auch für den
+Schalter „Barrierefreie Bedienung“. Bisher legte der Browser ihn in `localStorage` (`pida-barrierefrei`) ab; nach
+einmaligem Einschalten stand „Platzierung der Signatur“ bei jedem Besuch wieder oben.
+
+- Der Schalter gilt im Web bis zum Neuladen der Seite. Der Direktlink `?barrierefrei=1` schaltet weiterhin ein.
+- Ein bis 0.8.2 gemerkter Wert wird beim Start entfernt (`A11ySwitch`, `forgetLegacyOnWeb`).
+- Desktop und Mobil unverändert: dort sind es gespeicherte Einstellungen (Einstellungen › Barrierefreiheit).
+
+Folge: Wer im Web auf die barrierefreie Bedienung angewiesen ist, schaltet sie je Besuch ein oder nutzt den Direktlink.
+
+Tests: `features/accessibility/accessibility.test.tsx`.

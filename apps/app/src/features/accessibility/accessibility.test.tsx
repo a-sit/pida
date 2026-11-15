@@ -65,18 +65,23 @@ describe('Schalter in der Kopfzeile', () => {
     await waitFor(() => expect(screen.getByTestId('live-region')).toHaveTextContent('Barrierefreie Bedienung ein.'));
   });
 
-  it('Direktlink ?barrierefrei=1 schaltet beim Start ein; im Web merkt sich der Browser den Schalter', async () => {
+  it('Direktlink ?barrierefrei=1 schaltet beim Start ein', async () => {
     window.history.replaceState(null, '', '/?barrierefrei=1');
     const { mock } = renderApp({ view: a11yView() });
     await waitFor(() => expect(mock.dispatched).toContainEqual({ type: 'set_accessibility', accessibility: ON }));
   });
 
-  it('im Web: gemerkter Schalter gilt beim nächsten Besuch', async () => {
+  it('im Web: der Schalter wird nicht gemerkt, ein alter Wert wird entfernt', async () => {
     setWebProfile({ keystore: false });
     window.localStorage.setItem('pida-barrierefrei', '1');
     try {
-      const { mock } = renderApp({ view: a11yView() });
-      await waitFor(() => expect(mock.dispatched).toContainEqual({ type: 'set_accessibility', accessibility: ON }));
+      const { mock, user } = renderApp({ view: a11yView() });
+      const sw = await screen.findByRole('switch', { name: 'Barrierefreie Bedienung' });
+      await waitFor(() => expect(window.localStorage.getItem('pida-barrierefrei')).toBeNull());
+      expect(mock.dispatched).not.toContainEqual({ type: 'set_accessibility', accessibility: ON });
+      await user.click(sw);
+      expect(lastEvent(mock)).toEqual({ type: 'set_accessibility', accessibility: ON } satisfies UiEvent);
+      expect(window.localStorage.getItem('pida-barrierefrei')).toBeNull();
     } finally {
       window.localStorage.removeItem('pida-barrierefrei');
     }
