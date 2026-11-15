@@ -807,6 +807,8 @@ export interface EditState {
   others?: MockBlock[];
   /** Stelle des ausgewählten Blocks in der Reihenfolge aller Blöcke (Kern: `WorkspaceEdit::active`) */
   active?: number;
+  /** Stand vor der letzten Platzierungsmethode für „Rückgängig“ (Kern: `WorkspaceEdit::undo`) */
+  undo?: EditState;
 }
 
 /** Ein ruhender Signaturblock der Mehrfachsignatur (Kern: `pida_workflow::BlockSlot`). */
@@ -1204,6 +1206,135 @@ export function fillTargets(doc: MockDoc, edit: EditState, block: { width: numbe
   return bump(next, { others, automatic: false });
 }
 
+/** Blöcke in ihrer Reihenfolge (der ausgewählte an der Stelle `active`). */
+function allBlocks(edit: EditState): MockBlock[] {
+  const others = [...(edit.others ?? [])];
+  if (!edit.placement) return others;
+  const at = Math.min(edit.active ?? others.length, others.length);
+  others.splice(at, 0, { placement: edit.placement, origin: edit.origin, target: edit.target });
+  return others;
+}
+
+/** Gegenstück zu `allBlocks`: Blöcke zurück in den Bearbeitungszustand. */
+function withBlocks(edit: EditState, blocks: MockBlock[], patch: Partial<EditState> = {}): EditState {
+  const at = Math.min(edit.active ?? blocks.length - 1, blocks.length - 1);
+  const mine = blocks[at]!;
+  return bump(edit, {
+    others: blocks.filter((_, i) => i !== at),
+    active: at,
+    placement: mine.placement,
+    origin: mine.origin,
+    target: mine.target,
+    automatic: false,
+    clamped: false,
+    undo: { ...edit, undo: undefined },
+    ...patch,
+  });
+}
+
+const BLOCK_GAP = 6;
+
+/**
+ * Platzierungsmethode für alle Blöcke (Kern: `UiEvent::PlaceBlocks` → `BlocksPlaced` bzw. `TargetsAssigned`). Liefert
+ * den neuen Zustand (bzw. `null` = unverändert) und gegebenenfalls eine Meldung.
+ */
+export function placeBlocks(
+  doc: MockDoc,
+  edit: EditState,
+  method: 'auto' | 'placeholders' | 'free',
+  block: { width: number; height: number },
+  qrOffered: boolean,
+): { edit: EditState | null; notice?: [string, Record<string, string>] } {
+  if (!edit.placement || edit.invisible) return { edit: null };
+  const blocks = allBlocks(edit);
+  const total = blocks.length;
+  const pages = doc.spec.pages.length;
+  if (method === 'placeholders') {
+    const used = (t: PlacementTarget) => blocks.some((b) => sameTarget(b.target, t));
+    // Dokumentreihenfolge: Seite, von oben nach unten, von links
+    const targets = [
+      ...doc.spec.fields.map((_, index): PlacementTarget => ({ kind: 'field', index })),
+      ...(qrOffered && doc.spec.qr ? [{ kind: 'qr' } as PlacementTarget] : []),
+    ]
+      .map((t) => ({ t, p: targetPlacement(doc, t, block) }))
+      .filter((x): x is { t: PlacementTarget; p: Placement } => x.p !== null);
+    if (targets.length === 0) return { edit: null, notice: ['ng-blocks-no-placeholder', {}] };
+    targets.sort((a, b) => a.p.page_index - b.p.page_index || b.p.y - a.p.y || a.p.x - b.p.x);
+    const rest = targets.filter((x) => !used(x.t));
+    let changed = false;
+    const next = blocks.map((b) => {
+      if (b.target.kind !== 'free') return b;
+      const x = rest.shift();
+      if (!x) return b;
+      changed = true;
+      return { placement: x.p, origin: x.t.kind === 'qr' ? ('qr' as const) : ('field' as const), target: x.t };
+    });
+    const placed = next.filter((b) => b.target.kind !== 'free').length;
+    const notice: [string, Record<string, string>] | undefined =
+      placed < total ? ['ng-blocks-placeholders-short', { placed: String(placed), total: String(total) }] : undefined;
+    if (!changed) return { edit: null, notice };
+    const out = withBlocks(edit, next);
+    return { edit: out.target.kind === 'free' ? out : { ...out, newPage: false }, notice };
+  }
+  const placements: Placement[] = [];
+  const taken: { page: number; rect: RectPt }[] = [];
+  const rectOf = (p: Placement): RectPt => ({ left: p.x, right: p.x + block.width, top: p.y, bottom: p.y - block.height });
+  let first = edit.placement.page_index;
+  let newPage = edit.newPage;
+  if (method === 'auto') {
+    const auto = autoPlacement(doc, block);
+    placements.push(auto.placement);
+    taken.push({ page: auto.placement.page_index, rect: rectOf(auto.placement) });
+    first = auto.placement.page_index;
+    newPage = newPage || auto.newPage;
+  }
+  const order = [Math.min(first, pages), ...(newPage ? [pages] : [])];
+  if (method === 'auto') for (let i = pages - 1; i >= 0; i--) order.push(i);
+  else order.push(pages - 1, ...Array.from({ length: pages }, (_, i) => i));
+  for (const page of [...new Set(order)]) {
+    if (page >= pages && !newPage) continue;
+    const areas = page >= pages ? [emptyPageArea(doc)] : pageLayout(doc, page, block).free;
+    for (const area of areas) {
+      for (let top = area.top; top - block.height >= area.bottom - 0.05; top -= block.height + BLOCK_GAP) {
+        for (let x = area.left; x + block.width <= area.right + 0.05; x += block.width + BLOCK_GAP) {
+          if (placements.length >= total) break;
+          const mine: RectPt = { left: x, right: x + block.width, top, bottom: top - block.height };
+          const hit = taken.some(
+            (o) => o.page === page && mine.left - BLOCK_GAP < o.rect.right && o.rect.left < mine.right + BLOCK_GAP && mine.bottom - BLOCK_GAP < o.rect.top && o.rect.bottom < mine.top + BLOCK_GAP,
+          );
+          if (hit) continue;
+          taken.push({ page, rect: mine });
+          placements.push({ page_index: page, x, y: top, width: block.width, height: block.height });
+        }
+      }
+    }
+  }
+  if (placements.length === 0) return { edit: null, notice: ['ng-blocks-no-free-area', {}] };
+  const single = total === 1;
+  const next = blocks.map((b, i): MockBlock => {
+    const p = placements[i];
+    return p ? { placement: p, origin: method === 'auto' && single ? 'auto' : 'user', target: { kind: 'free' } } : b;
+  });
+  const out = withBlocks(edit, next, { newPage: newPage || placements.some((p) => p.page_index >= pages) });
+  const ready = [...new Set([...out.ready, ...placements.map((p) => p.page_index).filter((p) => p < pages)])];
+  return {
+    edit: { ...out, ready },
+    notice: placements.length < total ? ['ng-blocks-not-all-placed', { placed: String(placements.length), total: String(total) }] : undefined,
+  };
+}
+
+/** Ganze neue Seite mit Rand als freie Fläche. */
+function emptyPageArea(doc: MockDoc): RectPt {
+  const [pw, ph] = pageSize(doc, doc.spec.pages.length - 1);
+  return { left: 36, right: pw - 36, top: ph - 36, bottom: 36 };
+}
+
+/** „Rückgängig“ (Kern: `PlacementUndone`): Stand vor der letzten Platzierungsmethode. */
+export function undoPlacement(edit: EditState): EditState | null {
+  if (!edit.undo) return null;
+  return { ...edit.undo, undo: undefined, revision: edit.revision + 1, ready: edit.ready, inspected: edit.inspected };
+}
+
 /** Anzahl der Signaturen, die das Dokument erhält (unsichtbar: eine). */
 export function blockCount(edit: EditState | null): number {
   return !edit || edit.invisible ? 1 : 1 + (edit.others?.length ?? 0);
@@ -1392,6 +1523,7 @@ export function projectDocument(doc: MockDoc, edit: EditState, phase: DocumentPh
     // neue Seite: Größe der letzten Seite (Mock ohne CropBox)
     new_page_size: pageSize(doc, doc.spec.pages.length - 1),
     blocks: blocksView(doc, edit, phase, sticker, size, qr !== null),
+    can_undo_placement: phase === 'editing' && edit.lock !== 'locked' && edit.undo !== undefined,
   };
 }
 

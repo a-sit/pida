@@ -622,6 +622,11 @@ ng-field-locked = The signature field is locked.
 # Several signature blocks in one document, one signature per block
 ng-blocks-limit = More than 10 signature blocks per document are not possible.
 ng-block-target-taken = Another signature block is already placed here.
+# Placement methods for all signature blocks (ADR 0004 addendum 27)
+ng-blocks-not-all-placed = There was room for { $placed } of { $total } signature blocks. The others stay where they are – “On a new page” makes more room.
+ng-blocks-no-free-area = No free area found that the signature block fits into. The placement is unchanged.
+ng-blocks-placeholders-short = { $placed } of { $total } signature blocks are in placeholders. The others stay placed freely.
+ng-blocks-no-placeholder = No QR code placeholder and no empty signature field found.
 ng-certificate-not-valid = The certificate is not valid at the time of signing.
 ng-clock-skew = This device's clock differs from the signing service by about { $minutes } minutes.
 ng-atrust-login-rejected = The login was rejected. Please enter the password again.

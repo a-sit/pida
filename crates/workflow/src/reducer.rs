@@ -33,8 +33,8 @@ use crate::state::{
     MSG_DEFAULT_BACKEND_UNAVAILABLE, MSG_DOCUMENT_LEAVES_DEVICE, MSG_FIELD_LOCKED, MSG_NO_BACKEND,
     MSG_POSITIONING_NOT_POSSIBLE, MSG_RESUME_BACKEND_UNAVAILABLE, MSG_SIGNER_UNAVAILABLE, MSG_SIGNING_CANCELLED,
     MSG_SIGNING_DECLINED, ParkedPlacement, PlaceholderAnswer, PlaceholderFound, PlacementLock, PlacementOrigin,
-    PositionChoice, ResumePlan, RetryTarget, Rounds, SignFlow, SigningPhase, State, Step, Target, Transition,
-    WorkflowError, WorkspaceEdit, backend_for_choice,
+    PlacementUndo, PositionChoice, ResumePlan, RetryTarget, Rounds, SignFlow, SigningPhase, State, Step, Target,
+    Transition, WorkflowError, WorkspaceEdit, backend_for_choice,
 };
 
 /// Meldungs-ID des Platzierungshinweises „neue Seite nicht erlaubt“ (`PlacementNotice::code`).
@@ -638,6 +638,20 @@ fn park_block(
     }
 }
 
+/// Stand der Platzierung für „Rückgängig“ ([`Event::PlacementUndone`]).
+fn undo_state(edit: &WorkspaceEdit, page: usize, placement: Option<Placement>, new_page: bool) -> PlacementUndo {
+    PlacementUndo {
+        target: edit.target,
+        origin: edit.origin,
+        page,
+        placement,
+        new_page,
+        others: edit.others.clone(),
+        active: edit.active,
+        automatic: edit.automatic,
+    }
+}
+
 /// Seite eines Ziels (Feld bzw. QR-Platzhalter).
 fn target_page(edit: &WorkspaceEdit, target: Target) -> Option<usize> {
     match target {
@@ -1153,6 +1167,7 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
             e.target = Target::Free;
             e.origin = PlacementOrigin::User;
             e.automatic = false;
+            e.undo = None;
             e
         })
     };
@@ -1168,6 +1183,9 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
         | Event::BlockSelected(_)
         | Event::BlockRemoved(_)
         | Event::TargetsFilled(_)
+        | Event::BlocksPlaced { .. }
+        | Event::TargetsAssigned(_)
+        | Event::PlacementUndone
             if locked =>
         {
             stay(queue, page, placement, new_page, doc, edit, Vec::new())
@@ -1187,6 +1205,7 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
             }
             let slot = park_block(&e, page, placement, &doc, new_page);
             let at = e.active_index();
+            e.undo = None;
             e.others.insert(at, slot);
             e.active = e.others.len();
             e.target = Target::Free;
@@ -1224,6 +1243,7 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
             if e.others.is_empty() || i > e.others.len() {
                 return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
             }
+            e.undo = None;
             if i != at {
                 e.others.remove(if i < at { i } else { i - 1 });
                 e.active = if i < at { at - 1 } else { at };
@@ -1261,6 +1281,7 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
             if free.is_empty() {
                 return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
             }
+            e.undo = None;
             let mut effects = Vec::new();
             let (mut page, mut placement, mut new_page) = (page, placement, new_page);
             let mut rest = free.into_iter();
@@ -1288,6 +1309,119 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
                 effects.push(Effect::Notify(MSG_BLOCKS_LIMIT.into()));
             }
             stay(queue, page, placement, new_page, doc, Some(e), effects)
+        }
+        // --- Platzierungsmethoden (wirken auf alle Blöcke) und „Rückgängig“ -------------------------
+        Event::BlocksPlaced { placements, auto } => {
+            let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
+            let last = n.saturating_sub(1);
+            let valid = |p: &Placement| p.page_index <= n && p.x.is_finite() && p.y.is_finite();
+            if e.invisible || placement.is_none() || placements.is_empty() || !placements.iter().all(valid) {
+                return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
+            }
+            let undo = undo_state(&e, page, placement, new_page);
+            let at = e.active_index();
+            let mut all = e.others.clone();
+            all.insert(at, park_block(&e, page, placement, &doc, new_page));
+            let single = all.len() == 1;
+            let mut effects = Vec::new();
+            let mut new_page = new_page;
+            for (slot, mut p) in all.iter_mut().zip(placements) {
+                if p.page_index == n {
+                    if doc.new_page_allowed() {
+                        new_page = true;
+                    } else {
+                        // wie `accept_placement`: auf signierten Dokumenten keine neue Seite
+                        p.page_index = last;
+                        effects.push(Effect::Notify(MSG_NEW_PAGE_NOT_ALLOWED.into()));
+                    }
+                }
+                slot.target = Target::Free;
+                slot.origin = if auto && single { PlacementOrigin::Auto } else { PlacementOrigin::User };
+                slot.page = p.page_index;
+                slot.placement = Some(p);
+            }
+            let act = all.remove(at);
+            e.others = all;
+            e.target = act.target;
+            e.origin = act.origin;
+            e.automatic = false;
+            e.undo = Some(Box::new(undo));
+            if act.page != page && act.page < n {
+                effects.push(Effect::RenderPage { doc: doc.id, page: act.page });
+            }
+            effects.push(Effect::BuildBlockPreview(doc.id));
+            stay(queue, act.page, act.placement.or(placement), new_page, doc, Some(e), effects)
+        }
+        Event::TargetsAssigned(targets) => {
+            let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
+            if e.invisible || placement.is_none() {
+                return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
+            }
+            let mut free: Vec<Target> = Vec::new();
+            for t in targets {
+                let known = match t {
+                    Target::Free => false,
+                    Target::Field(i) => i < e.fields.len(),
+                    Target::Qr => e.qr.is_some(),
+                };
+                if known && t != e.target && !e.target_taken(t) && !free.contains(&t) {
+                    free.push(t);
+                }
+            }
+            let waiting =
+                usize::from(e.target == Target::Free) + e.others.iter().filter(|b| b.target == Target::Free).count();
+            if free.is_empty() || waiting == 0 {
+                return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
+            }
+            let undo = undo_state(&e, page, placement, new_page);
+            let last = n.saturating_sub(1);
+            let at = e.active_index();
+            let mut rest = free.into_iter();
+            let mut effects = Vec::new();
+            let (mut page, mut placement, mut new_page) = (page, placement, new_page);
+            // in der Reihenfolge der Blöcke: der ausgewählte steht an der Stelle `at`
+            for k in 0..=e.others.len() {
+                if k == at && e.target == Target::Free {
+                    let Some(t) = rest.next() else { break };
+                    e.target = t;
+                    e.origin = origin_of(t);
+                    (page, placement, new_page) = settle_on_target(&e, page, placement, new_page, &doc, &mut effects);
+                }
+                let Some(i) = k.checked_sub(usize::from(k >= at)).filter(|i| k != at && *i < e.others.len()) else {
+                    continue;
+                };
+                if e.others[i].target != Target::Free {
+                    continue;
+                }
+                let Some(t) = rest.next() else { break };
+                let target = target_page(&e, t).unwrap_or(e.others[i].page).min(last);
+                let slot = &mut e.others[i];
+                slot.target = t;
+                slot.origin = origin_of(t);
+                slot.page = target;
+                slot.placement = slot.placement.map(|p| Placement { page_index: target, ..p });
+            }
+            e.automatic = false;
+            e.undo = Some(Box::new(undo));
+            effects.push(Effect::BuildBlockPreview(doc.id));
+            stay(queue, page, placement, new_page, doc, Some(e), effects)
+        }
+        Event::PlacementUndone => {
+            let Some(mut e) = edit else { return stay(queue, page, placement, new_page, doc, None, Vec::new()) };
+            let Some(u) = e.undo.take() else {
+                return stay(queue, page, placement, new_page, doc, Some(e), Vec::new());
+            };
+            e.target = u.target;
+            e.origin = u.origin;
+            e.others = u.others;
+            e.active = u.active;
+            e.automatic = u.automatic;
+            let mut effects = Vec::new();
+            if u.page != page && u.page < n {
+                effects.push(Effect::RenderPage { doc: doc.id, page: u.page });
+            }
+            effects.push(Effect::BuildBlockPreview(doc.id));
+            stay(queue, u.page, u.placement, u.new_page, doc, Some(e), effects)
         }
         Event::PlacementUnlocked => {
             // „Diesmal selbst platzieren“: nur dieses Dokument, Lage unverändert
@@ -1415,6 +1549,7 @@ fn positioning(state: State, event: Event, ctx: &Context) -> Transition {
                 let effects = vec![Effect::Notify(MSG_BLOCK_TARGET_TAKEN.into())];
                 return stay(queue, page, placement, new_page, doc, Some(e), effects);
             }
+            e.undo = None;
             let mut effects = Vec::new();
             match target {
                 Target::Free => {

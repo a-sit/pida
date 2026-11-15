@@ -112,6 +112,9 @@ export const UI_EVENT_SAMPLES: UiEvent[] = [
   { type: 'select_block', index: 0 },
   { type: 'remove_block', index: 1 },
   { type: 'fill_targets' },
+  // Nachtrag 27: Platzierungsmethoden für alle Blöcke, „Rückgängig“
+  { type: 'place_blocks', method: 'auto' },
+  { type: 'undo_placement' },
   // Nachtrag 21: „Über PIDA“ – „Jetzt prüfen“ bzw. „Erneut prüfen“
   { type: 'check_for_updates', explicit: true },
 ];

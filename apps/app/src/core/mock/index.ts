@@ -85,6 +85,8 @@ import {
   selectBlock,
   removeBlock,
   fillTargets,
+  placeBlocks,
+  undoPlacement,
   targetTaken,
   blockCount,
   orderBlocks,
@@ -1233,6 +1235,8 @@ const flowArea: MockArea<FlowState> = {
       case 'select_block':
       case 'remove_block':
       case 'fill_targets':
+      case 'place_blocks':
+      case 'undo_placement':
         if (s.edit?.lock === 'locked') return true;
         break;
       case 'unlock_placement':
@@ -1242,7 +1246,24 @@ const flowArea: MockArea<FlowState> = {
       default:
         break;
     }
+    // jede andere Änderung der Platzierung verwirft den Stand für „Rückgängig“ (Kern: `WorkspaceEdit::undo`)
+    if (s.edit?.undo && ['move_block', 'nudge_block', 'change_page', 'toggle_new_page', 'add_block', 'remove_block', 'fill_targets', 'auto_place', 'use_target'].includes(e.type)) {
+      s.edit = { ...s.edit, undo: undefined };
+    }
     switch (e.type) {
+      // Platzierungsmethoden für alle Blöcke und „Rückgängig“ (Kern: `BlocksPlaced`, `TargetsAssigned`, `PlacementUndone`)
+      case 'place_blocks': {
+        const d0 = current(s);
+        if (!d0 || !s.edit || s.stage !== 'editing') return true;
+        const qrOffered = (settings.placeholder.search && settings.placeholder.kind === 'marker') || (s.edit.target.kind === 'qr' && !s.edit.automatic);
+        const result = placeBlocks(d0, s.edit, e.method, blockSize(settings, lang), qrOffered);
+        if (result.edit) s.edit = orderBlocks(d0, result.edit);
+        if (result.notice) ctx.notify(result.notice[0], result.notice[1]);
+        return true;
+      }
+      case 'undo_placement':
+        editEvent(s, ctx, (_doc, ed) => undoPlacement(ed) ?? ed);
+        return true;
       case 'move_block':
         editEvent(s, ctx, (doc, ed) => moveBlock(doc, ed, e.page, e.x, e.y));
         return true;

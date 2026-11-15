@@ -355,6 +355,13 @@
     "type": "fill_targets"
   },
   {
+    "type": "place_blocks",
+    "method": "auto"
+  },
+  {
+    "type": "undo_placement"
+  },
+  {
     "type": "check_for_updates",
     "explicit": true
   },

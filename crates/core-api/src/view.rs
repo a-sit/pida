@@ -986,6 +986,17 @@ pub enum UiEvent {
     /// ein Block ([`BlocksView::free_targets`]); ein frei platzierter ausgewählter Block wandert in das erste
     /// Ziel. Startet **nichts** (A1).
     FillTargets,
+    /// Platzierungsmethode für **alle** Blöcke des Dokuments (Panel „Platzierung der Signatur“, ADR 0004
+    /// Nachtrag 27): wirkt sofort, es kommt kein Block hinzu. Blöcke, für die kein Platz bzw. kein Platzhalter
+    /// mehr frei ist, bleiben, wo sie sind (Meldung `ng-blocks-not-all-placed` bzw.
+    /// `ng-blocks-placeholders-short`). Der Stand davor bleibt für `undo_placement`. Startet **nichts** (A1).
+    PlaceBlocks {
+        /// Methode
+        method: PlaceMethod,
+    },
+    /// „Rückgängig“ nach `place_blocks`: Lage und Ziel aller Blöcke wie davor
+    /// ([`DocumentView::can_undo_placement`]). Startet **nichts** (A1).
+    UndoPlacement,
     /// Stapelübersicht „Für diesen Stapel automatisch positionieren“ (Nachtrag 8, `BatchView::auto_position_once`):
     /// nur für diesen Stapel, die Einstellung bleibt unverändert; `replace_manual` = auch die von Hand
     /// platzierten Einträge (`BatchView::manual_plans`) neu automatisch platzieren – nur nach ausdrücklicher
@@ -1434,6 +1445,21 @@ pub struct PlacementCheckView {
     pub overlaps_block: bool,
 }
 
+/// Platzierungsmethode für alle Blöcke ([`UiEvent::PlaceBlocks`]).
+#[cfg_attr(feature = "ts", derive(ts_rs::TS))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PlaceMethod {
+    /// der erste Block nach der PDF-AS-Regel (unter den letzten Text der letzten Seite), die weiteren in die
+    /// nächsten passenden freien Flächen
+    Auto,
+    /// die frei platzierten Blöcke in die noch freien Platzhalter (QR-Platzhalter, leere Signaturfelder) in
+    /// Dokumentreihenfolge
+    Placeholders,
+    /// alle Blöcke in die am besten geeigneten freien Flächen (zuerst die Seite des ausgewählten Blocks)
+    Free,
+}
+
 /// Ein Signaturblock der Mehrfachsignatur ([`BlocksView::items`]).
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -1541,11 +1567,14 @@ pub struct DocumentView {
     #[serde(default)]
     #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub blocks: Option<BlocksView>,
+    /// „Rückgängig“ möglich: Die letzte Änderung der Platzierung war `place_blocks`. Additiv.
+    #[serde(default)]
+    pub can_undo_placement: bool,
 }
 
 redacted_debug!(DocumentView {
     size_bytes, phase, revision, block, placement, origin, target, invisible, new_page, sticker, fields, qr,
-    constraints, layout, check, announce, detection, placement_locked, new_page_size, blocks,
+    constraints, layout, check, announce, detection, placement_locked, new_page_size, blocks, can_undo_placement,
 } redact { doc, existing });
 
 /// PDF/A-Kennung eines Dokuments (XMP `pdfaid:part`, `pdfaid:conformance`).

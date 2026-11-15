@@ -3810,3 +3810,51 @@ Tests:
 - `core-api/tests/workspace.rs` `several_blocks_sign_the_document_once_per_block` (echte Engine, Keystore: drei
   Signaturen an den gezeigten Stellen), `core-api/tests/batch.rs` `an_entry_with_two_blocks_is_signed_twice_in_the_run`
 - `features/workspace/workspace.test.tsx`, `core/mock/mock.test.ts` (Mehrfachsignatur)
+
+### Nachtrag 27 (15.11.2026): Platzierungsmethoden wirken sofort und auf alle Blöcke; „Selbst platzieren“, „Rückgängig“
+
+Anlass: Im Panel „Platzierung der Signatur“ (Nachtrag 23) öffnete ein Klick auf eine Methode nur einen Detailbereich;
+platziert wurde erst mit einem zweiten Klick, und nur der ausgewählte Block. Entscheidungen des Auftraggebers
+(15.11.2026):
+
+- **Ein Klick platziert sofort – alle Blöcke.** „Automatisch“, „Platzhalter“ und „Freie Fläche“ wirken auf alle
+  Blöcke des Dokuments; es kommt kein Block hinzu.
+  - *Automatisch:* der erste Block nach der PDF-AS-Regel (unter den letzten Text der letzten Seite), die weiteren in
+    die nächsten passenden freien Flächen (zuerst dieselbe Seite, dann die neue Seite, falls es sie gibt, dann von
+    hinten nach vorn) – ohne gegenseitige Überdeckung (6 pt Abstand).
+  - *Platzhalter:* die frei platzierten Blöcke wandern in ihrer Reihenfolge in die noch freien Platzhalter
+    (Dokumentreihenfolge: Seite, von oben nach unten, von links). Blöcke, die schon in einem Platzhalter sitzen,
+    bleiben dort.
+  - *Freie Fläche:* alle Blöcke in die am besten geeigneten freien Flächen (Seite des ausgewählten Blocks, neue
+    Seite, letzte Seite, dann von vorn).
+  - *Position in Millimetern* braucht Werte und gilt wie bisher für den ausgewählten Block.
+- **Geht es nicht auf**, bleiben die übrigen Blöcke, wo sie sind, und eine Meldung sagt es
+  (`ng-blocks-not-all-placed`, `ng-blocks-placeholders-short`, `ng-blocks-no-free-area`, `ng-blocks-no-placeholder`).
+  Ohne Platzhalter ist die Methode ausgegraut (der Grund steht in der Karte, der Hinweis auf die Platzhaltersuche
+  bleibt darunter erreichbar); „Freie Fläche“ ist ausgegraut, wenn für alle Seiten des Dokuments bekannt ist, dass
+  keine Fläche passt.
+- **„Selbst platzieren“** ist eine eigene, erste Methode: Sie stellt nichts um. Das Panel zeigt sie von selbst,
+  sobald ein Block gezogen oder mit den Pfeiltasten verschoben wird. Einen Modus gibt es im Kern weiterhin nicht –
+  die Methoden sind einmalige Aktionen, der Block bleibt verschiebbar.
+- **„Rückgängig“** stellt Lage und Ziel aller Blöcke von vor der letzten Methode wieder her. Jede andere Änderung
+  der Platzierung (Ziehen, Tastatur, Seite, Zielwahl, Block hinzufügen/entfernen) verwirft den gemerkten Stand.
+- **Schaltflächen statt Radio-Gruppe:** In einer Radio-Gruppe wählen schon die Pfeiltasten aus; mit Sofort-Wirkung
+  würde das Durchgehen der Methoden jedes Mal umplatzieren. Die Methoden sind deshalb Schaltflächen
+  (`aria-pressed` zeigt die zuletzt benutzte).
+
+Umsetzung:
+- **Reducer** (`pida-workflow`): `Event::BlocksPlaced { placements, auto }`, `Event::TargetsAssigned`,
+  `Event::PlacementUndone`; `WorkspaceEdit::undo` (`PlacementUndo`). Ein einzelner automatisch platzierter Block
+  behält die Herkunft `Auto` (folgt der Blockgröße wie bisher), mehrere Blöcke bekommen `User`. Gesperrte
+  Platzierung (Nachtrag 8) ignoriert alle drei.
+- **Kern** (`pida-core-api`): `UiEvent::PlaceBlocks { method }` (`PlaceMethod::{Auto, Placeholders, Free}`),
+  `UiEvent::UndoPlacement`, `DocumentView::can_undo_placement` (additiv). `place_blocks` rechnet im Blocking-Pool:
+  PDF-AS-Lage (`auto_position`), Belegungsraster (aus dem Cache, sonst höchstens 8 neu berechnete Seiten),
+  `workspace::tile_blocks` kachelt die freien Flächen. Startet nichts (A1).
+- **Oberfläche:** `PlacementPanel` (Methoden als Schaltflächen, „Rückgängig“, `ManualDetail`); die Listen
+  (Platzhalter, freie Flächen) bleiben für die Feinwahl des ausgewählten Blocks.
+
+Tests: `workflow/tests/blocks.rs` (`placing_all_blocks_and_undo`, `assigning_placeholders_to_the_free_blocks`,
+`locked_placement_ignores_the_methods`), `core-api/tests/workspace.rs`
+`placement_methods_place_all_blocks_and_undo_restores` (echte Engine), `core/mock/mock.test.ts`,
+`features/accessibility/accessibility.test.tsx`.

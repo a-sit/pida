@@ -989,6 +989,54 @@
 .insp-pos-disclosure {
   margin-top: var(--sp-2);
 }
+/* Methoden als Schaltflächen im Aussehen der Auswahlkarten: ein Klick wirkt sofort */
+.insp-pos-methods {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-2);
+}
+.insp-pos-methods > .field-label,
+.insp-pos-methods > .insp-hint {
+  margin: 0;
+}
+.insp-pos-method {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-4);
+  background: var(--c-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-1) var(--ease-out),
+    background-color var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out);
+}
+.insp-pos-method[data-hovered] {
+  background: var(--c-surface-2);
+}
+.insp-pos-method[aria-pressed='true'] {
+  border-color: var(--c-text);
+  box-shadow: inset 0 0 0 1px var(--c-text);
+}
+.insp-pos-method[data-focus-visible] {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 2px;
+}
+.insp-pos-method[data-disabled] {
+  cursor: not-allowed;
+}
+.insp-pos-method[data-disabled] .radio-card-label,
+.insp-pos-method[data-disabled] .radio-card-icon {
+  opacity: 0.5;
+}
+.insp-pos-undo {
+  display: flex;
+}
 .insp-pos-detail {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

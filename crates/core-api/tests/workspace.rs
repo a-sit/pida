@@ -2391,6 +2391,68 @@ fn blocks(v: &ViewState) -> Option<&pida_core_api::BlocksView> {
 /// Drei Blöcke platzieren (hinzufügen, auswählen, entfernen, wieder hinzufügen), mit dem Keystore signieren: eine
 /// Sitzung, drei Bestätigungen, das Ergebnis trägt drei Signaturen an den gezeigten Stellen; jede bleibt gültig
 /// (pyHanko), qpdf. PDFium nötig (ohne Vorschau gibt es nur einen automatisch platzierten Block).
+/// Platzierungsmethoden (ADR 0004 Nachtrag 27): „Automatisch“ und „Freie Fläche“ setzen alle Blöcke ohne
+/// gegenseitige Überdeckung, „Rückgängig“ stellt den Stand davor wieder her.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn placement_methods_place_all_blocks_and_undo_restores() {
+    use pida_core_api::PlaceMethod;
+    let fx = Fixture::new();
+    let input = fx.dir("in");
+    let out = fx.dir("out");
+    let a = copy_pdf(TEXT_PDF, &input, "doc.pdf");
+    let Some(core) = start(&fx, keystore_overlay(vec![a.clone()], &out), None, None, true) else {
+        eprintln!("PIDA_PDFIUM_DIR nicht gesetzt – übersprungen");
+        return;
+    };
+    wait_for(&core, "Arbeitsbereich mit Block", |v| {
+        editing(v) && v.document.as_ref().is_some_and(|d| d.sticker.is_some()) && blocks(v).is_some_and(|b| b.can_add)
+    })
+    .await;
+    core.dispatch(UiEvent::AddBlock { page: Some(0) });
+    wait_for(&core, "zwei Blöcke", |v| blocks(v).is_some_and(|b| b.items.len() == 2)).await;
+    core.dispatch(UiEvent::AddBlock { page: None });
+    let v = wait_for(&core, "drei Blöcke", |v| blocks(v).is_some_and(|b| b.items.len() == 3)).await;
+    assert!(!v.document.as_ref().unwrap().can_undo_placement);
+    // den dritten Block auf den ersten schieben: die Methoden müssen das auflösen
+    let r0 = blocks(&v).unwrap().items[0].rect.unwrap();
+    core.dispatch(UiEvent::MoveBlock { page: blocks(&v).unwrap().items[0].page, x: r0.left + 5.0, y: r0.top - 5.0 });
+    let v = wait_for(&core, "überdeckt", |v| v.document.as_ref().is_some_and(|d| d.check.overlaps_block)).await;
+    let before = blocks(&v).unwrap().items.clone();
+    let apart = |items: &[pida_core_api::BlockSlotView]| {
+        items.iter().enumerate().all(|(i, a)| {
+            items.iter().skip(i + 1).all(|b| {
+                let (Some(x), Some(y)) = (a.rect, b.rect) else { return false };
+                a.page != b.page || x.right <= y.left || y.right <= x.left || x.top <= y.bottom || y.top <= x.bottom
+            })
+        })
+    };
+    assert!(!apart(&before));
+
+    for method in [PlaceMethod::Auto, PlaceMethod::Free] {
+        core.dispatch(UiEvent::PlaceBlocks { method });
+        let v = wait_for(&core, "platziert", |v| v.document.as_ref().is_some_and(|d| d.can_undo_placement)).await;
+        let placed = blocks(&v).unwrap().items.clone();
+        assert_eq!(placed.len(), 3, "es kommt kein Block hinzu");
+        assert!(apart(&placed), "{method:?}: Blöcke überdecken sich: {placed:?}");
+        assert!(!v.document.as_ref().unwrap().check.overlaps_block);
+        assert!(placed.iter().all(|b| b.target == pida_core_api::PlacementTarget::Free));
+        assert!(!v.notices.iter().any(|n| n.code == "ng-blocks-not-all-placed"), "{:?}", v.notices);
+        core.dispatch(UiEvent::UndoPlacement);
+        let v = wait_for(&core, "rückgängig", |v| v.document.as_ref().is_some_and(|d| !d.can_undo_placement)).await;
+        assert_eq!(blocks(&v).unwrap().items, before);
+    }
+
+    // jede andere Änderung der Platzierung verwirft den gemerkten Stand
+    core.dispatch(UiEvent::PlaceBlocks { method: PlaceMethod::Auto });
+    wait_for(&core, "platziert", |v| v.document.as_ref().is_some_and(|d| d.can_undo_placement)).await;
+    core.dispatch(UiEvent::NudgeBlock { dx: 1, dy: 0, fine: false, coarse: false });
+    wait_for(&core, "kein Rückgängig mehr", |v| v.document.as_ref().is_some_and(|d| !d.can_undo_placement)).await;
+    // ohne Platzhalter: Meldung, nichts ändert sich
+    core.dispatch(UiEvent::PlaceBlocks { method: PlaceMethod::Placeholders });
+    let v = wait_for(&core, "Meldung", |v| v.notices.iter().any(|n| n.code == "ng-blocks-no-placeholder")).await;
+    assert!(!v.document.as_ref().unwrap().can_undo_placement);
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn several_blocks_sign_the_document_once_per_block() {
     let fx = Fixture::new();
