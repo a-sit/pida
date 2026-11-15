@@ -1554,5 +1554,10 @@ export function detectionFor(doc: MockDoc, edit: EditState, settings: Settings):
   const pdfa = doc.spec.pdfa ? { ...doc.spec.pdfa } : null;
   const detected = pdfa !== null && (pdfa.part <= 3 || profileHasPdfa(settings));
   const forced = pdfa === null && settings.signature.pdfa_force && profileHasPdfa(settings);
-  return { pdfa, pdfa_decision: detected ? 'detected' : forced ? 'forced' : 'none', auto_placed: edit.automatic };
+  return {
+    pdfa,
+    pdfa_decision: detected ? 'detected' : forced ? 'forced' : 'none',
+    auto_placed: edit.automatic,
+    qr_search: settings.placeholder.search && settings.placeholder.kind === 'marker',
+  };
 }

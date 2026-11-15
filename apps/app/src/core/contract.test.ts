@@ -190,6 +190,7 @@ const documentView = obj({
       pdfa: nullable(obj({ part: int, conformance: nullable(str) })),
       pdfa_decision: lit('none', 'detected', 'forced'),
       auto_placed: bool,
+      qr_search: bool,
     }),
   ),
   // Nachtrag 8 (Einstellung „Automatische Positionierung“)

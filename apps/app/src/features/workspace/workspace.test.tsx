@@ -794,7 +794,7 @@ describe('Automatische Positionierung (Einstellung, ADR 0004 Nachtrag 8)', () =>
   const inspector = () => screen.getByRole('complementary', { name: 'Signatur' });
   const FIELD = fieldTarget({ index: 0, name: 'Unterschrift_Antragsteller', page: 1, rect: { left: 299, right: 539, top: 300, bottom: 214 }, selectable: true });
   const lockedDoc = (extra: Partial<DocumentView> = {}) =>
-    documentView({ placement_locked: true, detection: { pdfa: null, pdfa_decision: 'none', auto_placed: true }, ...extra });
+    documentView({ placement_locked: true, detection: { pdfa: null, pdfa_decision: 'none', auto_placed: true, qr_search: true }, ...extra });
   const SESSION: UiEvent['type'][] = ['sign_with', 'choose_backend', 'retry', 'confirm_position', 'choose_invisible', 'start_batch'];
   const moves = (dispatched: UiEvent[]) => dispatched.filter((e) => ['move_block', 'nudge_block', 'change_page', 'use_target', 'auto_place'].includes(e.type));
   const withAutoPosition = () => ({ ...defaultSettings(), signature: { ...defaultSettings().signature, auto_position: true } });

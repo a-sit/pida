@@ -3885,3 +3885,18 @@ Mobilgeräten und im Browser am Telefon/Tablet auf der Startseite; am Desktop ga
 - Wie bisher nur, solange Dateien geöffnet werden dürfen (`actions.open_files`).
 
 Tests: `app/demo.test.tsx`.
+
+### Nachtrag 30 (15.11.2026): „Platzhalter im Dokument“ sagt ehrlich, wenn nicht gesucht wird
+
+Anlass: Auf einem iPhone mit ausgeschalteter Platzhaltersuche (Einstellung von vor Nachtrag 25) stand beim
+Demodokument „QR-Code-Platzhalter oder Signaturfeld – keiner gefunden“, obwohl gar nicht gesucht wurde.
+Entscheidung des Auftraggebers (15.11.2026): nur den Text richtigstellen – die Demo sucht nicht eigens, und
+bestehende Einstellungen werden nicht umgestellt.
+
+- **Kern:** `DocumentDetectionView::qr_search` (additiv) – `true`, wenn die Platzhaltersuche an ist und
+  „QR-Code-Platzhalter“ sucht (`placeholder.search && kind = marker`).
+- **Oberfläche:** Ohne Platzhalter und ohne QR-Suche lautet die Beschreibung der (ausgegrauten) Methode
+  „QR-Code-Platzhalter werden nicht gesucht (Einstellungen › Dokument) – kein Signaturfeld gefunden“. Der Hinweis
+  mit dem Knopf zu Einstellungen › Dokument darunter bleibt.
+
+Tests: `features/accessibility/accessibility.test.tsx`, Vertrags-Fixtures (`real-core-views.json` enthält beide Werte).

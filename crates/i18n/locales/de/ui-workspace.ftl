@@ -689,6 +689,7 @@ ng-ui-insp-pos-placeholder-desc = { $n ->
         [one] QR-Code-Platzhalter oder Signaturfeld – einer gefunden
        *[other] QR-Code-Platzhalter oder Signaturfeld – { $n } gefunden
     }
+ng-ui-insp-pos-placeholder-desc-off = QR-Code-Platzhalter werden nicht gesucht (Einstellungen › Dokument) – kein Signaturfeld gefunden
 ng-ui-insp-pos-coords = Position in Millimetern
 ng-ui-insp-pos-coords-desc = Seite und Abstände eingeben, z. B. aus einer Anleitung
 ng-ui-insp-pos-free = Freie Fläche

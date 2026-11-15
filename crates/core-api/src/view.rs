@@ -1616,6 +1616,9 @@ pub struct DocumentDetectionView {
     /// Feld platziert“ (Platzhaltersuche „Leere Signaturfelder“). `false`, sobald die Nutzerin selbst platziert
     /// (Ziehen, Tastatur, Seite, „Ins Feld setzen“, „Frei platzieren“/„Freie Fläche suchen“).
     pub auto_placed: bool,
+    /// QR-Code-Platzhalter werden gesucht (Einstellungen › Dokument: Platzhaltersuche an, Art „QR-Code-Platzhalter“).
+    /// `false` = nicht gesucht – die Oberfläche sagt dann „nicht gesucht“ statt „keiner gefunden“ (Nachtrag 30).
+    pub qr_search: bool,
 }
 
 // --- §3.4 Signiermittel und Konto-Chip ----------------------------------------------------------

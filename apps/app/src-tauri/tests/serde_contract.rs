@@ -916,6 +916,7 @@ fn document(phase: DocumentPhase, origin: PlacementOrigin, target: PlacementTarg
             pdfa: Some(PdfaIdView { part: 2, conformance: Some("B".into()) }),
             pdfa_decision: PdfaDecision::Detected,
             auto_placed: origin != PlacementOrigin::User,
+            qr_search: true,
         }),
         placement_locked: false,
         // Nachtrag 16: Größe einer neuen Seite (MediaBox der letzten Seite)
@@ -1124,7 +1125,12 @@ fn workspace_samples() -> Vec<(&'static str, ViewState)> {
         overlaps_block: false,
     };
     // Platzhaltersuche „Leere Signaturfelder“: automatisch im ersten Feld; PDF/A erzwungen (ohne Kennung)
-    d.detection = Some(DocumentDetectionView { pdfa: None, pdfa_decision: PdfaDecision::Forced, auto_placed: true });
+    d.detection = Some(DocumentDetectionView {
+        pdfa: None,
+        pdfa_decision: PdfaDecision::Forced,
+        auto_placed: true,
+        qr_search: true,
+    });
     field.document = Some(d);
     field.signers = SignersView { selected: None, default: None, ..signers() };
     field.actions = ws_actions(true);
@@ -1154,7 +1160,12 @@ fn workspace_samples() -> Vec<(&'static str, ViewState)> {
     let mut warning =
         view(StepView::Warning { doc: doc(), codes: vec!["pdf-usage-rights".into()] }, bar(["AE", "", "", ""], true));
     let mut d = document(DocumentPhase::Warning, PlacementOrigin::Auto, PlacementTarget::Free);
-    d.detection = Some(DocumentDetectionView { pdfa: None, pdfa_decision: PdfaDecision::None, auto_placed: true });
+    d.detection = Some(DocumentDetectionView {
+        pdfa: None,
+        pdfa_decision: PdfaDecision::None,
+        auto_placed: true,
+        qr_search: false,
+    });
     warning.document = Some(d);
     warning.actions = ws_actions(false);
     out.push(("ws_warning", warning));

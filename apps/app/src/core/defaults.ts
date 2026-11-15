@@ -79,10 +79,11 @@ export function defaultErrorContext(): ErrorContextView {
 
 /**
  * Erkennung eines Dokuments, wenn der Kern sie nicht liefert (`DocumentView::detection` ist ein Nachtrag aus
- * K3 und in TypeScript optional): keine PDF/A-Kennung, nichts erzwungen, keine Lage aus der Automatik.
+ * K3 und in TypeScript optional): keine PDF/A-Kennung, nichts erzwungen, keine Lage aus der Automatik,
+ * QR-Suche unbekannt (gilt als eingeschaltet – der Text bleibt dann „keiner gefunden“).
  */
 export function defaultDocumentDetection(): DocumentDetectionView {
-  return { pdfa: null, pdfa_decision: 'none', auto_placed: false };
+  return { pdfa: null, pdfa_decision: 'none', auto_placed: false, qr_search: true };
 }
 
 /** Entspricht `SignersView::default()` (ADR 0004 §3.4): ohne Optionen keine Signiermittel-Auswahl (Nachtrag 20). */

@@ -815,7 +815,12 @@ impl crate::runtime::CoreTask {
     fn detection(&self, data: Option<&DocData>, edit: &WorkspaceEdit) -> DocumentDetectionView {
         let id = data.and_then(|d| d.report.pdfa.as_ref());
         let pdfa = id.map(|p| PdfaIdView { part: p.part, conformance: p.conformance.clone() });
-        DocumentDetectionView { pdfa, pdfa_decision: self.pdfa_decision(id), auto_placed: edit.automatic }
+        DocumentDetectionView {
+            pdfa,
+            pdfa_decision: self.pdfa_decision(id),
+            auto_placed: edit.automatic,
+            qr_search: self.ctx.placeholder_search && !self.ctx.placeholder_fields,
+        }
     }
 
     /// Wirksame PDF/A-Entscheidung nach derselben Regel wie beim Signieren: Profil-ID wie

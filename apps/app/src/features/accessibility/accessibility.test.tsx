@@ -89,6 +89,15 @@ describe('Schalter in der Kopfzeile', () => {
 });
 
 describe('Platzierung ohne Vorschau', () => {
+  it('Platzhaltersuche aus: „nicht gesucht“ statt „keiner gefunden“', async () => {
+    const off = { pdfa: null, pdfa_decision: 'none' as const, auto_placed: false, qr_search: false };
+    const { user } = renderApp({ view: a11yView(undefined, documentView({ fields: [], qr: null, detection: off })) });
+    await user.click(await screen.findByRole('button', { name: 'Ohne Vorschau platzieren …' }));
+    const method = await screen.findByTestId('placement-method-placeholder');
+    expect(method).toHaveTextContent('QR-Code-Platzhalter werden nicht gesucht');
+    expect(method).not.toHaveTextContent('keiner gefunden');
+  });
+
   it('ohne Modus: eingeklappt unter „Platzierung“, keine Zahlenfelder sichtbar', async () => {
     renderApp({ view: a11yView() });
     const trigger = await screen.findByRole('button', { name: 'Ohne Vorschau platzieren …' });
