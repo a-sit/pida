@@ -485,6 +485,13 @@ jobs:
       - name: Codesignatur prüfen (macOS, ad hoc mit versiegelten Ressourcen)
         if: runner.os == 'macOS'
         run: tools/verify-macos-bundle.sh target/debug/bundle
+      - name: Installationstest (Windows-Setup, Verknüpfungen)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $setup = Get-ChildItem target/debug/bundle/nsis/*.exe | Select-Object -First 1
+          pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test-windows-installer.ps1 -Installer $setup.FullName
       - name: Größe
         run: |
           {
