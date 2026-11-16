@@ -1,0 +1,52 @@
+# Fuzz-Ziele (cargo-fuzz/libFuzzer) für die Teile, die fremde Eingaben verarbeiten: PDF-Parser (pdf-cos),
+# Signaturvorbereitung (pades) und Security-Layer-XML (sl12). Eigener Workspace: braucht eine Nightly-Toolchain
+# und gehört nicht zum normalen Build (im Wurzel-Workspace unter `exclude`). Aufruf: tools/fuzz.sh,
+# Beschreibung: docs/entwicklung.md („Fuzzing“).
+[package]
+name = "pida-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "EUPL-1.2"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+pida-pdf-cos = { path = "../crates/pdf-cos" }
+pida-pades = { path = "../crates/pades" }
+pida-cades = { path = "../crates/cades" }
+pida-sigblock = { path = "../crates/sigblock" }
+pida-backend-keystore = { path = "../crates/backend-keystore" }
+pida-sl12 = { path = "../crates/sl12" }
+
+[[bin]]
+name = "pdf_open"
+path = "fuzz_targets/pdf_open.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "pdf_xmp"
+path = "fuzz_targets/pdf_xmp.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "pades_prepare"
+path = "fuzz_targets/pades_prepare.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sl12_response"
+path = "fuzz_targets/sl12_response.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]

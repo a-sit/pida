@@ -15,11 +15,10 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use common::fuzz_case::run_case;
 use common::*;
 use pida_backend_keystore::LoadedKey;
-use pida_cades::RawSigner;
-use pida_pades::{PlanOptions, SignPlan, analyze, prepare, reject_open_error};
-use pida_pdf_cos::{Limits, SourcePdf};
+use pida_pdf_cos::Limits;
 
 /// Ein einzelner Fall darf (Release) höchstens so lange dauern.
 const HANG_LIMIT: Duration = Duration::from_secs(30);
@@ -141,30 +140,6 @@ fn mutate(rng: &mut Rng, data: &[u8]) -> Vec<u8> {
     d
 }
 
-/// Ein Fall: öffnen, analysieren, planen, vorbereiten (unsichtbar und sichtbar).
-fn run_case(data: Vec<u8>, key: &LoadedKey) {
-    let src = match SourcePdf::open(data, &Limits::default()) {
-        Ok(s) => s,
-        Err(e) => {
-            let _ = reject_open_error(&e);
-            return;
-        }
-    };
-    let Ok(report) = analyze(&src) else { return };
-    let _ = pida_pades::empty_fields(&report);
-    let chain = key.chain().clone();
-    let time = pida_pades::local_signing_time();
-    if let Ok(p) = prepare(&src, &SignPlan::invisible(time), Some(&chain)) {
-        let _ = p.digest(key.algorithm().digest());
-    }
-    let opts = PlanOptions::new(time);
-    if let Ok(planned) = plan_for(&src, &report, "SIGNATURBLOCK_SMALL_DE", &chain.signer, &opts, None)
-        && let Ok(p) = prepare(&src, &planned.plan, Some(&chain))
-    {
-        let _ = p.digest(key.algorithm().digest());
-    }
-}
-
 /// Laufender Fall eines Threads: Start, Bezeichnung, Eingabe.
 type Running = (Instant, String, Arc<Vec<u8>>);
 
@@ -226,7 +201,9 @@ fn fuzz_open_analyze_prepare() {
                     let label = format!("{rel} Mutation {iteration}");
                     *slot.lock().unwrap() = Some((Instant::now(), label.clone(), Arc::clone(&m)));
                     let input = (*m).clone();
-                    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run_case(input, key)));
+                    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        run_case(input, key, &Limits::default())
+                    }));
                     *slot.lock().unwrap() = None;
                     if let Err(payload) = r {
                         dump(&m, "panic");

@@ -1,4 +1,4 @@
-//! Fuzz-Ziel `xmp`: beliebige Bytes als XMP-Paket durch die PDF/A-Erkennung (`parse_pdfa_identification`).
+//! Fuzz-Ziel `pdf_xmp`: beliebige Bytes als XMP-Paket durch die PDF/A-Erkennung (`parse_pdfa_identification`).
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;

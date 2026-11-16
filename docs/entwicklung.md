@@ -135,30 +135,39 @@ PIDA_SMOKE=1 HOME="$(mktemp -d)" "../../target/debug/bundle/macos/PIDA.app/Conte
   `PIDA_BLESS=1 cargo test -p pida-app --test serde_contract` bzw.
   `PIDA_BLESS=1 npx vitest run src/core/contract.test.ts`.
 
-### Fuzzing (`pdf-cos`)
+### Fuzzing
 
-Der PDF-Parser verarbeitet fremde Dateien. Er wird auf zwei Arten mit kaputten Eingaben geprüft:
+Der PDF-Parser, die Signaturvorbereitung und der Security-Layer-Parser verarbeiten fremde Eingaben. Sie werden
+auf zwei Arten mit kaputten Eingaben geprüft:
 
-- **Robustheitstests** (stabile Toolchain, Teil von `cargo test`): `crates/pdf-cos/tests/robustness.rs` mutiert den
-  Korpus deterministisch (`PIDA_FUZZ_ITERS`, `PIDA_FUZZ_SEED`), dazu gezielte Laufzeit- und Speicherfallen.
-- **Coverage-geführtes Fuzzing** (cargo-fuzz/libFuzzer mit AddressSanitizer, Nightly): `crates/pdf-cos/fuzz` ist ein
-  eigener Workspace mit den Zielen `open` (`SourcePdf::open` und alle lesenden Auswertungen) und `xmp`
-  (PDF/A-Erkennung im XMP-Paket). Beide Wege rufen dieselbe Routine auf
-  (`crates/pdf-cos/tests/common/exercise.rs`); neue lesende Methoden von `SourcePdf` dort ergänzen.
+- **Robustheitstests** (stabile Toolchain, Teil von `cargo test`): `crates/pdf-cos/tests/robustness.rs` und
+  `crates/pades/tests/fuzz_prepare.rs` mutieren den Korpus deterministisch (`PIDA_FUZZ_ITERS` bzw.
+  `PIDA_FUZZ_PREPARE_ITERS`, `PIDA_FUZZ_SEED`), dazu gezielte Laufzeit- und Speicherfallen.
+- **Coverage-geführtes Fuzzing** (cargo-fuzz/libFuzzer mit AddressSanitizer, Nightly): `fuzz/` ist ein eigener
+  Workspace mit vier Zielen.
+
+| Ziel | prüft | Startwerte |
+|---|---|---|
+| `pdf_open` | `SourcePdf::open` und alle lesenden Auswertungen (`crates/pdf-cos/tests/common/exercise.rs`) | PDFs aus `testdata/`, `fuzz/pdf.dict` |
+| `pdf_xmp` | PDF/A-Erkennung im XMP-Paket | – |
+| `pades_prepare` | Öffnen, Analyse, Planung, Vorbereitung (unsichtbar und sichtbar), Hash (`crates/pades/tests/common/fuzz_case.rs`) | PDFs aus `testdata/`, `fuzz/pdf.dict` |
+| `sl12_response` | `is_sl_response`, `parse_response` | `testdata/sl12/responses`, `fuzz/sl12.dict` |
+
+`pdf_open` und `pades_prepare` rufen dieselbe Routine auf wie der jeweilige Robustheitstest; neue lesende Methoden
+bzw. Schritte dort ergänzen, dann decken beide Wege sie ab.
 
 ```sh
 rustup toolchain install nightly --profile minimal && cargo install cargo-fuzz --locked   # einmalig
-tools/fuzz-pdf-cos.sh              # 60 s je Ziel
-tools/fuzz-pdf-cos.sh 3600 open    # eine Stunde nur „open“
+tools/fuzz.sh                    # 60 s je Ziel
+tools/fuzz.sh 3600 pdf_open      # eine Stunde nur „pdf_open“
 ```
 
-Startwerte für `open` sind die PDFs aus `testdata/`, dazu das Wörterbuch `crates/pdf-cos/fuzz/pdf.dict`. Der
-Korpus wächst in `crates/pdf-cos/fuzz/corpus/<Ziel>`, Funde liegen in `crates/pdf-cos/fuzz/artifacts/<Ziel>`
-(beides nicht eingecheckt). Als Fund zählen Panic, Speicherfehler, ein Durchlauf über 20 s und mehr als 2 GB
-Speicher. Einen Fund stellt der Robustheitstest auf der stabilen Toolchain nach:
-`PIDA_FUZZ_FILE=<Fund> cargo test -p pida-pdf-cos --test robustness replay_single_file -- --nocapture`;
-nach der Korrektur kommt die (möglichst verkleinerte, `cargo fuzz tmin`) Eingabe als Regressionsfall nach
-`testdata/pdf-cos/`. Die CI pinnt Nightly und cargo-fuzz (`FUZZ_TOOLCHAIN`, `CARGO_FUZZ_VERSION` in `ci.yml` und
+Der Korpus wächst in `fuzz/corpus/<Ziel>`, Funde liegen in `fuzz/artifacts/<Ziel>` (beides nicht eingecheckt).
+Als Fund zählen Panic, Speicherfehler, ein Durchlauf über 20 s und mehr als 2 GB Speicher. Nachstellen:
+`cargo fuzz run <Ziel> <Fund>` (in `fuzz/`, Nightly) oder für `pdf_open` auf der stabilen Toolchain
+`PIDA_FUZZ_FILE=<Fund> cargo test -p pida-pdf-cos --test robustness replay_single_file -- --nocapture`.
+Nach der Korrektur kommt die (möglichst verkleinerte, `cargo fuzz tmin`) Eingabe als Regressionsfall nach
+`testdata/`. Die CI pinnt Nightly und cargo-fuzz (`FUZZ_TOOLCHAIN`, `CARGO_FUZZ_VERSION` in `ci.yml` und
 `security.yml`); lokal genügt die aktuelle Nightly (`PIDA_FUZZ_TOOLCHAIN` wählt eine andere).
 
 ### Isolierte bzw. portable Profile (`PIDA_HOME`)
@@ -320,7 +329,7 @@ Einordnung (CI-Job `deny`).
 |---|---|---|
 | `fmt` | `cargo fmt --all --check`, `shellcheck` der Skripte in `tools/` | ja |
 | `build` (ubuntu, macOS, Windows) | PDFium laden (Cache über `tools/pdfium.lock`), Orakel (pyHanko aus `tools/python-oracles.txt`, Java 21, qpdf/xmllint unter Linux, qpdf/OpenSSL 3 unter macOS), ggf. Frontend und Tauri-Systembibliotheken, `cargo check`, Check ohne PDFium, Clippy `--no-deps -D warnings` (außer `CLIPPY_LENIENT`), FIDO2 (`fido2-windows` unter Windows, sonst `fido2-hid`), `cargo test --no-fail-fast` (alle Testbinaries, auch nach einem Fehler), unter Linux Doc-Build mit `RUSTDOCFLAGS=-D warnings` | ja |
-| `fuzz` | Fuzz-Ziele von `pdf-cos` mit gepinnter Nightly bauen und je 45 s laufen lassen (`tools/fuzz-pdf-cos.sh`, siehe „Fuzzing“ in §4) | ja |
+| `fuzz` | Fuzz-Ziele (`pdf-cos`, `pades`, `sl12`) mit gepinnter Nightly bauen und je 30 s laufen lassen (`tools/fuzz.sh`, siehe „Fuzzing“ in §4) | ja |
 | `deny` | `cargo deny --locked check` (cargo-deny 0.20.2), Selbsttest `tools/npm-licenses.mjs --self-test` | ja |
 | `notices` | `tools/third-party-notices.sh`, Artefakt `THIRD-PARTY-NOTICES` (`.md` + `RUST-STD-COPYRIGHT.html`) | ja |
 | `mobile` | `cargo check` für `aarch64-apple-ios` und `aarch64-linux-android` (NDK des Runners) | verifizierte Crates ja, ganzer Workspace informativ |
@@ -333,8 +342,8 @@ Commit-SHAs gepinnt (Kommentar = Release-Tag); `actionlint` prüft die Datei lok
 
 **Täglicher Security-Check** (`.github/workflows/security.yml`, 05:00 UTC und manuell): `cargo deny --locked
 check advisories`, `npm audit --omit=dev` für `apps/app` (devDependencies nur als Hinweis in der
-Zusammenfassung), die Prüfung, dass alle Actions auf Commit-SHAs gepinnt sind, und das Fuzzing von `pdf-cos`
-(15 Minuten je Ziel; der gewachsene Korpus wandert über den Actions-Cache in den nächsten Lauf, Funde hängen als
+Zusammenfassung), die Prüfung, dass alle Actions auf Commit-SHAs gepinnt sind, und das Fuzzing (`tools/fuzz.sh`,
+10 Minuten je Ziel; der gewachsene Korpus wandert über den Actions-Cache in den nächsten Lauf, Funde hängen als
 Artefakt `fuzz-funde` am Lauf). Ein Fund lässt den Lauf scheitern (E-Mail von GitHub); der Workflow ändert
 nichts selbst.
 

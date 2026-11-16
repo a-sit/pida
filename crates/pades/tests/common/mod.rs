@@ -7,6 +7,7 @@
 #![allow(dead_code)]
 
 pub mod cases;
+pub mod fuzz_case;
 pub mod oracles;
 #[allow(unused_imports)]
 pub use cases::*;
