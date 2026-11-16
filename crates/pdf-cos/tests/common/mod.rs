@@ -1,6 +1,8 @@
 //! Gemeinsame Test-Hilfen für `pida-pdf-cos`.
 #![allow(dead_code)]
 
+pub mod exercise;
+
 use std::path::{Path, PathBuf};
 
 /// Wurzel der gemeinsamen Testdaten.

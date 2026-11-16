@@ -5,6 +5,8 @@
 #   build    Matrix ubuntu/macOS/Windows: check, Clippy (-D warnings außer CLIPPY_LENIENT), FIDO2-Features,
 #            Tests mit PDFium (tools/fetch-pdfium.*) und den Orakeln qpdf/openssl/pyHanko/Java, wo verfügbar;
 #            auf Linux zusätzlich der Doc-Build (rustdoc -D warnings)
+#   fuzz     Fuzz-Ziele von pdf-cos bauen und kurz laufen lassen (cargo-fuzz, gepinnte Nightly); der lange Lauf
+#            steht im täglichen Workflow security.yml
 #   deny     cargo-deny: Lizenzen, Advisories, Duplikate, Quellen; Selbsttest des npm-Lizenzprüfers
 #            (blockierend, Plan §2.5)
 #   notices  THIRD-PARTY-NOTICES (cargo-about + PDFium + Fonts + Rust-std + npm) als Artefakt (Plan §10.2)
@@ -49,6 +51,9 @@ env:
   CLIPPY_LENIENT: "pida-pades pida-pdf-cos pida-sigblock pida-placement pida-backend-keystore"
   CARGO_DENY_VERSION: "0.20.2"
   CARGO_ABOUT_VERSION: "0.9.2"
+  # Fuzzing (tools/fuzz-pdf-cos.sh): libFuzzer braucht Nightly; Datum und cargo-fuzz wie in security.yml
+  FUZZ_TOOLCHAIN: "nightly-2026-11-16"
+  CARGO_FUZZ_VERSION: "0.13.2"
   NODE_VERSION: "22"
   PYTHON_VERSION: "3.13"
   JAVA_VERSION: "21"
@@ -67,10 +72,12 @@ jobs:
           rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal --component rustfmt
           rustup default "$RUST_TOOLCHAIN"
       - run: cargo fmt --all --check
+      - name: rustfmt der Fuzz-Ziele (eigener Workspace)
+        run: cargo fmt --manifest-path crates/pdf-cos/fuzz/Cargo.toml --check
       - name: shellcheck (tools/*.sh ohne env.sh, das auch zsh bedient)
         run: |
           command -v shellcheck >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends shellcheck; }
-          shellcheck tools/fetch-pdfium.sh tools/third-party-notices.sh tools/cross-clippy.sh tools/verify-macos-bundle.sh
+          shellcheck tools/fetch-pdfium.sh tools/third-party-notices.sh tools/cross-clippy.sh tools/verify-macos-bundle.sh tools/fuzz-pdf-cos.sh
       # Das eingecheckte gradle-wrapper.jar (Android-Projekt) muss ein unverändertes Gradle-Original sein
       - name: Gradle-Wrapper prüfen
         uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
@@ -220,6 +227,31 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
         run: cargo doc --workspace --no-deps --locked
+
+  fuzz:
+    name: Fuzzing pdf-cos (kurz)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Nightly-Toolchain und cargo-fuzz
+        run: |
+          rustup toolchain install "$FUZZ_TOOLCHAIN" --profile minimal
+          cargo install cargo-fuzz --locked --version "$CARGO_FUZZ_VERSION"
+      # Prüft vor allem, dass die Ziele noch bauen und der Startkorpus ohne Fund durchläuft
+      - name: Fuzz-Ziele bauen und je 45 s laufen lassen
+        env:
+          PIDA_FUZZ_TOOLCHAIN: ${{ env.FUZZ_TOOLCHAIN }}
+        run: tools/fuzz-pdf-cos.sh 45
+      - name: Funde sichern
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-funde
+          path: crates/pdf-cos/fuzz/artifacts
+          if-no-files-found: ignore
 
   deny:
     name: cargo-deny (Lizenzen, Advisories, Duplikate, Quellen)
