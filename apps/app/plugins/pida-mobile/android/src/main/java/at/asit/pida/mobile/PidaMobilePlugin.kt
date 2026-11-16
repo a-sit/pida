@@ -283,7 +283,9 @@ class PidaMobilePlugin(private val activity: Activity) : Plugin(activity) {
                 val n = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 if (c.moveToFirst() && n >= 0 && !c.isNull(n)) c.getString(n) else null
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // nur die Art des Fehlers, nie Adresse oder Name (ADR 0001 Regel 9)
+            Log.w(TAG, "Anzeigename nicht lesbar (${e.javaClass.simpleName})")
             null
         }
 
