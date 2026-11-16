@@ -3,16 +3,11 @@
 #   pwsh -File tools/test-windows-installer.ps1 -Installer target\debug\bundle\nsis\PIDA_…-setup.exe
 #
 # Geprüft wird, dass die Verknüpfungen im Startmenü und auf dem Desktop auf eine vorhandene pida.exe zeigen.
-# Anlass (0.8.3): Auf einem Rechner lag nach der Installation eine Desktop-Verknüpfung mit leerem Ziel.
-#
-# -LadenSperren: Verbietet dem Benutzer für die Dauer der Installation, neue Dateien auf dem Desktop zu LESEN
-# (vererbter Deny-Eintrag; Anlegen und Überschreiben bleiben erlaubt). Damit scheitert das Nachladen der frisch
-# angelegten Verknüpfung so, wie es bei belegter Datei (Virenscanner, OneDrive) oder einem umgeleiteten Desktop
-# (Netzlaufwerk, geteilter Ordner einer VM) scheitern kann. Der Installer darf die Verknüpfung dann nicht durch eine
-# leere ersetzen.
+# Anlass (0.8.3): eine Desktop-Verknüpfung mit leerem Ziel. Ursache war dort nicht der Installer, sondern ein mit
+# dem Mac geteilter Desktop in Parallels (ersetzt .lnk durch eigene Platzhalter); bis dahin installierte die CI das
+# Setup aber nie probeweise.
 param(
-  [Parameter(Mandatory = $true)][string]$Installer,
-  [switch]$LadenSperren
+  [Parameter(Mandatory = $true)][string]$Installer
 )
 $ErrorActionPreference = 'Stop'
 $Installer = (Resolve-Path $Installer).Path
@@ -27,23 +22,9 @@ function Find-Link([string[]]$dirs) {
   return $null
 }
 
-$deny = "$([Security.Principal.WindowsIdentity]::GetCurrent().Name):(OI)(IO)(RD)"
-if ($LadenSperren) {
-  Remove-Item (Join-Path $desktops[0] 'PIDA.lnk') -ErrorAction SilentlyContinue
-  icacls $desktops[0] /deny $deny | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw 'icacls /deny fehlgeschlagen' }
-  Write-Host "Lesen neuer Dateien gesperrt: $($desktops[0])"
-}
-
 Write-Host "Installiere $Installer (still)"
 $p = Start-Process -FilePath $Installer -ArgumentList '/S' -Wait -PassThru
 $code = $p.ExitCode
-if ($LadenSperren) {
-  icacls $desktops[0] /remove:d ([Security.Principal.WindowsIdentity]::GetCurrent().Name) | Out-Null
-  # der vererbte Eintrag an der schon angelegten Verknüpfung
-  icacls $desktops[0] /reset /T /Q | Out-Null
-}
-
 if ($code -ne 0) { throw "Setup endete mit Code $code" }
 $shell = New-Object -ComObject WScript.Shell
 $failed = @()

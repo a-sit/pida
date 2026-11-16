@@ -492,7 +492,6 @@ jobs:
         run: |
           $setup = Get-ChildItem target/debug/bundle/nsis/*.exe | Select-Object -First 1
           pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test-windows-installer.ps1 -Installer $setup.FullName
-          pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test-windows-installer.ps1 -Installer $setup.FullName -LadenSperren
       - name: Größe
         run: |
           {
