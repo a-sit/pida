@@ -1,5 +1,5 @@
 //! Alle lesenden Auswertungen von [`SourcePdf`] in einem Durchlauf – gemeinsam für den Robustheitstest
-//! (`tests/robustness.rs`) und das Fuzz-Ziel `open` (`fuzz/fuzz_targets/open.rs`, dort per `#[path]` eingebunden).
+//! (`tests/robustness.rs`) und das Fuzz-Ziel `pdf_open` (`fuzz/fuzz_targets/pdf_open.rs`, dort per `#[path]` eingebunden).
 //! Neue lesende Methoden von `SourcePdf` hier ergänzen, dann decken beide sie ab.
 
 use pida_pdf_cos::{Limits, Object, SourcePdf};
