@@ -1501,8 +1501,8 @@ share_hint?: ShareHintView | null,
  */
 about?: AboutView | null, 
 /**
- * Startseite: Hinweis „PIDA x.y.z ist verfügbar“ mit Link auf die Release-Seite (Backlog Nr. 33). Nur am Desktop,
- * wenn eine neue Version bekannt ist (auch aus dem Zwischenspeicher), die automatische Prüfung an ist und der
+ * Startseite: Hinweis „PIDA x.y.z ist verfügbar“ mit Link auf die Release-Seite, auf iOS/Android in den Store
+ * (Backlog Nr. 33, Nachtrag 31). Nur, wenn eine neue Version bekannt ist (auch aus dem Zwischenspeicher), die automatische Prüfung an ist und der
  * Hinweis für diese Version nicht ausgeblendet wurde (`dismiss_update_hint`). Additiv, in TypeScript optional.
  */
 update_hint?: UpdateHintView | null, };
@@ -2924,8 +2924,8 @@ release_notes_url: string,
  */
 source_url: string, 
 /**
- * Update-Prüfung; `None` = keine (iOS/Android: dort keine Verteilung über GitHub; ohne Oberfläche bzw. ohne
- * Netz-Zugang des Kerns)
+ * Update-Prüfung; `None` = keine (ohne Oberfläche bzw. ohne Netz-Zugang des Kerns). Auf iOS/Android zählen nur
+ * Versionen, die für den Store freigegeben sind (Nachtrag 31)
  */
 update: UpdateCheckView | null, };
 
@@ -2947,7 +2947,7 @@ state: UpdateCheckState,
  */
 latest_version: string | null, 
 /**
- * Release-Seite der neuen Version (nur `available`)
+ * Release-Seite der neuen Version, auf iOS/Android die Seite der App im Store (nur `available`)
  */
 release_url: string | null, 
 /**
@@ -2960,7 +2960,7 @@ checked_at: string | null,
 reason: string | null, };
 
 /**
- * Hinweis auf der Startseite ([`ViewState::update_hint`]): neue Version und ihre Release-Seite.
+ * Hinweis auf der Startseite ([`ViewState::update_hint`]): neue Version und wo es sie gibt.
  */
 export type UpdateHintView = { 
 /**
@@ -2968,6 +2968,6 @@ export type UpdateHintView = {
  */
 version: string, 
 /**
- * Release-Seite der neuen Version
+ * Release-Seite der neuen Version; auf iOS/Android die Seite der App im Store (Play Store bzw. TestFlight)
  */
 release_url: string, };

@@ -582,8 +582,9 @@ impl Core {
             persist_prepared: options.persist_prepared.unwrap_or(!config.platform.is_desktop()) && !config.headless,
             default_output_dir: options.default_output_dir.clone(),
         };
-        // „Über PIDA“, Update-Prüfung (Nachtrag 21): nur am Desktop mit Oberfläche wird der Zwischenspeicher gelesen
-        let transport = options.update_transport.clone().filter(|_| config.platform.is_desktop() && !config.headless);
+        // „Über PIDA“, Update-Prüfung (Nachtrag 21, iOS/Android: Nachtrag 31): nur mit Oberfläche wird der
+        // Zwischenspeicher gelesen
+        let transport = options.update_transport.clone().filter(|_| !config.headless);
         let updates = update::UpdateState::new(&config.app_version, transport, &config.paths.cache_dir);
         let task = CoreTask::new(
             shared.clone(),

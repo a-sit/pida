@@ -58,6 +58,11 @@ ignore = [
     { id = "RUSTSEC-2026-0370", reason = "zvariant: in zbus 6 aufgegangen; zbus 5 nur Linux über keyring/Tauri-Plugins" },
     { id = "RUSTSEC-2026-0371", reason = "zbus_names: in zbus 6 aufgegangen; zbus 5 nur Linux über keyring/Tauri-Plugins" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive: in zbus 6 aufgegangen; zbus 5 nur Linux über keyring/Tauri-Plugins" },
+    # chrono „unmaintained“ (17.11.2026): keine Lücke, es gibt nur keine Pflege mehr (empfohlen: time, jiff).
+    # Kommt allein über pdfium-render (feste Abhängigkeit, auch in 0.9.5) für Datumswerte in Anmerkungen und
+    # Formularfeldern – PIDA nutzt diese Teile nicht und rechnet selbst mit time/jiff. Wird gehoben, sobald
+    # pdfium-render chrono ablöst.
+    { id = "RUSTSEC-2026-0543", reason = "chrono: nur über pdfium-render (Datumswerte in Anmerkungen), keine Lücke, kein Ersatz in pdfium-render" },
 ]
 
 # ---------------------------------------------------------------------------------------------

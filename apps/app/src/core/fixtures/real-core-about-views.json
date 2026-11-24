@@ -1,4 +1,173 @@
 {
+  "about_android_available": {
+    "about": {
+      "release_date": "2026-10-17",
+      "release_notes_url": "https://github.com/a-sit/pida/releases/tag/v0.2.0",
+      "source_url": "https://github.com/a-sit/pida",
+      "update": {
+        "checked_at": "2026-10-17T10:42:17+02:00",
+        "latest_version": "0.3.0",
+        "reason": null,
+        "release_url": "https://play.google.com/store/apps/details?id=at.asit.pida.app",
+        "state": "available"
+      },
+      "version": "0.2.0"
+    },
+    "accessibility": {
+      "announce": "short",
+      "announce_after_move": false,
+      "check_before_sign": false,
+      "keyboard_step": "standard",
+      "mode": false,
+      "start": "preview"
+    },
+    "actions": {
+      "edit_placement": false,
+      "home": true,
+      "open_files": true,
+      "settings": false,
+      "show_batch": false,
+      "sign": false,
+      "start_batch": false
+    },
+    "batch": null,
+    "document": null,
+    "done": [],
+    "first_run": null,
+    "keystore_import": null,
+    "language": "de",
+    "main_bar": {
+      "settings_enabled": false,
+      "steps": [
+        {
+          "active": true,
+          "enabled": true,
+          "step": "Open"
+        },
+        {
+          "active": false,
+          "enabled": false,
+          "step": "Positioning"
+        },
+        {
+          "active": false,
+          "enabled": false,
+          "step": "Signing"
+        },
+        {
+          "active": false,
+          "enabled": false,
+          "step": "Finish"
+        }
+      ]
+    },
+    "migration": null,
+    "notices": [],
+    "parked": null,
+    "platform": {
+      "mobile": true,
+      "os": "android"
+    },
+    "privacy_text": null,
+    "recent": [],
+    "resume": null,
+    "settings": {
+      "applied_revision": 0,
+      "emblem_placeholder": false,
+      "examples": {
+        "output.postfix": "Vertrag_signed.pdf"
+      },
+      "fido2_available": false,
+      "keychain_available": false,
+      "keystore_entries": null,
+      "keystore_format": null,
+      "keystore_inspect_problem": null,
+      "keystore_ready": false,
+      "locked": {},
+      "preview_revision": 0,
+      "problems": {},
+      "read_only": false,
+      "settings": {
+        "accessibility": {
+          "announce": "short",
+          "announce_after_move": false,
+          "check_before_sign": false,
+          "keyboard_step": "standard",
+          "mode": false,
+          "start": "preview"
+        },
+        "backend": {
+          "default": null
+        },
+        "certificate_cache": {
+          "enabled": false
+        },
+        "general": {
+          "first_run_completed": true,
+          "last_source_directory": null,
+          "recent_documents": true,
+          "ui_language": null,
+          "update_check": true,
+          "window_size": null
+        },
+        "id_austria": {
+          "fido2_default": false,
+          "remember": false,
+          "username": null
+        },
+        "keystore": {
+          "alias": null,
+          "declared_type": null,
+          "enabled": false,
+          "file": null,
+          "password_storage": "memory",
+          "storage_chosen": true
+        },
+        "output": {
+          "folder": null,
+          "postfix": "_signed"
+        },
+        "placeholder": {
+          "kind": "marker",
+          "search": true
+        },
+        "proxy": {
+          "host": null,
+          "mode": "system",
+          "port": null,
+          "user": null
+        },
+        "schema_version": 1,
+        "signature": {
+          "auto_position": false,
+          "block_language": null,
+          "cms_profile": "pdfas_compat",
+          "emblem": null,
+          "logo_only_size_mm": 23.0,
+          "note": {
+            "mode": "default"
+          },
+          "pdfa_force": false,
+          "profile": "SIGNATURBLOCK_SMALL"
+        }
+      }
+    },
+    "share_hint": null,
+    "signers": {
+      "choice_offered": false,
+      "default": null,
+      "options": [],
+      "selected": null
+    },
+    "step": {
+      "queue": [],
+      "step": "open"
+    },
+    "update_hint": {
+      "release_url": "https://play.google.com/store/apps/details?id=at.asit.pida.app",
+      "version": "0.3.0"
+    }
+  },
   "about_available": {
     "about": {
       "release_date": "2026-10-17",
@@ -671,7 +840,13 @@
       "release_date": "2026-10-17",
       "release_notes_url": "https://github.com/a-sit/pida/releases/tag/v0.2.0",
       "source_url": "https://github.com/a-sit/pida",
-      "update": null,
+      "update": {
+        "checked_at": "2026-10-17T10:42:17+02:00",
+        "latest_version": null,
+        "reason": null,
+        "release_url": null,
+        "state": "up_to_date"
+      },
       "version": "0.2.0"
     },
     "accessibility": {
@@ -825,6 +1000,175 @@
       "step": "open"
     },
     "update_hint": null
+  },
+  "about_ios_available": {
+    "about": {
+      "release_date": "2026-10-17",
+      "release_notes_url": "https://github.com/a-sit/pida/releases/tag/v0.2.0",
+      "source_url": "https://github.com/a-sit/pida",
+      "update": {
+        "checked_at": "2026-10-17T10:42:17+02:00",
+        "latest_version": "0.3.0",
+        "reason": null,
+        "release_url": "https://testflight.apple.com/v1/app/6828122194",
+        "state": "available"
+      },
+      "version": "0.2.0"
+    },
+    "accessibility": {
+      "announce": "short",
+      "announce_after_move": false,
+      "check_before_sign": false,
+      "keyboard_step": "standard",
+      "mode": false,
+      "start": "preview"
+    },
+    "actions": {
+      "edit_placement": false,
+      "home": true,
+      "open_files": true,
+      "settings": false,
+      "show_batch": false,
+      "sign": false,
+      "start_batch": false
+    },
+    "batch": null,
+    "document": null,
+    "done": [],
+    "first_run": null,
+    "keystore_import": null,
+    "language": "de",
+    "main_bar": {
+      "settings_enabled": false,
+      "steps": [
+        {
+          "active": true,
+          "enabled": true,
+          "step": "Open"
+        },
+        {
+          "active": false,
+          "enabled": false,
+          "step": "Positioning"
+        },
+        {
+          "active": false,
+          "enabled": false,
+          "step": "Signing"
+        },
+        {
+          "active": false,
+          "enabled": false,
+          "step": "Finish"
+        }
+      ]
+    },
+    "migration": null,
+    "notices": [],
+    "parked": null,
+    "platform": {
+      "mobile": true,
+      "os": "ios"
+    },
+    "privacy_text": null,
+    "recent": [],
+    "resume": null,
+    "settings": {
+      "applied_revision": 0,
+      "emblem_placeholder": false,
+      "examples": {
+        "output.postfix": "Vertrag_signed.pdf"
+      },
+      "fido2_available": false,
+      "keychain_available": false,
+      "keystore_entries": null,
+      "keystore_format": null,
+      "keystore_inspect_problem": null,
+      "keystore_ready": false,
+      "locked": {},
+      "preview_revision": 0,
+      "problems": {},
+      "read_only": false,
+      "settings": {
+        "accessibility": {
+          "announce": "short",
+          "announce_after_move": false,
+          "check_before_sign": false,
+          "keyboard_step": "standard",
+          "mode": false,
+          "start": "preview"
+        },
+        "backend": {
+          "default": null
+        },
+        "certificate_cache": {
+          "enabled": false
+        },
+        "general": {
+          "first_run_completed": true,
+          "last_source_directory": null,
+          "recent_documents": true,
+          "ui_language": null,
+          "update_check": true,
+          "window_size": null
+        },
+        "id_austria": {
+          "fido2_default": false,
+          "remember": false,
+          "username": null
+        },
+        "keystore": {
+          "alias": null,
+          "declared_type": null,
+          "enabled": false,
+          "file": null,
+          "password_storage": "memory",
+          "storage_chosen": true
+        },
+        "output": {
+          "folder": null,
+          "postfix": "_signed"
+        },
+        "placeholder": {
+          "kind": "marker",
+          "search": true
+        },
+        "proxy": {
+          "host": null,
+          "mode": "system",
+          "port": null,
+          "user": null
+        },
+        "schema_version": 1,
+        "signature": {
+          "auto_position": false,
+          "block_language": null,
+          "cms_profile": "pdfas_compat",
+          "emblem": null,
+          "logo_only_size_mm": 23.0,
+          "note": {
+            "mode": "default"
+          },
+          "pdfa_force": false,
+          "profile": "SIGNATURBLOCK_SMALL"
+        }
+      }
+    },
+    "share_hint": null,
+    "signers": {
+      "choice_offered": false,
+      "default": null,
+      "options": [],
+      "selected": null
+    },
+    "step": {
+      "queue": [],
+      "step": "open"
+    },
+    "update_hint": {
+      "release_url": "https://testflight.apple.com/v1/app/6828122194",
+      "version": "0.3.0"
+    }
   },
   "about_policy_off": {
     "about": {

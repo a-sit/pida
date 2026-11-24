@@ -779,9 +779,11 @@ async fn mobile_restrictions() {
     )
     .await;
     let s = settings(&v);
-    for p in ["proxy.mode", "output.folder", "general.update_check", "keystore.file"] {
+    for p in ["proxy.mode", "output.folder", "keystore.file"] {
         assert_eq!(s.problems[p], "ng-settings-unavailable-mobile", "{p}");
     }
+    // die Update-Prüfung ist auch hier einstellbar (Nachtrag 31)
+    assert!(!s.problems.contains_key("general.update_check") && !s.settings.general.update_check);
     assert_eq!(s.settings.signature.profile, SignatureProfile::Amtssignaturblock);
 }
 

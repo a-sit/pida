@@ -56,7 +56,7 @@ describe('Start', () => {
     expect(zone).not.toHaveAttribute('data-drop-target');
   });
 
-  it('neue Version: Hinweis mit Link auf die Release-Seite und „Ausblenden“ (Backlog Nr. 33); Mobile ohne', async () => {
+  it('neue Version: Hinweis mit Link auf die Release-Seite und „Ausblenden“ (Backlog Nr. 33)', async () => {
     const { mock, user } = renderApp({ update: 'available' });
     const hint = await screen.findByTestId('update-hint');
     expect(hint).toHaveAttribute('role', 'note');
@@ -69,14 +69,26 @@ describe('Start', () => {
     expect(mock.dispatched).toContainEqual({ type: 'dismiss_update_hint' });
   });
 
-  it('kein Hinweis ohne neue Version und auf Mobilgeräten', async () => {
-    const { unmount } = renderApp({ update: 'up_to_date' });
+  it('kein Hinweis ohne neue Version', async () => {
+    renderApp({ update: 'up_to_date' });
     await screen.findByRole('heading', { level: 1 });
     expect(screen.queryByTestId('update-hint')).not.toBeInTheDocument();
-    unmount();
-    renderApp({ update: 'available', platform: 'ios' });
-    await screen.findByRole('heading', { level: 1 });
-    expect(screen.queryByTestId('update-hint')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['ios', 'In TestFlight aktualisieren', 'PIDA 0.3.0 in TestFlight öffnen', 'https://testflight.apple.com/v1/app/6828122194'],
+    ['android', 'Im Play Store aktualisieren', 'PIDA 0.3.0 im Play Store öffnen', 'https://play.google.com/store/apps/details?id=at.asit.pida.app'],
+  ] as const)('%s: neue Version im Store – Hinweis mit „%s“, öffnet den Store; „Ausblenden“ (Nachtrag 31)', async (platform, text, label, url) => {
+    const { mock, user } = renderApp({ update: 'available', platform });
+    const hint = await screen.findByTestId('update-hint');
+    expect(hint).toHaveTextContent('PIDA 0.3.0 ist verfügbar.');
+    const link = within(hint).getByRole('link', { name: label });
+    expect(link).toHaveTextContent(text);
+    await user.click(link);
+    expect(mock.openedUrls).toEqual([url]);
+    await expectNoAxeViolations();
+    await user.click(within(hint).getByRole('button', { name: 'Hinweis für diese Version ausblenden' }));
+    await waitFor(() => expect(screen.queryByTestId('update-hint')).not.toBeInTheDocument());
   });
 
   it('⌘/Strg+O öffnet die Dateiauswahl (nur mit Freigabe)', async () => {

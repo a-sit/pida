@@ -604,6 +604,8 @@ check -p pida-app` für `aarch64-apple-ios-sim` und `aarch64-linux-android` grü
 - **Zertifikat erneuern:** Das Team hat nur wenige Plätze für Verteilungszertifikate. Läuft die Identität ab oder
   fehlt sie auf einem Rechner: `.p12` übernehmen oder im Entwicklerportal ein neues „iOS Distribution“-Zertifikat
   und dazu ein App-Store-Profil mit dem Namen „PIDA App Store“ für `at.asit.pida.app` anlegen.
+- **Freigabe melden:** Ist der Build für die Tester in TestFlight zu haben, `tools/store-freigabe.sh ios <Version>`
+  ausführen – erst dann melden die installierten Apps die neue Version (ADR 0004 Nachtrag 31).
 - **Hochladen:** `tools/testflight-upload.py <ipa>` – Upload mit `xcrun altool` und dem Teamschlüssel aus
   `~/.pida-release/appstore.env` (das Skript lädt ihn selbst, nur hier wird er gebraucht), danach schaltet das Skript für den neuen Build „Tester automatisch benachrichtigen“
   aus (keine E-Mail/Push je Testbuild; `--notify` lässt sie an). `--check` zeigt die letzten Builds mit Status.

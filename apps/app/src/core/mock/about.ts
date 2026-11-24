@@ -2,7 +2,8 @@
  * Mock-Kern, Bereich „Über PIDA“ (ADR 0004 Nachtrag 21): `ViewState::about` mit Version, Versionsdatum, Links und
  * der Update-Prüfung nach den Regeln des Kerns (`crates/core-api/src/update.rs`) – ohne Netz:
  *
- * - iOS/Android: keine Prüfung (`update = null`); Richtlinie `update_check = false` → `policy_off` (nie prüfen,
+ * - iOS/Android (Nachtrag 31): wie am Desktop, der Link führt aber in den Store (Play Store bzw. TestFlight) – die
+ *   Szenarien gelten dort als „für den Store freigegeben“. Richtlinie `update_check = false` → `policy_off` (nie prüfen,
  *   auch nicht auf Klick); Schalter aus → `disabled`, bis „Jetzt prüfen“ einmalig prüft (das Ergebnis gilt, bis
  *   der Schalter wechselt).
  * - Start: das Ergebnis der Prüfung beim Start liegt wie aus dem Zwischenspeicher sofort vor (Szenario), außer bei
@@ -22,12 +23,16 @@ import type { MockArea, MockCtx, MockOptions, MockUpdateScenario } from './share
 export const MOCK_VERSION = '0.2.0';
 export const MOCK_RELEASE_DATE = '2026-10-17';
 const REPO = 'https://github.com/a-sit/pida';
+/** Store-Seiten wie im Kern (`update.rs`: `PLAY_STORE_URL`, `TESTFLIGHT_URL`). */
+export const PLAY_STORE = 'https://play.google.com/store/apps/details?id=at.asit.pida.app';
+export const TESTFLIGHT = 'https://testflight.apple.com/v1/app/6828122194';
 
 type Outcome = { kind: 'checked'; latest: string; at: string } | { kind: 'failed'; reason: string };
 
 interface AboutState {
   scenario: MockUpdateScenario;
-  mobile: boolean;
+  /** Ziel des Links bei einer neuen Version: Release-Seite (Desktop) bzw. Store (iOS/Android) */
+  url: (version: string) => string;
   policy: PolicyMock | undefined;
   running: boolean;
   outcome: Outcome | null;
@@ -81,7 +86,6 @@ function compare(a: string, b: string): number {
 }
 
 function view(s: AboutState, ctx: MockCtx): UpdateCheckView | null {
-  if (s.mobile) return null;
   const checkedAt = s.outcome?.kind === 'checked' ? s.outcome.at : null;
   const base = (state: UpdateCheckState): UpdateCheckView => ({ state, latest_version: null, release_url: null, checked_at: checkedAt, reason: null });
   if (s.policy?.update_check === false) return base('policy_off');
@@ -90,27 +94,28 @@ function view(s: AboutState, ctx: MockCtx): UpdateCheckView | null {
   const o = s.outcome;
   if (!o) return base('unchecked');
   if (o.kind === 'failed') return { ...base('failed'), reason: o.reason };
-  if (compare(o.latest, MOCK_VERSION) > 0) return { ...base('available'), latest_version: o.latest, release_url: `${REPO}/releases/tag/v${o.latest}` };
+  if (compare(o.latest, MOCK_VERSION) > 0) return { ...base('available'), latest_version: o.latest, release_url: s.url(o.latest) };
   return { ...base('up_to_date'), latest_version: o.latest };
 }
 
 /** Startseite (Backlog Nr. 33): neue Version bekannt, automatische Prüfung an, nicht ausgeblendet – wie der Kern. */
 function hint(s: AboutState, ctx: MockCtx): UpdateHintView | null {
-  if (s.mobile || s.policy?.update_check === false || !autoEnabled(s, ctx)) return null;
+  if (s.policy?.update_check === false || !autoEnabled(s, ctx)) return null;
   const o = s.outcome;
   if (o?.kind !== 'checked' || compare(o.latest, MOCK_VERSION) <= 0 || s.dismissed === o.latest) return null;
-  return { version: o.latest, release_url: `${REPO}/releases/tag/v${o.latest}` };
+  return { version: o.latest, release_url: s.url(o.latest) };
 }
 
 export const aboutArea: MockArea<AboutState> = {
   init(o: MockOptions & { policy?: PolicyMock }) {
     const scenario = o.update ?? 'up_to_date';
-    const mobile = (o.platform ?? 'desktop') !== 'desktop';
+    const platform = o.platform ?? 'desktop';
+    const url = (version: string) => (platform === 'android' ? PLAY_STORE : platform === 'ios' ? TESTFLIGHT : `${REPO}/releases/tag/v${version}`);
     const policy = o.policy;
     const enabledAtStart = policy?.update_check ?? o.settings?.general.update_check ?? true;
-    const s: AboutState = { scenario, mobile, policy, running: false, outcome: null, explicit: false, enabled: enabledAtStart, attempts: 0, dismissed: null };
-    // Prüfung beim Start (wie aus dem Zwischenspeicher): nur am Desktop, erlaubt und eingeschaltet
-    if (!mobile && policy?.update_check !== false && enabledAtStart && scenario !== 'unchecked' && scenario !== 'checking') {
+    const s: AboutState = { scenario, url, policy, running: false, outcome: null, explicit: false, enabled: enabledAtStart, attempts: 0, dismissed: null };
+    // Prüfung beim Start (wie aus dem Zwischenspeicher): erlaubt und eingeschaltet
+    if (policy?.update_check !== false && enabledAtStart && scenario !== 'unchecked' && scenario !== 'checking') {
       s.attempts = 1;
       s.outcome = result(s);
     }
@@ -124,7 +129,7 @@ export const aboutArea: MockArea<AboutState> = {
       return true;
     }
     if (event.type !== 'check_for_updates') return false;
-    if (s.mobile || s.policy?.update_check === false || s.running) return true;
+    if (s.policy?.update_check === false || s.running) return true;
     // der Mock kennt keine Zeit: ein Ergebnis (Erfolg oder Fehler) gilt als frisch
     if (!event.explicit && (!autoEnabled(s, ctx) || s.outcome !== null)) return true;
     s.explicit = event.explicit;

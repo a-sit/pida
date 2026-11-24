@@ -703,7 +703,7 @@ fn about_samples() -> Vec<(&'static str, ViewState)> {
         v.about = Some(about(Some(update_view(state))));
         out.push((name, v));
     }
-    // iOS/Android: keine Update-Prüfung (keine Verteilung über GitHub)
+    // Kern ohne Update-Prüfung (`update = None`, z. B. ohne Netz-Zugang) – hier als Mobile-Probe
     let mut mobile = view(StepView::Open { queue: vec![] }, bar(["AE", "", "", ""], true));
     mobile.platform = PlatformView { os: PlatformOs::Ios, mobile: true };
     mobile.signers = mobile_signers();

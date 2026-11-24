@@ -75,8 +75,8 @@ Republic of Austria or of A-Trust GmbH.
   made once you explicitly start signing.
 - **Smart card and keystore:** signing happens on your own device; the document is not uploaded.
 - Settings, “Recently signed” and logs stay on the device. Logs contain no passwords, TANs or document contents.
-- **Update check (desktop):** at most once a day, PIDA asks GitHub for the latest version; this can be switched off
-  under Settings › Advanced.
+- **Update check:** at most once a day, PIDA asks GitHub for the latest version; this can be switched off
+  under Settings › Advanced. On iOS and Android, PIDA reports a new version once it is available in the store.
 - **Browser version:** documents and settings are not stored and are gone once you close the page. For ID Austria,
   PIDA shows the real A-Trust page in a window above the app; you enter your credentials directly at A-Trust. The
   document passes through the PIDA server – in memory only.

@@ -156,8 +156,9 @@ A-Trust-Verbindung.
 ## 7. Oberfläche
 
 - `ViewState.platform.mobile` (`isMobile`) schaltet: Durchsuchen über `mobile_pick_files`; Ergebnis mit
-  „Teilen“/„Sichern unter …“ statt „Im Ordner anzeigen“; Einstellungen ohne Ausgabeordner, Proxy,
-  Update-Prüfung und Log-Ordner; Signiermittel nur ID Austria (bis 16.10.2026 Keystore-Tab mit Import-Assistent
+  „Teilen“/„Sichern unter …“ statt „Im Ordner anzeigen“; Einstellungen ohne Ausgabeordner, Proxy
+  und Log-Ordner (die Update-Prüfung gibt es seit ADR 0004 Nachtrag 31 auch mobil: Hinweis auf eine neue Version
+  im Store); Signiermittel nur ID Austria (bis 16.10.2026 Keystore-Tab mit Import-Assistent
   `features/settings/KeystoreImport.tsx` – entfernt, §12); „Signatur fortsetzen“-Dialog (`app/ResumeDialog.tsx`,
   Verwerfen nur ausdrücklich); FIDO2 ausgegraut mit Hinweis.
 - Positionieren per Touch: außerhalb des Blocks angetippt steht der Block mittig **über** dem Finger
@@ -193,8 +194,8 @@ A-Trust-Verbindung.
   axe), Screenshots `docs/integration/screenshots/stage2/mobil-*.png`; 360 px ohne waagrechtes Scrollen. Offen
   [H]: Simulator/Emulator (App-Wechsel je Bestätigung, App-Kill im Lauf).
 - **Seit E3 (ADR 0004 §3.10/§3.11, Nachtrag 5):** Einstellungen als Vollbild mit waagrechter Bereichsleiste und
-  Suche, sofort wirksam; ohne Proxy, Ausgabeordner, Update-Prüfung, Protokolle, Chipkarte und Bildmarken-Zeile
-  (der Kern lehnt `proxy.*`, `output.folder`, `general.update_check`, seit §12 `keystore.*` und Keystore bzw.
+  Suche, sofort wirksam; ohne Proxy, Ausgabeordner, Protokolle, Chipkarte und Bildmarken-Zeile
+  (der Kern lehnt `proxy.*`, `output.folder`, seit §12 `keystore.*` und Keystore bzw.
   Chipkarte als Standard auf Mobilgeräten mit `ng-settings-unavailable-mobile` ab); Keystore bis 16.10.2026 nur
   über den PKCS#12-Import-Assistenten, seit §12 gar nicht; Bereich
   „Dokument“ (PDF/A, Platzhaltersuche) wie am Desktop, Hinweise im ausgeklappten Bottom-Sheet; „Zuletzt

@@ -32,9 +32,9 @@ describe('Bereiche und Zeilen', () => {
     }
   });
 
-  it('Mobile ohne Proxy, Updates, Protokolle, Chipkarte, Keystore, Standardwahl und Bildmarke; Profilzeilen je Profil', () => {
+  it('Mobile ohne Proxy, Protokolle, Chipkarte, Keystore, Standardwahl und Bildmarke; Profilzeilen je Profil', () => {
     const mobile = ids(visibleRows({ mobile: true, profile: 'SIGNATURBLOCK_SMALL' }));
-    const desktopOnly = ['advanced.proxy', 'advanced.updates', 'advanced.migration', 'signers.card', 'signers.keystore', 'signers.default', 'signature.emblem'];
+    const desktopOnly = ['advanced.proxy', 'advanced.migration', 'signers.card', 'signers.keystore', 'signers.default', 'signature.emblem'];
     for (const id of desktopOnly) expect(mobile).not.toContain(id);
     for (const id of desktopOnly) expect(ids(desktop)).toContain(id);
     // Mobile nur ID Austria (ADR 0004 Nachtrag 11): Konto und FIDO2-Hinweis bleiben

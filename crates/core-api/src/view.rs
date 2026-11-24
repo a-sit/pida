@@ -567,8 +567,8 @@ pub struct ViewState {
     #[serde(default)]
     #[cfg_attr(feature = "ts", ts(optional = nullable))]
     pub about: Option<AboutView>,
-    /// Startseite: Hinweis „PIDA x.y.z ist verfügbar“ mit Link auf die Release-Seite (Backlog Nr. 33). Nur am Desktop,
-    /// wenn eine neue Version bekannt ist (auch aus dem Zwischenspeicher), die automatische Prüfung an ist und der
+    /// Startseite: Hinweis „PIDA x.y.z ist verfügbar“ mit Link auf die Release-Seite, auf iOS/Android in den Store
+    /// (Backlog Nr. 33, Nachtrag 31). Nur, wenn eine neue Version bekannt ist (auch aus dem Zwischenspeicher), die automatische Prüfung an ist und der
     /// Hinweis für diese Version nicht ausgeblendet wurde (`dismiss_update_hint`). Additiv, in TypeScript optional.
     #[serde(default)]
     #[cfg_attr(feature = "ts", ts(optional = nullable))]
@@ -2274,18 +2274,18 @@ pub struct AboutView {
     pub release_notes_url: String,
     /// Quellcode (Repository)
     pub source_url: String,
-    /// Update-Prüfung; `None` = keine (iOS/Android: dort keine Verteilung über GitHub; ohne Oberfläche bzw. ohne
-    /// Netz-Zugang des Kerns)
+    /// Update-Prüfung; `None` = keine (ohne Oberfläche bzw. ohne Netz-Zugang des Kerns). Auf iOS/Android zählen nur
+    /// Versionen, die für den Store freigegeben sind (Nachtrag 31)
     pub update: Option<UpdateCheckView>,
 }
 
-/// Hinweis auf der Startseite ([`ViewState::update_hint`]): neue Version und ihre Release-Seite.
+/// Hinweis auf der Startseite ([`ViewState::update_hint`]): neue Version und wo es sie gibt.
 #[cfg_attr(feature = "ts", derive(ts_rs::TS))]
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct UpdateHintView {
     /// die neue Version (`0.2.4`)
     pub version: String,
-    /// Release-Seite der neuen Version
+    /// Release-Seite der neuen Version; auf iOS/Android die Seite der App im Store (Play Store bzw. TestFlight)
     pub release_url: String,
 }
 
@@ -2318,7 +2318,7 @@ pub struct UpdateCheckView {
     pub state: UpdateCheckState,
     /// `available`: die neue Version; `up_to_date`: die neueste in Frage kommende (`None` = keine); sonst `None`
     pub latest_version: Option<String>,
-    /// Release-Seite der neuen Version (nur `available`)
+    /// Release-Seite der neuen Version, auf iOS/Android die Seite der App im Store (nur `available`)
     pub release_url: Option<String>,
     /// letzte erfolgreiche Prüfung (RFC 3339 mit Offset), auch aus dem Zwischenspeicher; `None` = noch nie
     pub checked_at: Option<String>,

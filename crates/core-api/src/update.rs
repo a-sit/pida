@@ -18,7 +18,13 @@
 //!   Ist eine neue Version bekannt (auch aus dem Zwischenspeicher), zeigt die Startseite den Hinweis
 //!   [`crate::view::ViewState::update_hint`] (kein Dialog, keine Meldung) – nur mit eingeschalteter automatischer
 //!   Prüfung und bis er für diese Version ausgeblendet ist (`dismiss_update_hint`, im Zwischenspeicher gemerkt).
-//!   Auf iOS/Android (keine Verteilung über GitHub) und ohne Oberfläche (CLI) prüft der Kern nie.
+//!   Ohne Oberfläche (CLI) prüft der Kern nie.
+//! - **iOS/Android** (Nachtrag 31): dieselbe Abfrage, aber es zählen nur Releases, die für den Store der Plattform
+//!   **freigegeben** sind – erkennbar an einer Markierungsdatei unter den Dateien des Release
+//!   ([`STORE_MARK_ANDROID`], [`STORE_MARK_IOS`]; gesetzt mit `tools/store-freigabe.sh`, sobald die Version im
+//!   Store wirklich zu haben ist). Ohne Markierung gibt es keinen Hinweis: Niemand wird in einen Store geschickt,
+//!   der die Version noch nicht führt. Der Link des Hinweises führt in den Store ([`PLAY_STORE_URL`],
+//!   [`TESTFLIGHT_URL`]) statt auf die Release-Seite; aktualisiert wird dort, nicht in der App.
 //! - **Fehler** (offline, Zeitüberschreitung, Proxy, TLS, Rate-Limit – 429 bzw. 403 mit `x-ratelimit-remaining: 0`
 //!   oder `retry-after` –, sonstiges 403 als Sperre, Serverfehler, ungültige Antwort) →
 //!   Zustand `failed` mit Grund `ng-update-failed-*`; „auf dem neuesten Stand“ nur nach einer erfolgreichen Prüfung.
@@ -34,6 +40,8 @@ pub use pida_net::{NetConfig, NetError, ProxyConfig, Request, Response, Url};
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
+use pida_backend_api::Platform;
+
 use crate::runtime::{CoreTask, Msg};
 use crate::view::{AboutView, UpdateCheckState, UpdateCheckView, UpdateHintView};
 
@@ -41,6 +49,16 @@ use crate::view::{AboutView, UpdateCheckState, UpdateCheckView, UpdateHintView};
 pub const REPOSITORY_URL: &str = "https://github.com/a-sit/pida";
 /// Liste der Releases (GitHub REST API, öffentlich).
 pub const RELEASES_API: &str = "https://api.github.com/repos/a-sit/pida/releases";
+/// Android: Seite der App im Play Store (das System öffnet sie in der Play-Store-App).
+pub const PLAY_STORE_URL: &str = "https://play.google.com/store/apps/details?id=at.asit.pida.app";
+/// iOS: Seite der App in TestFlight (App 6828122194). Mit der Veröffentlichung im App Store kommt hier die
+/// App-Store-Seite dazu.
+pub const TESTFLIGHT_URL: &str = "https://testflight.apple.com/v1/app/6828122194";
+/// Markierungsdatei eines Release: „im Play Store verfügbar“ – eine Datei, deren Name so endet
+/// (`PIDA_<Version>_store-android.txt`).
+pub const STORE_MARK_ANDROID: &str = "_store-android.txt";
+/// Markierungsdatei eines Release: „in TestFlight bzw. im App Store verfügbar“ (`PIDA_<Version>_store-ios.txt`).
+pub const STORE_MARK_IOS: &str = "_store-ios.txt";
 /// Versionsdatum des gebauten Stands (`JJJJ-MM-TT`, `build.rs`: `SOURCE_DATE_EPOCH`, sonst Commit-Datum, sonst
 /// Datum des Bauens).
 pub const RELEASE_DATE: &str = env!("PIDA_RELEASE_DATE");
@@ -225,6 +243,35 @@ pub struct Release {
     pub version: Version,
     /// als Pre-Release veröffentlicht (Kennzeichen auf GitHub)
     pub prerelease: bool,
+    /// für die Stores freigegeben (Markierungsdateien des Release)
+    pub stores: Stores,
+}
+
+/// Freigaben eines Release für die Stores ([`STORE_MARK_ANDROID`], [`STORE_MARK_IOS`]).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Stores {
+    /// im Play Store verfügbar
+    #[serde(default)]
+    pub android: bool,
+    /// in TestFlight bzw. im App Store verfügbar
+    #[serde(default)]
+    pub ios: bool,
+}
+
+impl Stores {
+    fn is_empty(&self) -> bool {
+        !self.android && !self.ios
+    }
+
+    /// Aus den Dateinamen eines Release (`assets[].name`).
+    fn from_asset_names<'a>(names: impl Iterator<Item = &'a str>) -> Stores {
+        let mut stores = Stores::default();
+        for name in names {
+            stores.android |= name.ends_with(STORE_MARK_ANDROID);
+            stores.ios |= name.ends_with(STORE_MARK_IOS);
+        }
+        stores
+    }
 }
 
 impl Release {
@@ -245,7 +292,8 @@ pub fn version_from_tag(tag: &str) -> Option<Version> {
 }
 
 /// Antwort der GitHub-API (`GET /repos/{owner}/{repo}/releases`): Entwürfe und Tags ohne `v<semver>` fallen weg,
-/// unbekannte Felder werden ignoriert. Keine Liste → [`MSG_FAILED_INVALID`].
+/// unbekannte Felder werden ignoriert; aus den Dateinamen (`assets[].name`) kommen die Store-Freigaben
+/// ([`Stores`]). Keine Liste → [`MSG_FAILED_INVALID`].
 pub fn parse_releases(body: &[u8]) -> Result<Vec<Release>, &'static str> {
     let list: Vec<serde_json::Value> = serde_json::from_slice(body).map_err(|_| MSG_FAILED_INVALID)?;
     Ok(list
@@ -254,7 +302,9 @@ pub fn parse_releases(body: &[u8]) -> Result<Vec<Release>, &'static str> {
         .filter_map(|r| {
             let version = version_from_tag(r.get("tag_name")?.as_str()?)?;
             let prerelease = r.get("prerelease").and_then(serde_json::Value::as_bool).unwrap_or(false);
-            Some(Release { version, prerelease })
+            let assets = r.get("assets").and_then(serde_json::Value::as_array);
+            let names = assets.into_iter().flatten().filter_map(|a| a.get("name")?.as_str());
+            Some(Release { version, prerelease, stores: Stores::from_asset_names(names) })
         })
         .collect())
 }
@@ -408,6 +458,9 @@ struct CachedRelease {
     tag: String,
     #[serde(default)]
     prerelease: bool,
+    /// Store-Freigaben (iOS/Android)
+    #[serde(default, skip_serializing_if = "Stores::is_empty")]
+    stores: Stores,
 }
 
 /// Inhalt von [`CACHE_FILE`]: letzte erfolgreiche Prüfung samt Versionen und letzter Versuch – keine Kennungen.
@@ -526,7 +579,9 @@ impl UpdateState {
             releases: cache
                 .releases
                 .iter()
-                .filter_map(|r| Some(Release { version: version_from_tag(&r.tag)?, prerelease: r.prerelease }))
+                .filter_map(|r| {
+                    Some(Release { version: version_from_tag(&r.tag)?, prerelease: r.prerelease, stores: r.stores })
+                })
                 .collect(),
             at,
         });
@@ -564,12 +619,32 @@ impl UpdateState {
 }
 
 impl CoreTask {
-    /// Prüft der Kern hier überhaupt? Nur am Desktop mit Oberfläche, mit Transport und SemVer-Version.
+    /// Prüft der Kern hier überhaupt? Nur mit Oberfläche (Desktop, iOS, Android), mit Transport und SemVer-Version.
     pub(crate) fn updates_supported(&self) -> bool {
-        self.mobile.platform.is_desktop()
-            && !self.headless
-            && self.updates.transport.is_some()
-            && self.updates.current.is_some()
+        !self.headless && self.updates.transport.is_some() && self.updates.current.is_some()
+    }
+
+    /// Releases, die hier in Frage kommen: am Desktop alle, auf iOS/Android nur die für den Store freigegebenen.
+    fn obtainable(&self, releases: &[Release]) -> Vec<Release> {
+        let platform = self.mobile.platform;
+        releases
+            .iter()
+            .filter(|r| match platform {
+                Platform::Android => r.stores.android,
+                Platform::Ios => r.stores.ios,
+                Platform::Windows | Platform::MacOs | Platform::Linux => true,
+            })
+            .cloned()
+            .collect()
+    }
+
+    /// Wohin der Hinweis führt: am Desktop auf die Release-Seite, auf iOS/Android in den Store.
+    fn update_url(&self, version: &str) -> String {
+        match self.mobile.platform {
+            Platform::Android => PLAY_STORE_URL.to_owned(),
+            Platform::Ios => TESTFLIGHT_URL.to_owned(),
+            Platform::Windows | Platform::MacOs | Platform::Linux => release_page(&format!("v{version}")),
+        }
     }
 
     /// Richtlinie `update_check = false`: nie prüfen, auch nicht auf Klick.
@@ -648,10 +723,12 @@ impl CoreTask {
                 releases.sort_by(|a, b| b.version.cmp_precedence(&a.version));
                 releases.truncate(MAX_CACHED_RELEASES);
                 self.updates.cache.checked_at = Some(stamp);
-                self.updates.cache.releases =
-                    releases.iter().map(|r| CachedRelease { tag: r.tag(), prerelease: r.prerelease }).collect();
+                self.updates.cache.releases = releases
+                    .iter()
+                    .map(|r| CachedRelease { tag: r.tag(), prerelease: r.prerelease, stores: r.stores })
+                    .collect();
                 self.updates.last_success = Some(now);
-                let evaluation = self.updates.current.as_ref().map(|c| evaluate(c, &releases));
+                let evaluation = self.updates.current.as_ref().map(|c| evaluate(c, &self.obtainable(&releases)));
                 match &evaluation {
                     Some(Evaluation::Available { latest }) => {
                         tracing::info!(latest = %latest, "Update-Prüfung: neue Version verfügbar");
@@ -705,7 +782,7 @@ impl CoreTask {
         if self.updates.cache.dismissed_version.as_deref() == Some(latest.as_str()) {
             return None;
         }
-        Some(UpdateHintView { release_url: release_page(&format!("v{latest}")), version: latest })
+        Some(UpdateHintView { release_url: self.update_url(&latest), version: latest })
     }
 
     /// `UiEvent::DismissUpdateHint`: den Hinweis für die angezeigte Version ausblenden (eine neuere erscheint wieder).
@@ -725,9 +802,11 @@ impl CoreTask {
             .cache
             .releases
             .iter()
-            .filter_map(|r| Some(Release { version: version_from_tag(&r.tag)?, prerelease: r.prerelease }))
+            .filter_map(|r| {
+                Some(Release { version: version_from_tag(&r.tag)?, prerelease: r.prerelease, stores: r.stores })
+            })
             .collect();
-        match evaluate(current, &releases) {
+        match evaluate(current, &self.obtainable(&releases)) {
             Evaluation::Available { latest } => Some(latest.to_string()),
             Evaluation::UpToDate { .. } => None,
         }
@@ -762,10 +841,10 @@ impl CoreTask {
             Some(Outcome::Failed { reason, .. }) => {
                 UpdateCheckView { reason: Some((*reason).to_owned()), ..view(UpdateCheckState::Failed) }
             }
-            Some(Outcome::Checked { releases, .. }) => match evaluate(current, releases) {
+            Some(Outcome::Checked { releases, .. }) => match evaluate(current, &self.obtainable(releases)) {
                 Evaluation::Available { latest } => UpdateCheckView {
                     latest_version: Some(latest.to_string()),
-                    release_url: Some(release_page(&format!("v{latest}"))),
+                    release_url: Some(self.update_url(&latest.to_string())),
                     ..view(UpdateCheckState::Available)
                 },
                 Evaluation::UpToDate { latest } => UpdateCheckView {
@@ -786,7 +865,7 @@ mod tests {
     }
 
     fn rel(tag: &str, prerelease: bool) -> Release {
-        Release { version: version_from_tag(tag).unwrap(), prerelease }
+        Release { version: version_from_tag(tag).unwrap(), prerelease, stores: Stores::default() }
     }
 
     #[test]
@@ -982,7 +1061,7 @@ mod tests {
         let cache = CacheFile {
             checked_at: Some("2026-10-17T10:00:00+02:00".into()),
             attempted_at: Some("2026-10-17T10:00:00+02:00".into()),
-            releases: vec![CachedRelease { tag: "v0.2.0".into(), prerelease: true }],
+            releases: vec![CachedRelease { tag: "v0.2.0".into(), prerelease: true, stores: Stores::default() }],
             dismissed_version: None,
         };
         save_cache(&path, &cache);

@@ -247,9 +247,10 @@ Entfernen: `apt remove pida-web` bzw. `dnf remove pida-web` bzw. `/opt/pida-web/
   Zugangsdaten für ID Austria geben Sie direkt auf der A-Trust-Seite ein; der Server sieht sie nie.
 - Einstellungen, die abschaltbare Liste „Zuletzt signiert“ und Protokolle bleiben auf dem Gerät. Protokolle
   enthalten keine Passwörter, TANs oder Dokumentinhalte.
-- **Update-Prüfung (Desktop):** PIDA fragt höchstens einmal am Tag beim Start und beim Öffnen von „Über PIDA“
+- **Update-Prüfung:** PIDA fragt höchstens einmal am Tag beim Start und beim Öffnen von „Über PIDA“
   bei GitHub (`api.github.com`) nach der neuesten Version. Dabei sieht GitHub die IP-Adresse des Geräts; Kennungen
-  werden nicht übertragen, heruntergeladen wird nichts. Abschaltbar unter Einstellungen › Erweitert
+  werden nicht übertragen, heruntergeladen wird nichts. Auf iOS und Android meldet PIDA eine neue Version, sobald
+  sie im Store bereitsteht, und verweist dorthin. Abschaltbar unter Einstellungen › Erweitert
   („Automatisch nach Updates suchen“) bzw. per Richtlinie `update_check = false`.
 
 ## Signaturen prüfen
@@ -405,7 +406,7 @@ Signatures follow the **PDF-AS method**, just like PDF-Over. Licensed under the 
   Security › “Open Anyway”). Android: allow
   “Install unknown apps” for your browser or file manager.
 - **Privacy:** with ID Austria the document is sent to A-Trust for signing; with a smart card or keystore it
-  never leaves your device. On Android, PIDA signs with ID Austria only. On the desktop, the update check asks
+  never leaves your device. On Android, PIDA signs with ID Austria only. The update check asks
   GitHub (`api.github.com`) for the latest version at most once a day at startup and when “About PIDA” is
   opened; GitHub sees the device's IP address, no identifiers are sent and nothing is downloaded. Turn it off
   under Settings › Advanced or by policy (`update_check = false`).

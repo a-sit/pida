@@ -3900,3 +3900,34 @@ bestehende Einstellungen werden nicht umgestellt.
   mit dem Knopf zu Einstellungen › Dokument darunter bleibt.
 
 Tests: `features/accessibility/accessibility.test.tsx`, Vertrags-Fixtures (`real-core-views.json` enthält beide Werte).
+
+### Nachtrag 31 (24.11.2026): Hinweis auf eine neue Version auch auf iOS/Android; ↵ signiert im Arbeitsbereich
+
+Anlass: Vor dem offenen Test der Mobil-Apps sollen Nutzerinnen und Nutzer beim Start erfahren, dass es im Store
+eine neue Version gibt. Dazu zwei kleine Wünsche des Auftraggebers: ↵ im Arbeitsbereich soll wie der Knopf
+„Signieren“ wirken, und die Kontaktadresse lautet künftig `pida@a-sit.at`.
+
+- **Quelle bleibt GitHub** (wie Nachtrag 21, gleiche Abfrage, gleiche Grenzen, gleicher Schalter). Die
+  In-App-Update-Bibliothek von Google Play scheidet aus (eigene, nicht freie Lizenz – unvereinbar mit der Zusage
+  „Drittkomponenten mit der EUPL vereinbar“); für TestFlight gibt es keine Abfrage.
+- **Nur freigegebene Versionen:** Auf iOS/Android zählt ein Release erst, wenn es die Markierungsdatei des Stores
+  trägt (`PIDA_<Version>_store-android.txt` bzw. `…_store-ios.txt` unter den Dateien des Release; gesetzt mit
+  `tools/store-freigabe.sh android|ios <Version>`, sobald die Version im Store wirklich zu haben ist). Zwischen
+  GitHub-Release und Verfügbarkeit im Store liegen Prüfung und Freigabe – ohne Markierung gibt es keinen Hinweis,
+  niemand wird in einen Store ohne Update geschickt. Am Desktop ändert sich nichts.
+- **Kern:** `update.rs` liest `assets[].name` (`Stores`), merkt die Freigaben im Zwischenspeicher und wertet auf
+  iOS/Android nur freigegebene Releases aus; `release_url` ist dort die Seite der App im Play Store bzw. in
+  TestFlight (`PLAY_STORE_URL`, `TESTFLIGHT_URL`). `general.update_check` ist auch auf Mobilgeräten einstellbar.
+  Der Vertrag bleibt unverändert (nur Kommentare).
+- **Oberfläche:** Hinweis auf der Startseite und Zeile in „Über PIDA“ wie am Desktop, mit „Im Play Store
+  aktualisieren“ bzw. „In TestFlight aktualisieren“; Schalter unter Erweitert und Absatz im Datenschutz auch mobil
+  (`ng-ui-privacy-update-check-mobile`). Kein Dialog, nichts blockiert; aktualisiert wird im Store.
+- **Offen:** Mit der Veröffentlichung im App Store braucht iOS zusätzlich die App-Store-Seite (dieselbe Binary
+  läuft dann über TestFlight und App Store).
+- **↵ im Arbeitsbereich:** ↵ ohne Zusatztaste löst „Signieren“ aus, solange kein Dialog offen ist, nicht getippt
+  wird und der Fokus auf keinem eigenen Bedienelement steht (Knopf, Link, Menü … – dort gehört ↵ dem Element).
+  ⌘/Strg+↵ bleibt; die Kürzelübersicht nennt beide.
+- **Kontakt:** `ng-ui-about-license` nennt `pida@a-sit.at` (der aus PDF-Over übernommene Katalog bleibt unverändert).
+
+Tests: `crates/core-api/tests/about.rs` (`mobile_announces_only_versions_released_to_the_store`),
+`features/start/start.test.tsx`, `features/settings/about.test.tsx`, `features/workspace/workspace.test.tsx`.
