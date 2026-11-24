@@ -296,6 +296,15 @@ auf PIDA auf.
    (`npm run tauri android build -- --aab`, signiert mit `PIDA_ANDROID_KEYSTORE_PROPERTIES`); dieser Schlüssel ist bei
    Play nur der **Upload-Schlüssel**, Google signiert die ausgelieferten APKs mit dem Schlüssel der Play-App-Signatur.
    Jeder Upload braucht einen höheren `versionCode` (aus der Version, 0.5.3 → 5003). Erste Verteilung: interner Test.
+   **Beides in einem Schritt:** `tools/build-android-release.sh` (seit 0.9.1) baut die APK (arm64) und das App Bundle
+   (alle ABIs) nach `dist/release-<Version>/`. Das Bundle trägt die **Symboltabelle** des nativen Codes
+   (`BUNDLE-METADATA/com.android.tools.build.debugsymbols/<abi>/*.so.sym`, `ndk.debugSymbolLevel = "SYMBOL_TABLE"`):
+   Die Play Console zeigt Absturzberichte damit mit Funktionsnamen, die Warnung „keine Symbole zum Debuggen“
+   entfällt. Dafür baut das Skript den Kern ungestrippt mit Zeilentabellen (`CARGO_PROFILE_RELEASE_STRIP=none`,
+   `CARGO_PROFILE_RELEASE_DEBUG=line-tables-only`); Gradle strippt die ausgelieferten Bibliotheken mit dem NDK aus
+   `NDK_HOME` (`ndkPath`/`ndkVersion` in `app/build.gradle.kts`). `keepDebugSymbols` gilt seither nur noch für
+   Debug-Varianten – vorher verhinderte es auch im Release das Strippen und die Symboltabelle. Das Skript prüft, dass das Bundle Symboltabellen enthält, die
+   Bibliothek gestrippt ist und nirgends Benutzerpfade stehen.
    Ist die Version für die Tester im Play Store zu haben (nach Googles Prüfung), `tools/store-freigabe.sh android
    <Version>` ausführen: Erst dann melden die installierten Apps die neue Version (ADR 0004 Nachtrag 31).
    Hochladen in den internen Test: `tools/play-upload.py <aab> --notes-de "…" [--notes-en "…"]` (Play Developer API,

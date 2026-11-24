@@ -17,11 +17,18 @@ pub(crate) fn redacted_name(s: &str) -> String {
     format!("<{} Zeichen>", s.chars().count())
 }
 
+/// Ganzzahl aus einer PDF-Kommazahl: nur ganzzahlige Werte im Bereich von `i64`; alles andere (auch ±∞, NaN und
+/// Werte ab 2^63) wird abgelehnt statt gekappt.
+pub(crate) fn real_to_int(r: f32) -> Option<i64> {
+    const LIMIT: f32 = (1u64 << 63) as f32; // 2^63, in f32 exakt darstellbar
+    (r.is_finite() && r.fract() == 0.0 && r.abs() < LIMIT).then_some(r as i64)
+}
+
 /// Ganzzahl (direkt oder über Referenz).
 pub(crate) fn int_of(src: &SourcePdf, o: &Object) -> Option<i64> {
     match src.resolve(o).ok()? {
         Object::Integer(i) => Some(*i),
-        Object::Real(r) if r.is_finite() && r.fract() == 0.0 => Some(*r as i64),
+        Object::Real(r) => real_to_int(*r),
         _ => None,
     }
 }
@@ -86,6 +93,19 @@ pub(crate) fn key_text(k: &[u8]) -> String {
 mod tests {
     use super::*;
     use pida_pdf_cos::{Dictionary, Stream};
+
+    #[test]
+    fn reals_become_integers_only_within_range() {
+        assert_eq!(real_to_int(612.0), Some(612));
+        assert_eq!(real_to_int(-3.0), Some(-3));
+        assert_eq!(real_to_int(0.5), None);
+        // früher gekappt auf i64::MAX bzw. i64::MIN
+        for r in [1e30_f32, -1e30, f32::MAX, f32::MIN, (1u64 << 63) as f32, f32::INFINITY, f32::NEG_INFINITY, f32::NAN]
+        {
+            assert_eq!(real_to_int(r), None, "{r}");
+        }
+        assert_eq!(real_to_int((1u64 << 62) as f32), Some(1 << 62));
+    }
 
     #[test]
     fn semantic_equality() {

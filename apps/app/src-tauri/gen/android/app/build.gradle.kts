@@ -66,6 +66,12 @@ val releaseSigning: Properties? = System.getenv("PIDA_ANDROID_KEYSTORE_PROPERTIE
 android {
     // compileSdk 36: die Tauri-API-Bibliothek (.tauri/tauri-api) verlangt 36.
     compileSdk = 36
+    // Das NDK der Umgebung (tools/env.sh) auch für Gradle: Es strippt die Bibliotheken und zieht die Symboltabelle.
+    // Der Ordnername ist die Version (…/ndk/29.0.14206865); ohne passende `ndkVersion` verwirft Gradle den Pfad.
+    System.getenv("NDK_HOME")?.takeIf { it.isNotBlank() && file(it).isDirectory }?.let {
+        ndkPath = it
+        ndkVersion = file(it).name
+    }
     namespace = "at.asit.pida.app"
     defaultConfig {
         manifestPlaceholders["usesCleartextTraffic"] = "false"
@@ -75,10 +81,10 @@ android {
         minSdk = 28
         // Google Play verlangt für neue Apps und Updates API 36 (Android 16)
         targetSdk = 36
-        // tauri.properties (von der CLI aus `version` in tauri.conf.json erzeugt): 0.9.0 → versionCode
-        // 0 · 1000000 + 9 · 1000 + 0 = 9000; die Rückfallwerte entsprechen dem, falls die Datei fehlt
-        versionCode = tauriProperties.getProperty("tauri.android.versionCode", "9000").toInt()
-        versionName = tauriProperties.getProperty("tauri.android.versionName", "0.9.0")
+        // tauri.properties (von der CLI aus `version` in tauri.conf.json erzeugt): 0.9.1 → versionCode
+        // 0 · 1000000 + 9 · 1000 + 1 = 9001; die Rückfallwerte entsprechen dem, falls die Datei fehlt
+        versionCode = tauriProperties.getProperty("tauri.android.versionCode", "9001").toInt()
+        versionName = tauriProperties.getProperty("tauri.android.versionName", "0.9.1")
     }
     sourceSets {
         getByName("main") {
@@ -102,16 +108,16 @@ android {
             isDebuggable = true
             isJniDebuggable = true
             isMinifyEnabled = false
-            packaging {
-                jniLibs.keepDebugSymbols.add("*/arm64-v8a/*.so")
-                jniLibs.keepDebugSymbols.add("*/armeabi-v7a/*.so")
-                jniLibs.keepDebugSymbols.add("*/x86/*.so")
-                jniLibs.keepDebugSymbols.add("*/x86_64/*.so")
-            }
         }
         getByName("release") {
             if (releaseSigning != null) {
                 signingConfig = signingConfigs.getByName("release")
+            }
+            // Symboltabelle des nativen Codes ins App Bundle (BUNDLE-METADATA/…/debugsymbols): Google Play zeigt
+            // damit Absturzberichte mit Funktionsnamen. Die ausgelieferten Bibliotheken bleiben gestrippt. Wirkt nur,
+            // wenn der Kern ungestrippt mit Debug-Abschnitten gebaut wurde (tools/build-android-release.sh).
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
             }
             optimization {
                enable = true
@@ -130,6 +136,17 @@ android {
     }
     buildFeatures {
         buildConfig = true
+    }
+}
+
+// Debug-Builds behalten die Symbole der nativen Bibliotheken (Debugger). Nur für Debug-Varianten: `packaging` im
+// Block des Build-Typs gilt für alle Varianten – damit blieb bis 0.9.0 auch das Release ungestrippt durch Gradle
+// (der Kern kam schon gestrippt aus Cargo), und Gradle zog keine Symboltabelle.
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.packaging.jniLibs.keepDebugSymbols.addAll(
+            "*/arm64-v8a/*.so", "*/armeabi-v7a/*.so", "*/x86/*.so", "*/x86_64/*.so"
+        )
     }
 }
 

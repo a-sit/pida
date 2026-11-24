@@ -435,7 +435,7 @@ fn check_changed(
                     return Err(violation("/Kids der Seitenbaum-Wurzel nicht nur verlängert"));
                 }
                 let before = int_value(src, o, b"Count").unwrap_or(src.page_count() as i64);
-                if int_value(src, n, b"Count") != Some(before + 1) {
+                if before.checked_add(1).is_none_or(|expected| int_value(src, n, b"Count") != Some(expected)) {
                     return Err(violation("/Count der Seitenbaum-Wurzel unerwartet"));
                 }
                 return Ok(());
