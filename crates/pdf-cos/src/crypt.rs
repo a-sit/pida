@@ -29,6 +29,11 @@ pub(crate) fn permissions_from(p: Option<i64>) -> Permissions {
     }
 }
 
+/// Schlüssellänge unbekannter Verfahren für die Anzeige: Werte außerhalb von `u16` gelten als unbekannt (0).
+fn length_bits(length: i64) -> u16 {
+    u16::try_from(length).unwrap_or(0)
+}
+
 /// Verfahren und Schlüssellänge eines Crypt-Filters (V4/V5).
 fn crypt_filter_algorithm(encrypt: &Dictionary, filter_name: Option<&[u8]>, v: i64) -> (CryptAlgorithm, u16) {
     let fname = filter_name.unwrap_or(b"Identity");
@@ -37,13 +42,16 @@ fn crypt_filter_algorithm(encrypt: &Dictionary, filter_name: Option<&[u8]>, v: i
     }
     let cf = encrypt.get(b"CF").ok().and_then(|o| o.as_dict().ok()).and_then(|cf| cf.get(fname).ok()?.as_dict().ok());
     let cfm = cf.and_then(|d| name(d, b"CFM")).unwrap_or(b"None");
-    let length = cf.and_then(|d| int(d, b"Length")).map(|l| if l <= 32 { l * 8 } else { l });
+    // `/Length` eines Crypt-Filters steht in Bytes (5–32) oder – bei manchen Erzeugern – in Bit
+    let length = cf.and_then(|d| int(d, b"Length")).map(|l| if (0..=32).contains(&l) { l * 8 } else { l });
     match cfm {
         b"V2" => (CryptAlgorithm::Rc4_128, length.unwrap_or(128).clamp(40, 128) as u16),
         b"AESV2" => (CryptAlgorithm::Aes128, 128),
         b"AESV3" => (CryptAlgorithm::Aes256, 256),
         b"None" if v >= 4 => (CryptAlgorithm::Identity, 0),
-        other => (CryptAlgorithm::Unknown(String::from_utf8_lossy(other).into_owned()), length.unwrap_or(0) as u16),
+        other => {
+            (CryptAlgorithm::Unknown(String::from_utf8_lossy(other).into_owned()), length_bits(length.unwrap_or(0)))
+        }
     }
 }
 
@@ -67,7 +75,7 @@ pub(crate) fn encryption_info(encrypt: &Dictionary, encrypt_dict_id: Option<Obje
             let stm = name(encrypt, b"StmF");
             crypt_filter_algorithm(encrypt, stm, v)
         }
-        other => (CryptAlgorithm::Unknown(format!("V{other}")), int(encrypt, b"Length").unwrap_or(0) as u16),
+        other => (CryptAlgorithm::Unknown(format!("V{other}")), length_bits(int(encrypt, b"Length").unwrap_or(0))),
     };
     let length_bits = if v == 5 && length_bits == 0 { 256 } else { length_bits };
     EncryptionInfo {
@@ -353,6 +361,24 @@ mod tests {
             d.set(k.as_bytes().to_vec(), v.clone());
         }
         d
+    }
+
+    /// `/Length` außerhalb jedes sinnvollen Bereichs: kein Überlauf, keine abgeschnittenen Werte (Argus R-04).
+    #[test]
+    fn absurd_key_lengths_do_not_overflow() {
+        for (length, bits) in [(i64::MIN, 0), (-1, 0), (i64::MAX, 0), (70_000, 0), (16, 128), (200, 200)] {
+            let cf = dict(&[("CFM", Object::Name(b"Eigenbau".to_vec())), ("Length", Object::Integer(length))]);
+            let filters = dict(&[("StdCF", Object::Dictionary(cf))]);
+            let encrypt = dict(&[("CF", Object::Dictionary(filters))]);
+            let (alg, got) = crypt_filter_algorithm(&encrypt, Some(b"StdCF"), 4);
+            assert_eq!((alg, got), (CryptAlgorithm::Unknown("Eigenbau".into()), bits), "{length}");
+        }
+        let v9 = dict(&[
+            ("Filter", Object::Name(b"Standard".to_vec())),
+            ("V", Object::Integer(9)),
+            ("Length", Object::Integer(i64::MIN)),
+        ]);
+        assert_eq!(length_bits(int(&v9, b"Length").unwrap()), 0);
     }
 
     #[test]

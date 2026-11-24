@@ -588,3 +588,26 @@ fn stale_parent_tree_next_key_does_not_collide() {
     assert!(after.windows(2).all(|w| w[0] < w[1]), "nicht sortiert/eindeutig: {after:?}");
     assert_eq!(out.resolve(st.get(b"ParentTreeNextKey").unwrap()).unwrap().as_i64().unwrap(), key + 1);
 }
+
+/// `/ParentTreeNextKey` mit dem größtmöglichen Wert: Der nächste Schlüssel wäre nicht darstellbar. Die
+/// PDF/UA-Ergänzung entfällt dann mit Hinweis (wie bei anderen unbrauchbaren Strukturbäumen), statt überzulaufen
+/// und einen unsinnigen Schlüssel ins signierte Dokument zu schreiben (Argus R-03).
+#[test]
+fn parent_tree_next_key_at_the_limit_skips_the_pdfua_addition() {
+    let base = open(&testdata().join("pdf/pdfas/pdf-as-cli/rotate_180.pdf"));
+    let st_id = match base.catalog().unwrap().get(b"StructTreeRoot").unwrap() {
+        Object::Reference(id) => *id,
+        other => panic!("StructTreeRoot direkt: {other:?}"),
+    };
+    let doc = derive(&base, |b, _| {
+        let mut st = base.get_object(st_id).unwrap().as_dict().unwrap().clone();
+        st.set("ParentTreeNextKey", Object::Integer(i64::MAX));
+        b.update_object(st_id, Object::Dictionary(st)).unwrap();
+    });
+    let report = analyze(&doc).unwrap();
+    let signer = KeystoreSigner::open("test-ecp256");
+    let opts = pida_pades::PlanOptions::new(pida_pades::local_signing_time());
+    let planned = plan_for(&doc, &report, "SIGNATURBLOCK_SMALL_DE", &signer.chain.signer, &opts, None).unwrap();
+    let prepared = pida_pades::prepare(&doc, &planned.plan, Some(&signer.chain)).unwrap();
+    assert!(prepared.notices().iter().any(|n| n == pida_pades::NOTICE_PDFUA_SKIPPED), "{:?}", prepared.notices());
+}

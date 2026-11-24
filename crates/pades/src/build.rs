@@ -785,6 +785,9 @@ fn inject_struct(
         Some(k) if k >= 0 => k.max(after_max),
         _ => after_max,
     };
+    // der nächste Schlüssel muss darstellbar sein – sonst entfällt die PDF/UA-Ergänzung (Hinweis des Aufrufers)
+    let next_key =
+        key.checked_add(1).ok_or_else(|| String::from("ParentTreeNextKey zu groß (error.pdf.sig.pdfua.1)"))?;
     // alle Lesezugriffe vor der ID-Vergabe (eine vergebene, nicht gesetzte ID wäre ein Fehler)
     if let Pt::Nums(_, Some(r)) | Pt::Kids(_, Some(r)) = &pt_kind {
         ed.array(*r).map_err(|e| e.to_string())?;
@@ -882,7 +885,7 @@ fn inject_struct(
             }
         }
     }
-    root.set("ParentTreeNextKey", Object::Integer(key + 1));
+    root.set("ParentTreeNextKey", Object::Integer(next_key));
     match st_loc {
         Loc::Indirect(id) => ed.put(id, Object::Dictionary(root)),
         _ => {

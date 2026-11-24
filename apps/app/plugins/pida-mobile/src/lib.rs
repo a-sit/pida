@@ -234,7 +234,8 @@ impl PidaMobile {
                 let r = parse::<FilesResponse>(v)?;
                 let returned = r.files.len();
                 let files = checked(r.files, destination);
-                Ok(Imported { skipped: r.skipped + (returned - files.len()), files })
+                // `skipped` kommt aus der nativen Schicht: nie überlaufen lassen
+                Ok(Imported { skipped: r.skipped.saturating_add(returned.saturating_sub(files.len())), files })
             }
             Err(Error::Cancelled) => Ok(Imported::default()),
             Err(e) => Err(e),
@@ -461,6 +462,12 @@ mod tests {
             f.calls.lock().unwrap()[0].1,
             serde_json::json!({ "kind": "pdf", "multiple": true, "destination": dest })
         );
+        // unsinnig großer Zähler der nativen Seite: kein Überlauf (Argus R-01)
+        let o = outside.clone();
+        let (m, _) = fake(move |_, _| {
+            Ok(serde_json::json!({ "files": [{ "name": "fremd.pdf", "path": o }], "skipped": usize::MAX }))
+        });
+        assert_eq!(m.import_files(ImportKind::Pdf, true, &dest).unwrap().skipped, usize::MAX);
         // ältere native Seite ohne `skipped`
         let p0 = paths[0].clone();
         let (m, _) = fake(move |_, _| Ok(serde_json::json!({ "files": [{ "name": "Vertrag.pdf", "path": p0 }] })));

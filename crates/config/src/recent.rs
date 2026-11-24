@@ -110,7 +110,17 @@ impl RecentStore {
     /// demselben Pfad ersetzt den alten; danach höchstens [`MAX_RECENT`]. Liefert den gespeicherten Eintrag.
     pub fn push(&self, entry: RecentEntry) -> Result<RecentEntry> {
         let mut entries = self.load();
-        let id = entries.iter().map(|e| e.id).max().unwrap_or(0) + 1;
+        // die Kennungen stammen aus der Datei: bei der größtmöglichen neu durchzählen statt überzulaufen
+        let id = match entries.iter().map(|e| e.id).max().unwrap_or(0).checked_add(1) {
+            Some(id) => id,
+            None => {
+                let n = entries.len() as u64;
+                for (i, e) in entries.iter_mut().enumerate() {
+                    e.id = n - i as u64;
+                }
+                n + 1
+            }
+        };
         let entry = RecentEntry { id, ..entry };
         entries.retain(|e| e.path != entry.path);
         entries.insert(0, entry.clone());
@@ -201,6 +211,20 @@ mod tests {
             let mode = pida_fs::metadata(s.file()).unwrap().permissions().mode() & 0o777;
             assert_eq!(mode, 0o600, "nur für die Benutzerin lesbar");
         }
+    }
+
+    /// Kennungen aus der Datei am oberen Rand: neu durchzählen statt überlaufen (Argus R-02).
+    #[test]
+    fn ids_at_the_limit_are_renumbered() {
+        let (tmp, s) = store();
+        let a = RecentEntry { id: u64::MAX, ..entry("a.pdf", tmp.path()) };
+        let b = RecentEntry { id: 7, ..entry("b.pdf", tmp.path()) };
+        s.write(&[a, b]).unwrap();
+        let c = s.push(entry("c.pdf", tmp.path())).unwrap();
+        assert_eq!(c.id, 3);
+        let list = s.load();
+        let got: Vec<(&str, u64)> = list.iter().map(|e| (e.file_name.as_str(), e.id)).collect();
+        assert_eq!(got, [("c.pdf", 3), ("a.pdf", 2), ("b.pdf", 1)], "Reihenfolge bleibt, Kennungen eindeutig");
     }
 
     #[test]
