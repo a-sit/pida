@@ -41,6 +41,12 @@ export function isMobile(view: Pick<ViewState, 'platform'>): boolean {
   return view.platform?.mobile === true;
 }
 
+/** Wo Updates herkommen: auf Android der Play Store, auf iOS TestFlight; am Desktop die Release-Seite (`null`). */
+export function updateStore(view: Pick<ViewState, 'platform'>): 'play' | 'testflight' | null {
+  if (!isMobile(view)) return null;
+  return view.platform?.os === 'android' ? 'play' : 'testflight';
+}
+
 /** Variante einer extern getaggten Enum mit Daten (`{ "Name": … }`) bzw. der Unit-String. */
 export function variantName(value: string | Record<string, unknown>): string {
   if (typeof value === 'string') return value;

@@ -117,7 +117,8 @@ export const ROWS: readonly RowDef[] = [
   { id: 'privacy.certcache', section: 'privacy', label: 'ng-ui-set-certcache' },
   { id: 'privacy.recent', section: 'privacy', label: 'ng-ui-set-recent' },
   { id: 'advanced.proxy', section: 'advanced', label: 'ng-ui-set-proxy', visible: desktop },
-  { id: 'advanced.updates', section: 'advanced', label: 'ng-ui-set-updates', visible: desktop },
+  // auch auf iOS/Android (Nachtrag 31: Hinweis auf eine neue Version im Store)
+  { id: 'advanced.updates', section: 'advanced', label: 'ng-ui-set-updates' },
   // PDF-Over gibt es nur am Desktop (Altkonfiguration `~/.pdf-over`)
   { id: 'advanced.migration', section: 'advanced', label: 'ng-ui-set-migration', visible: desktop },
   { id: 'advanced.reset', section: 'advanced', label: 'ng-ui-set-reset' },

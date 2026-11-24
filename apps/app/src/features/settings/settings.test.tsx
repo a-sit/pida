@@ -615,8 +615,8 @@ describe('Erweitert und Über', () => {
     const { dialog, mock, user } = await open();
     await user.click(nav(dialog, 'Über PIDA'));
     expect(await within(dialog).findByText('Version 0.2.0 · 17.10.2026')).toBeInTheDocument();
-    await user.click(within(dialog).getByRole('link', { name: /software@egiz\.gv\.at/ }));
-    expect(mock.openedUrls).toEqual(['mailto:software@egiz.gv.at']);
+    await user.click(within(dialog).getByRole('link', { name: /pida@a-sit\.at/ }));
+    expect(mock.openedUrls).toEqual(['mailto:pida@a-sit.at']);
     await user.click(within(dialog).getByRole('link', { name: /Logs anzeigen/ }));
     await waitFor(() => expect(mock.nativeCalls).toContain('openLogDir'));
     await user.click(within(dialog).getByRole('link', { name: 'Datenschutz' }));
@@ -638,7 +638,7 @@ describe('Schreibgeschützt (Abnahme E3 Punkt 6)', () => {
 });
 
 describe('Mobile (Abnahme E3 Punkt 7; nur ID Austria, ADR 0004 Nachtrag 11)', () => {
-  it('Vollbild ohne Proxy, Ordner, Update-Prüfung, Protokolle, Chipkarte, Keystore und Bildmarke', async () => {
+  it('Vollbild ohne Proxy, Ordner, Protokolle, Chipkarte, Keystore und Bildmarke', async () => {
     const { user } = renderApp({ view: onMobile(settingsView(defaultSettings(), { fido2_available: false }), IOS) });
     const dialog = await screen.findByRole('dialog', { name: 'Einstellungen' });
     expect(document.documentElement).toHaveAttribute('data-mobile');
@@ -660,11 +660,12 @@ describe('Mobile (Abnahme E3 Punkt 7; nur ID Austria, ADR 0004 Nachtrag 11)', ()
     expect(within(dialog).getByText('Das signierte Dokument liegt in den Dokumenten dieser App.')).toBeInTheDocument();
     await user.click(nav(dialog, 'Erweitert'));
     expect(within(dialog).queryByRole('radiogroup', { name: 'Proxy' })).toBeNull();
-    expect(within(dialog).queryByRole('switch', { name: /Updates/ })).toBeNull();
+    // die Update-Prüfung gibt es auch hier (Nachtrag 31: Hinweis auf eine neue Version im Store)
+    expect(within(dialog).getByRole('switch', { name: /Updates/ })).toBeInTheDocument();
     await user.click(nav(dialog, 'Über PIDA'));
     expect(within(dialog).queryByRole('link', { name: /Logs/ })).toBeNull();
     expect(within(dialog).getByRole('link', { name: 'Lizenzen anzeigen' })).toBeInTheDocument();
-    // keine Update-Prüfung auf iOS/Android (Nachtrag 21)
+    // diese Probe trägt keine Update-Prüfung des Kerns (`about.update`): ohne sie entfällt die Zeile
     expect(within(dialog).queryByRole('group', { name: 'Updates' })).toBeNull();
     // Datenschutz: auf Mobilgeräten nur ID Austria – kein lokales Signieren mit Keystore oder Chipkarte
     await user.click(nav(dialog, 'Datenschutz'));
@@ -672,7 +673,8 @@ describe('Mobile (Abnahme E3 Punkt 7; nur ID Austria, ADR 0004 Nachtrag 11)', ()
     expect(within(dialog).queryByText(/Mit einem Keystore/)).toBeNull();
     expect(within(dialog).getByText(/verarbeitet die für den Signaturvorgang benötigten Daten/)).toBeInTheDocument();
     expect(within(dialog).queryByText(/Chipkarte/)).toBeNull();
-    expect(within(dialog).queryByText(/Update-Prüfung/)).toBeNull();
+    // Update-Prüfung (Nachtrag 31): fragt bei GitHub nach einer neuen Version im Store
+    expect(within(dialog).getByText(/Die Update-Prüfung fragt bei GitHub \(api\.github\.com\) nach, ob eine neue Version im Store bereitsteht/)).toBeInTheDocument();
   });
 
   it('Suche findet keine Keystore-Einträge (Mobile), am Desktop schon', async () => {

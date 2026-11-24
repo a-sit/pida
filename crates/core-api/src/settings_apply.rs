@@ -53,9 +53,10 @@ const SECTIONS: &[&str] = &[
     "accessibility",
 ];
 
-/// Auf Mobilgeräten nicht einstellbar (ADR 0004 E3 Punkt 7: ohne Proxy/Ordner/Updates; Nachtrag 11: ohne
-/// Keystore – signiert wird nur mit ID Austria). Ein Eintrag ohne Punkt sperrt den ganzen Abschnitt.
-const MOBILE_UNAVAILABLE: &[&str] = &["proxy", "output.folder", "general.update_check", "keystore"];
+/// Auf Mobilgeräten nicht einstellbar (ADR 0004 E3 Punkt 7: ohne Proxy/Ordner; Nachtrag 11: ohne
+/// Keystore – signiert wird nur mit ID Austria). Ein Eintrag ohne Punkt sperrt den ganzen Abschnitt. Die
+/// Update-Prüfung ist seit Nachtrag 31 auch dort einstellbar.
+const MOBILE_UNAVAILABLE: &[&str] = &["proxy", "output.folder", "keystore"];
 
 /// Beispieldatei für [`examples`].
 pub(crate) const EXAMPLE_FILE: &str = "Vertrag.pdf";
@@ -458,8 +459,8 @@ mod tests {
         assert_eq!(a.rejected["backend.default"], MSG_POLICY);
         assert!(a.settings.signature.pdfa_force, "Rest übernommen");
         assert!(locked_paths(None).is_empty());
-        // Mobile: Proxy, Ausgabeordner, Updates, Keystore (ganzer Abschnitt, ADR 0004 Nachtrag 11) nicht
-        // einstellbar; als Standard-Signiermittel nur ID Austria bzw. „Jedes Mal fragen“
+        // Mobile: Proxy, Ausgabeordner, Keystore (ganzer Abschnitt, ADR 0004 Nachtrag 11) nicht einstellbar; als
+        // Standard-Signiermittel nur ID Austria bzw. „Jedes Mal fragen“. Die Update-Prüfung schon (Nachtrag 31).
         let a = apply_changes(
             &s,
             &changes(&[
@@ -480,7 +481,6 @@ mod tests {
         for p in [
             "proxy.mode",
             "output.folder",
-            "general.update_check",
             "keystore.file",
             "keystore.enabled",
             "keystore.password_storage",
@@ -489,6 +489,7 @@ mod tests {
         ] {
             assert_eq!(a.rejected[p], MSG_UNAVAILABLE_MOBILE, "{p}");
         }
+        assert!(!a.rejected.contains_key("general.update_check") && !a.settings.general.update_check);
         assert_eq!(a.settings.keystore, s.keystore, "Keystore unverändert");
         assert_eq!(a.settings.backend.default, s.backend.default);
         assert_eq!(a.settings.signature.profile, SignatureProfile::Amtssignaturblock);

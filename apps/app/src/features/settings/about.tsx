@@ -13,7 +13,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-aria-components';
 import { useApp } from '../../app/context';
-import { isMobile, type UpdateCheckView } from '../../core/types';
+import { isMobile, updateStore, type UpdateCheckView } from '../../core/types';
 import { webProfile } from '../../core/web-profile';
 import { Button, Spinner } from '../../ui/controls';
 import { IconAlert, IconCheck, IconExternal, IconInfo, IconLock, IconRefresh } from '../../ui/Icons';
@@ -59,7 +59,7 @@ function statusOf(u: UpdateCheckView, t: ReturnType<typeof useApp>['t']): { tone
  * Fokus (`tabIndex=-1`); den neuen Zustand sagt die Live-Region an, ein Tab weiter liegt ggf. der neue Knopf.
  */
 export function UpdateStatus({ update }: { update: UpdateCheckView }) {
-  const { t, dispatch, bridge, toast } = useApp();
+  const { t, view, dispatch, bridge, toast } = useApp();
   const s = statusOf(update, t);
   const card = useRef<HTMLDivElement>(null);
   const pressed = useRef(false);
@@ -76,6 +76,8 @@ export function UpdateStatus({ update }: { update: UpdateCheckView }) {
     if (active === null || active === document.body) el.focus();
   });
   const url = update.release_url;
+  // iOS/Android: aktualisiert wird im Store (Nachtrag 31)
+  const store = updateStore(view);
   return (
     <div
       ref={card}
@@ -96,10 +98,10 @@ export function UpdateStatus({ update }: { update: UpdateCheckView }) {
       {s.action === 'download' && url ? (
         <Link
           className="link about-update-action"
-          aria-label={t.t('ng-ui-about-update-download-label', { version: update.latest_version ?? '' })}
+          aria-label={t.t(store ? `ng-ui-start-update-${store}-label` : 'ng-ui-about-update-download-label', { version: update.latest_version ?? '' })}
           onPress={() => bridge.openUrl(url).catch(() => toast(t.t('ng-ui-open-failed'), 'error'))}
         >
-          {t.t('ng-ui-about-update-download')}
+          {t.t(store ? `ng-ui-start-update-${store}` : 'ng-ui-about-update-download')}
           <IconExternal size={14} />
         </Link>
       ) : s.action === 'check' || s.action === 'retry' ? (

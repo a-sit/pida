@@ -127,6 +127,13 @@ function isTyping(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
 }
 
+/** Bedienelemente, die ↵ selbst auswerten (Knöpfe, Links, Menüs, Listen, Schalter …). */
+const OWN_ENTER = 'button, a[href], summary, [role="button"], [role="link"], [role="menu"], [role="menuitem"], [role="listbox"], [role="option"], [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], [role="combobox"], [role="slider"], [role="dialog"]';
+function isOwnControl(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  return !!el && typeof el.closest === 'function' && el.closest(OWN_ENTER) !== null;
+}
+
 export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: boolean }) {
   const [view, setView] = useState<ViewState | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -413,6 +420,15 @@ export function App({ bridge, isMac: isMacProp }: { bridge: Bridge; isMac?: bool
       if (mod && !e.altKey && !e.shiftKey && e.key === 'Enter') {
         // ⌘↵ = „Signieren“ bzw. im Stapel „Alle signieren“ (ausdrückliche Aktion, A1)
         if ((v.actions.sign || v.actions.start_batch) && !blocked) {
+          e.preventDefault();
+          sign();
+        }
+        return;
+      }
+      // ↵ allein im Arbeitsbereich (Signatur positionieren): wie der Knopf „Signieren“ – nicht beim Tippen und
+      // nicht, wenn der Fokus auf einem eigenen Bedienelement steht (dort löst ↵ dieses aus)
+      if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && !e.repeat && !e.isComposing && !e.defaultPrevented) {
+        if (mainView(v) === 'workspace' && v.step.step !== 'signing' && v.actions.sign && !blocked && !isTyping(e.target) && !isOwnControl(e.target)) {
           e.preventDefault();
           sign();
         }

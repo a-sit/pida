@@ -103,15 +103,27 @@ describe('Über PIDA: Kopf, Links, Urheberrecht', () => {
     expect(formatReleaseDate('unbekannt', 'de')).toBe('unbekannt');
   });
 
-  it('iOS: keine Update-Zeile (keine Verteilung über GitHub), keine Logs; Links und Urheberrecht bleiben; axe', async () => {
+  it('iOS: Update-Zeile wie am Desktop (Nachtrag 31), keine Logs; Links und Urheberrecht bleiben; axe', async () => {
     const { about, mock } = await openAbout(state('about_ios'));
-    expect(within(about).queryByRole('group', { name: 'Updates' })).toBeNull();
-    expect(within(about).queryByRole('status')).toBeNull();
+    expect(within(within(about).getByRole('group', { name: 'Updates' })).getByRole('status')).toHaveTextContent('PIDA ist auf dem neuesten Stand');
     expect(within(about).queryByRole('link', { name: /Logs/ })).toBeNull();
     expect(within(about).getByRole('link', { name: /Versionshinweise/ })).toBeInTheDocument();
     expect(about.lastElementChild).toHaveTextContent('Urheberrecht © 2026 A-SIT · Lizenz EUPL-1.2');
-    expect(checks(mock.dispatched)).toEqual([]);
+    expect(checks(mock.dispatched)).toEqual([{ type: 'check_for_updates', explicit: false }]);
     await expectNoAxeViolations();
+  });
+
+  it.each([
+    ['about_ios_available', 'In TestFlight aktualisieren', 'PIDA 0.3.0 in TestFlight öffnen', 'https://testflight.apple.com/v1/app/6828122194'],
+    ['about_android_available', 'Im Play Store aktualisieren', 'PIDA 0.3.0 im Play Store öffnen', 'https://play.google.com/store/apps/details?id=at.asit.pida.app'],
+  ])('%s: neue Version im Store – „%s“ öffnet den Store (Nachtrag 31)', async (name, text, label, url) => {
+    const { about, mock, user } = await openAbout(state(name));
+    const card = within(about).getByRole('group', { name: 'Updates' });
+    expect(within(card).getByRole('status')).toHaveTextContent('Version 0.3.0 ist verfügbar');
+    const link = within(card).getByRole('link', { name: label });
+    expect(link).toHaveTextContent(text);
+    await user.click(link);
+    expect(mock.openedUrls).toEqual([url]);
   });
 });
 
@@ -127,7 +139,7 @@ describe('Über PIDA: Statuszeile in jedem Zustand des echten Kerns', () => {
   ];
 
   it('alle Zustände sind in den Proben', () => {
-    expect(Object.keys(states).sort()).toEqual([...cases.map((c) => c[0]), 'about_ios'].sort());
+    expect(Object.keys(states).sort()).toEqual([...cases.map((c) => c[0]), 'about_ios', 'about_ios_available', 'about_android_available'].sort());
   });
 
   it.each(cases)('%s: „%s“, Aktion %s; axe', async (name, text, action) => {
@@ -230,10 +242,11 @@ describe('Über PIDA mit dem Mock-Kern: Abläufe und Live-Region', () => {
     expect(mock.openedUrls).toEqual(['https://github.com/a-sit/pida/releases/tag/v0.3.0']);
   });
 
-  it('Android (Mock): keine Update-Zeile, keine Prüfung', async () => {
-    const { about, mock } = await openMockAbout({ platform: 'android' });
-    expect(within(about).queryByRole('group', { name: 'Updates' })).toBeNull();
-    expect(checks(mock.dispatched)).toEqual([]);
+  it('Android (Mock): Update-Zeile wie am Desktop; neue Version führt in den Play Store', async () => {
+    const { about, mock, user } = await openMockAbout({ platform: 'android', update: 'available' });
+    const card = within(about).getByRole('group', { name: 'Updates' });
+    await user.click(await within(card).findByRole('link', { name: 'PIDA 0.3.0 im Play Store öffnen' }));
+    expect(mock.openedUrls).toEqual(['https://play.google.com/store/apps/details?id=at.asit.pida.app']);
     expect(within(about).getByText('Version 0.2.0 · 17.10.2026')).toBeInTheDocument();
   });
 });

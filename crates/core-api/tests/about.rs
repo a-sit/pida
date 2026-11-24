@@ -516,21 +516,67 @@ async fn no_startup_notice_after_the_switch_was_turned_off() {
     assert_eq!(core.view().update_hint, None, "ausgeschaltet: kein Hinweis");
 }
 
-/// iOS/Android (keine Verteilung über GitHub) und die CLI prüfen nie; ohne Transport (Tests) ebenso.
+/// Neue Version mit Store-Freigaben: 0.4.0 nur auf GitHub, 0.3.0 für Android und iOS freigegeben (Markierungsdateien).
+const NEWER_IN_STORES: &str = r#"[
+  {"tag_name":"v0.4.0","draft":false,"prerelease":true,"assets":[{"name":"PIDA_0.4.0_windows_x64-setup.exe"}]},
+  {"tag_name":"v0.3.0","draft":false,"prerelease":true,"assets":[
+    {"name":"PIDA_0.3.0_macos_arm64.dmg"},{"name":"PIDA_0.3.0_store-android.txt"},{"name":"PIDA_0.3.0_store-ios.txt"}]},
+  {"tag_name":"v0.2.0","draft":false,"prerelease":true,"assets":[{"name":"PIDA_0.2.0_store-android.txt"}]}
+]"#;
+
+/// iOS/Android (Nachtrag 31): Eine neue Version zählt erst, wenn sie für den Store freigegeben ist; der Hinweis führt
+/// in den Store. Ohne Freigabe: auf dem neuesten Stand, kein Hinweis.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn mobile_cli_and_isolated_cores_never_check() {
-    for platform in [Platform::Ios, Platform::Android] {
+async fn mobile_announces_only_versions_released_to_the_store() {
+    for (platform, store) in [
+        (Platform::Android, "https://play.google.com/store/apps/details?id=at.asit.pida.app"),
+        (Platform::Ios, "https://testflight.apple.com/v1/app/6828122194"),
+    ] {
+        // nur auf GitHub (keine Markierung): kein Hinweis
         let fx = fixture("[general]\n");
         let gh = FakeGitHub::new(&[Reply::Json(NEWER)]);
         let core = Core::new_with(config(&fx, platform, false), options(&gh)).unwrap();
-        let v = wait_for(&core, "Projektion", |v| v.about.is_some()).await;
-        let about = v.about.unwrap();
-        assert_eq!((about.version.as_str(), about.update), ("0.2.0", None), "{platform:?}: keine Update-Zeile");
-        assert_eq!(v.update_hint, None, "{platform:?}: kein Hinweis auf der Startseite");
-        core.dispatch(UiEvent::CheckForUpdates { explicit: true });
+        let v = wait_state(&core, UpdateCheckState::UpToDate).await;
+        assert_eq!((gh.calls(), v.update_hint), (1, None), "{platform:?}: nicht im Store");
+        drop(core);
+        // im Store: Hinweis auf die freigegebene Version (nicht auf die neuere, die es nur auf GitHub gibt)
+        let fx = fixture("[general]\n");
+        let gh = FakeGitHub::new(&[Reply::Json(NEWER_IN_STORES)]);
+        let core = Core::new_with(config(&fx, platform, false), options(&gh)).unwrap();
+        let v = wait_state(&core, UpdateCheckState::Available).await;
+        let u = update(&v).unwrap();
+        assert_eq!(
+            (u.latest_version.as_deref(), u.release_url.as_deref()),
+            (Some("0.3.0"), Some(store)),
+            "{platform:?}"
+        );
+        let hint = v.update_hint.clone().expect("Hinweis auf der Startseite");
+        assert_eq!((hint.version.as_str(), hint.release_url.as_str()), ("0.3.0", store), "{platform:?}");
+        // die Freigabe überdauert den Neustart (Zwischenspeicher), ohne weitere Anfrage
+        drop(core);
+        let core = Core::new_with(config(&fx, platform, false), options(&gh)).unwrap();
+        let v = wait_for(&core, "Hinweis aus dem Zwischenspeicher", |v| v.update_hint.is_some()).await;
+        assert_eq!((v.update_hint.unwrap().version.as_str(), gh.calls()), ("0.3.0", 1), "{platform:?}");
+        // ausgeschaltet: keine Prüfung, kein Hinweis
+        drop(core);
+        let fx = fixture("[general]\nupdate_check = false\n");
+        let gh = FakeGitHub::new(&[Reply::Json(NEWER_IN_STORES)]);
+        let core = Core::new_with(config(&fx, platform, false), options(&gh)).unwrap();
+        wait_state(&core, UpdateCheckState::Disabled).await;
         settle().await;
-        assert_eq!(gh.calls(), 0, "{platform:?}");
+        assert_eq!((gh.calls(), core.view().update_hint), (0, None), "{platform:?}: ausgeschaltet");
     }
+    // am Desktop zählt die neueste Version, mit oder ohne Markierung
+    let fx = fixture("[general]\n");
+    let gh = FakeGitHub::new(&[Reply::Json(NEWER_IN_STORES)]);
+    let core = start(&fx, &gh);
+    let v = wait_state(&core, UpdateCheckState::Available).await;
+    assert_eq!(v.update_hint.map(|h| h.version).as_deref(), Some("0.4.0"));
+}
+
+/// Die CLI prüft nie; ohne Transport (Tests) ebenso.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cli_and_isolated_cores_never_check() {
     let fx = fixture("[general]\n");
     let gh = FakeGitHub::new(&[Reply::Json(NEWER)]);
     let core = Core::new_with(config(&fx, Platform::Linux, true), options(&gh)).unwrap();
@@ -642,8 +688,24 @@ async fn real_core_about_views_for_the_ui() {
     let gh = FakeGitHub::new(&[Reply::Json(TODAY)]);
     let core = Core::new_with(config(&fx, Platform::Ios, false), options(&gh)).unwrap();
     open(&core);
-    states.push(("about_ios", wait_for(&core, "iOS", |v| v.settings.is_some() && v.about.is_some()).await));
+    states.push((
+        "about_ios",
+        wait_for(&core, "iOS", |v| v.settings.is_some() && state(v) == Some(UpdateCheckState::UpToDate)).await,
+    ));
     drop(core);
+
+    // iOS/Android: neue Version, für den Store freigegeben – der Link führt in den Store
+    for (name, platform) in [("about_ios_available", Platform::Ios), ("about_android_available", Platform::Android)] {
+        let fx = fixture("[general]\n");
+        let gh = FakeGitHub::new(&[Reply::Json(NEWER_IN_STORES)]);
+        let core = Core::new_with(config(&fx, platform, false), options(&gh)).unwrap();
+        open(&core);
+        states.push((
+            name,
+            wait_for(&core, name, |v| v.settings.is_some() && state(v) == Some(UpdateCheckState::Available)).await,
+        ));
+        drop(core);
+    }
 
     for (name, v) in &states {
         assert!(v.first_run.is_none(), "{name}: ohne Ersteinrichtung");

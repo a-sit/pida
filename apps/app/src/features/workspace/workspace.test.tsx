@@ -554,6 +554,26 @@ describe('Konto-Chip und „Signieren“', () => {
     expect(screen.getByRole('button', { name: /^Signieren/ })).toBeDisabled();
   });
 
+  it('↵ allein signiert im Arbeitsbereich wie der Knopf – nicht auf einem anderen Bedienelement, nicht ohne Freigabe', async () => {
+    const { mock, user, unmount } = renderApp({ view: workspaceView() });
+    const block = await screen.findByRole('application', { name: 'Signaturblock' });
+    // Fokus auf einem anderen Knopf: ↵ gehört diesem Knopf
+    screen.getByRole('button', { name: 'Signaturbild bearbeiten' }).focus();
+    await user.keyboard('{Enter}');
+    expect(mock.dispatched.filter((e) => e.type === 'sign_with')).toEqual([]);
+    // Umschalt+↵ ist kein Kürzel
+    block.focus();
+    await user.keyboard('{Shift>}{Enter}{/Shift}');
+    expect(mock.dispatched.filter((e) => e.type === 'sign_with')).toEqual([]);
+    await user.keyboard('{Enter}');
+    expect(mock.dispatched.filter((e) => e.type === 'sign_with')).toEqual([{ type: 'sign_with', backend: 'atrust_native' }]);
+    unmount();
+    const r = renderApp({ view: workspaceView(documentView(), { actions: { ...workspaceView().actions, sign: false } }) });
+    (await screen.findByRole('application', { name: 'Signaturblock' })).focus();
+    await r.user.keyboard('{Enter}');
+    expect(r.mock.dispatched.filter((e) => e.type === 'sign_with')).toEqual([]);
+  });
+
   it('„Bearbeiten“ am Signaturbild öffnet die Einstellungen (Abschnitt Signaturbild)', async () => {
     const { mock, user } = renderApp({ view: workspaceView() });
     await user.click(await screen.findByRole('button', { name: 'Signaturbild bearbeiten' }));

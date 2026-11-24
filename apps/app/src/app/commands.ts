@@ -259,6 +259,8 @@ export function buildShortcuts(t: Translator, isMac: boolean): ShortcutEntry[] {
     { id: 'move-coarse', group: 'workspace', label: t.t('ng-ui-shell-key-move-coarse'), keys: [alt, '←↑→↓'] },
     { id: 'page', group: 'workspace', label: t.t('ng-ui-shell-key-page'), keys: ['Bild ↑', 'Bild ↓'].map((k) => (de ? k : k.replace('Bild', 'Page'))) },
     { id: 'place', group: 'workspace', label: t.t('ng-ui-shell-key-place'), keys: [t.t('ng-ui-shell-key-dblclick')] },
+    // ↵ allein signiert im Arbeitsbereich (wie der Knopf), solange der Fokus auf keinem anderen Bedienelement steht
+    { id: 'sign-enter', group: 'workspace', label: t.t('ng-ui-shell-key-sign-enter'), keys: [isMac ? '↵' : de ? 'Eingabe' : 'Enter'] },
   ];
   // im Browser zoomen diese Kürzel die ganze Seite (Sache des Browsers), nicht das Dokument
   if (webProfile() === null) {

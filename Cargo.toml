@@ -46,7 +46,7 @@ members = [
 exclude = ["crates/pdf-cos/fuzz"]
 
 [workspace.package]
-version = "0.8.3"
+version = "0.9.0"
 edition = "2024"
 # MSRV = die verifizierte Toolchain (Rust 1.99 stable). Die Abhängigkeiten selbst verlangen mindestens 1.88
 # (lopdf 0.45, image 0.25, time 0.3.55, keyring 4); eine niedrigere MSRV wird erst nach CI-Nachweis gesenkt.

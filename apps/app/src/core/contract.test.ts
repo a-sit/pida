@@ -711,7 +711,7 @@ describe('Vertrag ViewState (Rust → TS)', () => {
     // Nachtrag 10: geparkte Arbeit (Einzeldokument von Hand platziert, Stapel)
     expect(sorted(views.map((v) => (v.parked ? (v.parked.doc_name ?? 'stapel') : null)))).toEqual(['Vertrag.pdf', 'stapel']);
     expect(views.some((v) => v.parked?.placed_by_hand === true)).toBe(true);
-    // Nachtrag 21: jeder Zustand der Update-Prüfung; Mobile ohne Prüfung
+    // Nachtrag 21: jeder Zustand der Update-Prüfung; die Mobile-Probe ist ohne Prüfung (`update = null`)
     expect(sorted(views.map((v) => v.about?.update?.state))).toEqual(['available', 'checking', 'disabled', 'failed', 'policy_off', 'unchecked', 'up_to_date']);
     for (const v of views.filter((x) => x.platform.mobile && x.about)) expect(v.about?.update).toBeNull();
     expect(views.filter((v) => v.about?.update?.state === 'up_to_date').every((v) => v.about?.update?.checked_at !== null)).toBe(true);

@@ -79,8 +79,8 @@ freie Software unter der EUPL-1.2 und ein Open-Source-Projekt von A-SIT, kein of
 - **Chipkarte und Keystore:** Signiert wird auf dem eigenen Gerät; das Dokument wird nicht hochgeladen.
 - Einstellungen, „Zuletzt signiert“ und Protokolle bleiben auf dem Gerät. Protokolle enthalten keine Passwörter,
   TANs oder Dokumentinhalte.
-- **Update-Prüfung (Desktop):** höchstens einmal am Tag fragt PIDA bei GitHub nach der neuesten Version; abschaltbar
-  unter Einstellungen › Erweitert.
+- **Update-Prüfung:** höchstens einmal am Tag fragt PIDA bei GitHub nach der neuesten Version; abschaltbar
+  unter Einstellungen › Erweitert. Auf iOS und Android meldet PIDA eine neue Version, sobald sie im Store bereitsteht.
 - **Browser-Variante:** Dokumente und Einstellungen werden nicht gespeichert und sind nach dem Schließen der Seite weg.
   Für ID Austria zeigt PIDA die echte A-Trust-Seite in einem Fenster über der App; Zugangsdaten gibt man direkt bei
   A-Trust ein. Das Dokument läuft dabei – nur im Speicher – über den PIDA-Server.
