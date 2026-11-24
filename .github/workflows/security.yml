@@ -9,7 +9,7 @@
 #   cargo    cargo deny check advisories (RustSec; Ausnahmen in deny.toml)
 #   npm      npm audit der ausgelieferten Pakete von apps/app (ohne devDependencies)
 #   actions  alle Actions auf Commit-SHAs gepinnt (Regel aus ci.yml)
-#   fuzz     coverage-geführtes Fuzzing von pdf-cos (tools/fuzz-pdf-cos.sh), Korpus wandert über den Cache weiter
+#   fuzz     coverage-geführtes Fuzzing (pdf-cos, pades, sl12; tools/fuzz.sh), Korpus wandert über den Cache weiter
 
 name: Security
 
@@ -29,7 +29,7 @@ env:
   FUZZ_TOOLCHAIN: "nightly-2026-11-16"
   CARGO_FUZZ_VERSION: "0.13.2"
   # Sekunden je Fuzz-Ziel
-  FUZZ_SECONDS: "900"
+  FUZZ_SECONDS: "600"
 
 jobs:
   cargo:
@@ -93,9 +93,9 @@ jobs:
           fi
 
   fuzz:
-    name: Fuzzing pdf-cos
+    name: Fuzzing
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -109,18 +109,18 @@ jobs:
       - name: Korpus aus dem letzten Lauf
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: crates/pdf-cos/fuzz/corpus
-          key: fuzz-pdf-cos-corpus-${{ github.run_id }}
+          path: fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
           restore-keys: |
-            fuzz-pdf-cos-corpus-
+            fuzz-corpus-
       - name: Fuzzing
         env:
           PIDA_FUZZ_TOOLCHAIN: ${{ env.FUZZ_TOOLCHAIN }}
-        run: tools/fuzz-pdf-cos.sh "$FUZZ_SECONDS"
+        run: tools/fuzz.sh "$FUZZ_SECONDS"
       - name: Funde sichern
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: fuzz-funde
-          path: crates/pdf-cos/fuzz/artifacts
+          path: fuzz/artifacts
           if-no-files-found: ignore

@@ -42,8 +42,8 @@ members = [
     "apps/app/src-tauri",   # Tauri-2-Shell (Desktop und Mobile), ADR 0001 §3
     "apps/app/plugins/pida-mobile",   # Mobile-Plugin der Shell (Swift/Kotlin: M-iOS/M-Android)
 ]
-# Fuzz-Ziele (cargo-fuzz, Nightly) sind ein eigener Workspace: tools/fuzz-pdf-cos.sh
-exclude = ["crates/pdf-cos/fuzz"]
+# Fuzz-Ziele (cargo-fuzz, Nightly) sind ein eigener Workspace: tools/fuzz.sh
+exclude = ["fuzz"]
 
 [workspace.package]
 version = "0.9.0"
