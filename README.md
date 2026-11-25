@@ -147,6 +147,7 @@ Alle Pakete stehen auf der Release-Seite: **[PIDA 0.9.1](https://github.com/a-si
 | Linux (Fedora, RHEL) | [`PIDA_0.9.1_linux_x86_64.rpm`](https://github.com/a-sit/pida/releases/download/v0.9.1/PIDA_0.9.1_linux_x86_64.rpm) | 15,7 MiB | x86_64 |
 | Linux (portabel) | [`PIDA_0.9.1_linux_x86_64.AppImage`](https://github.com/a-sit/pida/releases/download/v0.9.1/PIDA_0.9.1_linux_x86_64.AppImage) | 94,2 MiB | x86_64, ohne Installation |
 | Android | [`PIDA_0.9.1_android_arm64.apk`](https://github.com/a-sit/pida/releases/download/v0.9.1/PIDA_0.9.1_android_arm64.apk) | 27,7 MiB | Android 9 oder neuer, arm64 |
+| iPhone, iPad | [Öffentlicher Test über TestFlight](https://testflight.apple.com/join/kePC4evz) | – | iOS 16 oder neuer, TestFlight-App von Apple |
 | Kommandozeile (macOS) | [`pida-cli_0.9.1_macos_arm64`](https://github.com/a-sit/pida/releases/download/v0.9.1/pida-cli_0.9.1_macos_arm64) | 15,8 MiB | macOS 11 oder neuer, Apple Silicon |
 | Server PIDA Web (Debian, Ubuntu) | [`pida-web_0.9.1_amd64.deb`](https://github.com/a-sit/pida/releases/download/v0.9.1/pida-web_0.9.1_amd64.deb) | 6,6 MiB | x86_64, Webserver mit HTTPS davor |
 | Server PIDA Web (RHEL, Alma, Rocky, Fedora, openSUSE) | [`pida-web-0.9.1-1.x86_64.rpm`](https://github.com/a-sit/pida/releases/download/v0.9.1/pida-web-0.9.1-1.x86_64.rpm) | 6,6 MiB | x86_64, Webserver mit HTTPS davor |
@@ -154,7 +155,8 @@ Alle Pakete stehen auf der Release-Seite: **[PIDA 0.9.1](https://github.com/a-si
 
 Prüfsummen stehen in [`SHA256SUMS.txt`](https://github.com/a-sit/pida/releases/download/v0.9.1/SHA256SUMS.txt) (prüfen mit `shasum -a 256 -c SHA256SUMS.txt` unter
 macOS, `sha256sum -c SHA256SUMS.txt` unter Linux bzw. `Get-FileHash <Datei> -Algorithm SHA256` in der Windows
-PowerShell). Eine iOS-Version ist nicht Teil der Releases.
+PowerShell). Die iOS-Version gibt es nicht als Datei, sondern über den öffentlichen Test in
+[TestFlight](https://testflight.apple.com/join/kePC4evz).
 
 ## Installation
 
@@ -394,7 +396,8 @@ Signatures follow the **PDF-AS method**, just like PDF-Over. Licensed under the 
 - **Download:** [PIDA 0.9.1](https://github.com/a-sit/pida/releases/tag/v0.9.1) (pre-release) – Windows 10/11 x64 (`-setup.exe`, `.msi` or portable `.zip`), macOS 11+
   on Apple Silicon (`.dmg`), Linux x86_64 (`.deb`/`.rpm`/AppImage), Android 9+ arm64 (`.apk`), plus the
   command-line tool `pida-cli` for macOS on Apple Silicon and the PIDA Web server for x86_64 Linux
-  (`pida-web` as `.deb`, `.rpm`, `.tar.gz`). Checksums are in `SHA256SUMS.txt`. iOS is not included.
+  (`pida-web` as `.deb`, `.rpm`, `.tar.gz`). Checksums are in `SHA256SUMS.txt`. iOS is available through the public
+  [TestFlight beta](https://testflight.apple.com/join/kePC4evz).
 - **PIDA Web:** publicly available at [pdf.a-sit.at](https://pdf.a-sit.at) – the same interface in the browser (core and PDFium as WebAssembly), signing with ID Austria via
   the real A-Trust page in an overlay; nothing is stored. The server (`pida-web-server`, packages `.deb`, `.rpm`,
   `.tar.gz` for Linux) runs behind a web server with HTTPS – see [docs/integration/web.md](docs/integration/web.md)
